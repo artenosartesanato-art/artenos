@@ -1,0 +1,2 @@
+Lettering Artenós: desenho vetorial oficial, não há arquivo de fonte alfabética correspondente. Usar SVG/PNG fornecidos.
+DejaVu Sans Regular/Bold: apoio funcional para textos e materiais editáveis. Licença em 11-Licencas.
