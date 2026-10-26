@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { Heart, LoaderCircle, ShoppingBag, Sparkles } from "@/components/icons";
 import { ProductDetailsButton } from "@/components/product-details-button";
+import { ProductInquiryLink } from "@/components/product-inquiry-link";
 
 export type MarketplaceProduct = {
   id: string;
@@ -81,10 +82,13 @@ export function MarketplaceProductCard({ product, shopName, saved, favoritePendi
               <button className="store-product-details-trigger" type="button" onClick={openDetails}>
                 Conheça a peça
               </button>
-              <button type="button" className="store-product-add" disabled={unavailable || cartPending || adding}
-                onClick={() => { void addToCart(); }} aria-label={`Adicionar ${product.name} ao carrinho`}>
-                {cartPending || adding ? <LoaderCircle size={18} className="spin" /> : <ShoppingBag size={18} />}
-              </button>
+              <span className="store-product-actions">
+                <ProductInquiryLink productId={product.id} productName={product.name} compact />
+                <button type="button" className="store-product-add" disabled={unavailable || cartPending || adding}
+                  onClick={() => { void addToCart(); }} aria-label={`Adicionar ${product.name} ao carrinho`}>
+                  {cartPending || adding ? <LoaderCircle size={18} className="spin" /> : <ShoppingBag size={18} />}
+                </button>
+              </span>
             </div>
           </div>
         </article>

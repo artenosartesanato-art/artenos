@@ -13,6 +13,7 @@ import {
 } from "@/components/icons";
 import { useEffect, useState, type ReactNode } from "react";
 import { getSupabase } from "@/lib/supabase";
+import { ProductInquiryLink } from "@/components/product-inquiry-link";
 
 type ProductDetails = {
   id: string;
@@ -133,6 +134,7 @@ export function ProductDetailsButton({ product, children }: {
           <h2>{product.name}</h2>
           <strong>{money.format(Number(product.price))}</strong>
           <p>{product.description?.trim() || "A descrição desta peça ainda não foi informada pela loja."}</p>
+          <ProductInquiryLink productId={product.id} productName={product.name} />
           <span><ShoppingBag size={15} /> {product.stock === 0 ? "Produto indisponível" : product.stock != null ? `${product.stock} unidade(s) disponível(is)` : "Consulte a disponibilidade"}</span>
           <div className="product-shipping-details">
             <h3>Informações para envio</h3>

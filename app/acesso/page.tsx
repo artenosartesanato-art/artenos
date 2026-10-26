@@ -414,8 +414,13 @@ function LoginForm() {
           ? `Bem-vinda à Artenós, ${result.firstName}!`
           : `Olá, ${result.firstName}. Acompanhe aqui a análise do seu cadastro.`,
       );
+      const requestedReturn = new URLSearchParams(window.location.search).get("retorno");
+      const messageReturn = requestedReturn &&
+        /^\/mensagens\?produto=[0-9a-f-]{36}$/i.test(requestedReturn)
+          ? requestedReturn
+          : null;
       router.replace(result.approvalStatus === "active"
-        ? favoriteIntentReturnPath() || result.redirectTo
+        ? messageReturn || favoriteIntentReturnPath() || result.redirectTo
         : result.redirectTo);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Tente novamente.");

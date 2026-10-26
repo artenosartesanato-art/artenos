@@ -61,6 +61,7 @@ export const Mail = icon("envelope");
 export const MapPin = icon("geo-alt");
 export const Menu = icon("list");
 export const MessageCircle = icon("chat");
+export const MessageSquare = icon("chat-left-text");
 export const MessageSquareWarning = icon("chat-left-text");
 export const Minus = icon("dash");
 export const Package = icon("box-seam");
