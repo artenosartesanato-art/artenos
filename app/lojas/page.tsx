@@ -4,8 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, MapPin, RefreshCw, Search, Store } from "@/components/icons";
 import { getSupabase } from "@/lib/supabase";
-import { CustomerHeader } from "@/components/customer-header";
-import { CustomerFooter } from "@/components/customer-footer";
 import "../storefront.css";
 import "./shops.css";
 
@@ -45,7 +43,6 @@ export default function ShopsPage() {
 
   return (
     <div className="store-page shops-page">
-      <CustomerHeader />
       <main id="conteudo" tabIndex={-1} className="store-container shops-main">
         <header className="shops-intro">
           <p className="store-eyebrow">Quem faz a Artenós</p>
@@ -97,7 +94,6 @@ export default function ShopsPage() {
           </div>
         )}
       </main>
-      <CustomerFooter />
     </div>
   );
 }

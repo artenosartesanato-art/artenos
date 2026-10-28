@@ -1,7 +1,5 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { CustomerHeader } from "@/components/customer-header";
-import { CustomerFooter } from "@/components/customer-footer";
 import { PackageOpen } from "@/components/icons";
 import "./storefront.css";
 
@@ -10,7 +8,6 @@ export const metadata: Metadata = { title: "Página não encontrada | Artenós" 
 export default function NotFound() {
   return (
     <div className="store-page">
-      <CustomerHeader />
       <main id="conteudo" tabIndex={-1} className="store-container">
         <section className="an-state an-state--page">
           <PackageOpen size={40} />
@@ -23,7 +20,6 @@ export default function NotFound() {
           </div>
         </section>
       </main>
-      <CustomerFooter />
     </div>
   );
 }

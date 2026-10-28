@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, Eye, EyeOff, Loader2, LockKeyhole, ShieldCheck } from "@/components/icons";
-import { CustomerHeader } from "@/components/customer-header";
 import { getSupabase } from "@/lib/supabase";
 import { validateNewPassword, type FieldErrors } from "@/lib/registration-validation";
 import "../storefront.css";
@@ -64,7 +63,6 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="store-page">
-      <CustomerHeader />
       <main id="conteudo" tabIndex={-1} className="store-container reset-main">
         {stage === "checking" ? (
           <div className="an-state" role="status"><Loader2 size={28} className="spin" /><h1>Validando o link…</h1></div>

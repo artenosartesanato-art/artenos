@@ -17,7 +17,6 @@ import {
   Store,
 } from "@/components/icons";
 import { toast } from "sonner";
-import { CustomerHeader } from "@/components/customer-header";
 import { favoriteIntentReturnPath } from "@/components/marketplace-state";
 import { BrandLogo } from "@/components/brand-logo";
 import { getSupabase, loginWithSupabase, registerWithSupabase } from "@/lib/supabase";
@@ -563,7 +562,6 @@ function AccessContent() {
 export default function AccessPage() {
   return (
     <div className="store-page access-page">
-      <CustomerHeader />
       <Suspense fallback={<main className="site-shell" />}>
         <AccessContent />
       </Suspense>

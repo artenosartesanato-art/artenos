@@ -1,6 +1,7 @@
 .profile-page {
-  background: var(--artenos-perola);
+  background: var(--an-bg);
 }
+.profile-page-seller { background: transparent; }
 .profile-page-seller .profile-main { width: 100%; margin: 0; padding: 0; }
 .profile-edit-toggle { margin-top: 18px; border: 1px solid var(--artenos-terracota, #a66040); border-radius: 10px; background: transparent; color: var(--artenos-marrom); padding: 10px 15px; cursor: pointer; font-weight: 700; }
 .profile-edit-forms { display: grid; gap: 16px; margin-top: 16px; }

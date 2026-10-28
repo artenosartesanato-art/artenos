@@ -13,8 +13,6 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
-import { CustomerFooter } from "@/components/customer-footer";
-import { StandaloneCustomerHeader } from "@/components/standalone-customer-header";
 import { getSupabase } from "@/lib/supabase";
 import { getMessageSuggestions, messageTopics, type MessageTopic } from "@/lib/message-suggestions";
 import { clearProductInquiry, pendingProductInquiry, validProductId } from "@/lib/product-inquiry-intent";
@@ -341,6 +339,8 @@ export function MessagesWorkspace({
     void refreshAll(user);
   }
 
+  // No painel da loja o SellerShell já fornece o <main>.
+  const Main = sellerMode ? "div" : "main";
   return (
     <div
       className={
@@ -349,9 +349,9 @@ export function MessagesWorkspace({
           : "store-page messages-page"
       }
     >
-      {!sellerMode && <StandaloneCustomerHeader />}
-
-      <main
+      <Main
+        id={sellerMode ? undefined : "conteudo"}
+        tabIndex={sellerMode ? undefined : -1}
         className={
           sellerMode
             ? "messages-main messages-main-seller"
@@ -643,7 +643,7 @@ export function MessagesWorkspace({
             </section>
           </div>
         )}
-      </main>
+      </Main>
 
       {suggestionTopic && current && (
         <div className="messages-suggestions-backdrop">
@@ -671,13 +671,6 @@ export function MessagesWorkspace({
             </div>
           </section>
         </div>
-      )}
-
-      {!sellerMode && (
-        <CustomerFooter
-          userSignedIn={!!user}
-          authLoading={status === "Carregando..."}
-        />
       )}
     </div>
   );

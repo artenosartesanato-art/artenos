@@ -12,8 +12,6 @@ import {
   Truck,
 } from "@/components/icons";
 import { getSupabase } from "@/lib/supabase";
-import { CustomerHeader } from "@/components/customer-header";
-import { CustomerFooter } from "@/components/customer-footer";
 import { MarketplaceProductCard, ProductGridSkeleton, type MarketplaceProduct } from "@/components/marketplace-product-card";
 import "./storefront.css";
 
@@ -165,7 +163,6 @@ export default function StorefrontPage() {
 
   return (
     <div className="store-page">
-      <CustomerHeader />
 
       <main id="conteudo" tabIndex={-1}>
         <section className="store-hero" aria-labelledby="hero-title">
@@ -358,7 +355,6 @@ export default function StorefrontPage() {
           empty="Novas peças aparecerão aqui." />
       </main>
 
-      <CustomerFooter />
     </div>
   );
 }

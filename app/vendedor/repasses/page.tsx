@@ -88,7 +88,7 @@ export default function RepassesPage() {
     .reduce((sum, p) => sum + Math.round(Number(p.net_amount) * 100), 0);
 
   return (
-    <main className="seller-payouts">
+    <div className="seller-payouts">
       <h1>Meus repasses</h1>
       <p role="status">{status}</p>
 
@@ -133,6 +133,6 @@ export default function RepassesPage() {
           </section>
         </>
       )}
-    </main>
+    </div>
   );
 }

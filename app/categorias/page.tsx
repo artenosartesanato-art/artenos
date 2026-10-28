@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, LoaderCircle, PackageOpen, RefreshCw, SlidersHorizontal, X } from "@/components/icons";
-import { CustomerHeader } from "@/components/customer-header";
-import { CustomerFooter } from "@/components/customer-footer";
+import { useHeaderSearchControl } from "@/components/header-search";
 import { Dialog } from "@/components/ui/dialog";
 import { getSupabase } from "@/lib/supabase";
 import { MarketplaceProductCard, ProductGridSkeleton, type MarketplaceProduct } from "@/components/marketplace-product-card";
@@ -141,7 +140,6 @@ function FilterPanel({ categories, filters, onChange, onClear, idPrefix }: {
 export default function CategoriesPage() {
   const [ready, setReady] = useState(false);
   const [filters, setFilters] = useState<Filters>(emptyFilters);
-  const [searchInput, setSearchInput] = useState("");
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [featuredFallback, setFeaturedFallback] = useState<Product[]>([]);
@@ -155,6 +153,12 @@ export default function CategoriesPage() {
   const [panelKey, setPanelKey] = useState(0);
   const productRequest = useRef(0);
   const resultsHeading = useRef<HTMLHeadingElement>(null);
+  // A busca do cabeçalho único filtra esta página sem recarregar.
+  const search = useCallback((query: string) => {
+    setFilters((current) => ({ ...current, query }));
+    window.requestAnimationFrame(() => resultsHeading.current?.focus({ preventScroll: false }));
+  }, []);
+  const [, setSearchInput] = useHeaderSearchControl(search);
 
   useEffect(() => {
     const initial = readFilters();
@@ -223,10 +227,6 @@ export default function CategoriesPage() {
     setPanelKey((value) => value + 1);
     setFilters(emptyFilters);
   }
-  function search(query: string) {
-    update({ query });
-    window.requestAnimationFrame(() => resultsHeading.current?.focus({ preventScroll: false }));
-  }
 
   async function loadMore() {
     if (loadingMore || products.length >= total) return;
@@ -271,7 +271,6 @@ export default function CategoriesPage() {
 
   return (
     <div className="store-page category-page">
-      <CustomerHeader searchValue={searchInput} onSearchValueChange={setSearchInput} onSearch={search} />
       <main id="conteudo" tabIndex={-1} className="store-container category-main">
         <header className="category-intro">
           <p className="store-eyebrow">Descubra o feito à mão</p>
@@ -390,7 +389,6 @@ export default function CategoriesPage() {
           </section>
         </div>
       </main>
-      <CustomerFooter />
 
       <Dialog open={filtersOpen} onClose={() => setFiltersOpen(false)} variant="drawer-left" labelledBy="filtros-mobile-titulo"
         className="category-filter-drawer" closeLabel="Fechar filtros">

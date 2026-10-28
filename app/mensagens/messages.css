@@ -1,10 +1,6 @@
 .messages-page {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-}
-.messages-page .store-footer {
-  margin-top: auto;
 }
 .messages-main {
   padding-top: 51px;

@@ -21,8 +21,6 @@ import {
   Trash2,
   Truck,
 } from "@/components/icons";
-import { CustomerFooter } from "@/components/customer-footer";
-import { CustomerHeader } from "@/components/customer-header";
 import { getSupabase } from "@/lib/supabase";
 import { getCartErrorMessage } from "@/lib/cart";
 import { accessHref } from "@/lib/navigation";
@@ -247,7 +245,6 @@ export default function CarrinhoPage() {
 
   return (
     <div className="store-page cart-page">
-      <CustomerHeader />
       <main id="conteudo" tabIndex={-1} className="store-container cart-main">
         <header className="cart-heading">
           <div>
@@ -460,7 +457,6 @@ export default function CarrinhoPage() {
           </div>
         )}
       </main>
-      <CustomerFooter />
     </div>
   );
 }

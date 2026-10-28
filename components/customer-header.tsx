@@ -18,6 +18,7 @@ import { useMarketplace } from "@/components/marketplace-state";
 import { Dialog } from "@/components/ui/dialog";
 import { SoundToggle } from "@/components/sound-toggle";
 import { accessHref } from "@/lib/navigation";
+import { useHeaderSearch } from "@/components/header-search";
 
 const NAV_LINKS = [
   { href: "/categorias", label: "Categorias" },
@@ -30,15 +31,8 @@ const NAV_LINKS = [
 
 const formatCep = (cep: string) => `${cep.slice(0, 5)}-${cep.slice(5)}`;
 
-type CustomerHeaderProps = {
-  /** Controle opcional da busca (a página de categorias filtra sem navegar). */
-  searchValue?: string;
-  onSearchValueChange?: (value: string) => void;
-  onSearch?: (query: string) => void;
-};
-
 function CepControl({ compact = false }: { compact?: boolean }) {
-  const { userId, cep, cepStatus, cepError, setGuestCep } = useMarketplace();
+  const { userId, cep, cepStatus, cepError, setGuestCep, sellerPanelAvailable } = useMarketplace();
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState("");
   const [checking, setChecking] = useState(false);
@@ -108,7 +102,7 @@ function CepControl({ compact = false }: { compact?: boolean }) {
               <strong>CEP do seu cadastro</strong>
               <p>{cepStatus === "error" ? cepError : formatCep(cep)}</p>
               <small>O frete e os prazos são calculados para este CEP.</small>
-              <Link className="an-btn an-btn--secondary an-btn--sm" href="/perfil">Alterar no meu perfil</Link>
+              <Link className="an-btn an-btn--secondary an-btn--sm" href={sellerPanelAvailable ? "/vendedor/perfil" : "/perfil"}>Alterar no meu perfil</Link>
             </>
           ) : (
             <form onSubmit={save} noValidate>
@@ -133,16 +127,29 @@ function CepControl({ compact = false }: { compact?: boolean }) {
   );
 }
 
-export function CustomerHeader({ searchValue, onSearchValueChange, onSearch }: CustomerHeaderProps = {}) {
+/** Cabeçalho único do site, montado uma vez no layout raiz (SiteChrome). */
+export function CustomerHeader() {
   const router = useRouter();
   const pathname = usePathname();
   const { authReady, userId, displayName, avatarUrl, sellerPanelAvailable, cartCount, cartPulse } = useMarketplace();
   const userSignedIn = authReady && !!userId;
-  const [localSearch, setLocalSearch] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [pulsing, setPulsing] = useState(false);
-  const search = searchValue ?? localSearch;
-  const setSearch = onSearchValueChange ?? setLocalSearch;
+  const { value: search, setValue: setSearch, runHandler } = useHeaderSearch();
+  const headerRef = useRef<HTMLElement>(null);
+
+  // Publica a altura real do cabeçalho (muda com zoom, quebra de linha e
+  // largura) para colunas fixas, como o menu da loja e o painel do acesso.
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header || typeof ResizeObserver === "undefined") return;
+    const root = document.documentElement;
+    const publish = () => root.style.setProperty("--an-header-h", `${Math.round(header.getBoundingClientRect().height)}px`);
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!cartPulse) return;
@@ -155,12 +162,13 @@ export function CustomerHeader({ searchValue, onSearchValueChange, onSearch }: C
     event.preventDefault();
     const query = search.trim().slice(0, 100);
     setMenuOpen(false);
-    if (onSearch) onSearch(query);
-    else router.push(query ? `/categorias?busca=${encodeURIComponent(query)}` : "/categorias");
+    if (!runHandler(query)) router.push(query ? `/categorias?busca=${encodeURIComponent(query)}` : "/categorias");
   }
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
-  const accountHref = userSignedIn ? "/perfil" : accessHref(pathname);
+  // Quem tem loja edita o perfil dentro do painel, junto do menu da loja.
+  const profileHref = sellerPanelAvailable ? "/vendedor/perfil" : "/perfil";
+  const accountHref = userSignedIn ? profileHref : accessHref(pathname);
   const accountLabel = authReady ? (userSignedIn ? displayName || "Minha conta" : "Entrar") : "Minha conta";
   const cartLabel = userSignedIn
     ? `Carrinho, ${cartCount} ${cartCount === 1 ? "unidade" : "unidades"}`
@@ -178,7 +186,7 @@ export function CustomerHeader({ searchValue, onSearchValueChange, onSearch }: C
   );
 
   return (
-    <header className="store-header">
+    <header className="store-header" ref={headerRef}>
       <a className="an-skip-link" href="#conteudo">Pular para o conteúdo</a>
       <div className="store-header-main store-container">
         <button type="button" className="an-icon-btn store-menu-button" onClick={() => setMenuOpen(true)}
@@ -191,7 +199,8 @@ export function CustomerHeader({ searchValue, onSearchValueChange, onSearch }: C
         <div className="store-search-desktop">{searchForm("busca-cabecalho")}</div>
         <div className="store-header-actions">
           {sellerPanelAvailable && (
-            <Link className="store-seller-switch" href="/vendedor">
+            <Link className="store-seller-switch" href="/vendedor"
+              aria-current={pathname.startsWith("/vendedor") ? "page" : undefined}>
               <Store size={18} />
               <span>Painel da loja</span>
             </Link>
