@@ -229,6 +229,10 @@
   background: color-mix(in srgb, var(--artenos-musgo) 14%, #fff);
   color: var(--an-musgo-escuro);
 }
+.chat-kind--compra {
+  background: color-mix(in srgb, var(--artenos-pessego) 45%, #fff);
+  color: var(--artenos-marrom);
+}
 .chat-row-cta {
   color: var(--an-musgo-escuro);
   font-weight: 700;

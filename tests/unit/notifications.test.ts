@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  readOnVisit, titleWithCount, unreadByRef, unreadTotal, upsertNotification, type AppNotification,
+  freshUnread, readOnVisit, titleWithCount, unreadByRef, unreadTotal, upsertNotification, type AppNotification,
 } from "../../lib/notifications.ts";
 
 const item = (overrides: Partial<AppNotification>): AppNotification => ({
@@ -43,4 +43,18 @@ test("não lidas por conversa", () => {
   const map = unreadByRef([item({ id: "1", ref_id: "c1", unread_count: 2 }), item({ id: "2", ref_id: "c2", read_at: "x" })]);
   assert.equal(map.get("c1"), 2);
   assert.equal(map.has("c2"), false);
+});
+
+test("consulta de segurança: só avisos novos ou com mais mensagens", () => {
+  const base = { kind: "mensagem" as const, title: "t", body: "b", link: "/x", ref_id: "c1", read_at: null };
+  const old = [{ ...base, id: "a", unread_count: 1, created_at: "2026-10-28T10:00:00Z" },
+    { ...base, id: "b", unread_count: 1, created_at: "2026-10-28T09:00:00Z" }];
+  const next = [
+    { ...base, id: "a", unread_count: 2, created_at: "2026-10-28T10:05:00Z" },
+    { ...base, id: "b", unread_count: 1, created_at: "2026-10-28T09:00:00Z" },
+    { ...base, id: "c", unread_count: 1, created_at: "2026-10-28T10:06:00Z" },
+    { ...base, id: "d", unread_count: 1, created_at: "2026-10-28T10:07:00Z", read_at: "2026-10-28T10:08:00Z" },
+  ];
+  assert.deepEqual(freshUnread(old, next).map((item) => item.id), ["a", "c"]);
+  assert.deepEqual(freshUnread(next, next), []);
 });

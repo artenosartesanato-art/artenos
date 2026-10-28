@@ -63,22 +63,25 @@ const KIND_LABEL: Record<Conversation["kind"], string> = {
   encomenda: "Sob encomenda",
 };
 
-/** Nome de quem está do outro lado da conversa. */
-function partnerName(conversation: Conversation, sellerMode: boolean) {
-  return sellerMode
+/**
+ * Nome de quem está do outro lado da conversa. Decide pelo papel na
+ * conversa: no painel da loja a artesã também vê as conversas em que comprou.
+ */
+function partnerName(conversation: Conversation) {
+  return conversation.my_role === "artisan"
     ? conversation.other_name || "Cliente"
     : conversation.store_name || conversation.artisan_name || conversation.other_name || "Loja";
 }
 
-function Avatar({ conversation, sellerMode, size = "md" }: {
-  conversation: Conversation; sellerMode: boolean; size?: "md" | "lg";
+function Avatar({ conversation, size = "md" }: {
+  conversation: Conversation; size?: "md" | "lg";
 }) {
   // A foto da peça identifica o assunto; sem foto, as iniciais de quem responde.
   return (
     <span className={`chat-avatar chat-avatar--${size}`} aria-hidden="true">
       {conversation.product_image_url
         ? <OptimizedImage src={conversation.product_image_url} alt="" width={48} height={48} sizes="48px" />
-        : <span>{initials(partnerName(conversation, sellerMode))}</span>}
+        : <span>{initials(partnerName(conversation))}</span>}
     </span>
   );
 }
@@ -133,7 +136,7 @@ export function MessagesWorkspace({
         supabase
           .from("orders")
           .select("id, product_name, created_at")
-          .eq(sellerMode ? "artisan_id" : "client_id", currentUser.id)
+          .or(sellerMode ? `artisan_id.eq.${currentUser.id},client_id.eq.${currentUser.id}` : `client_id.eq.${currentUser.id}`)
           .order("created_at", { ascending: false }),
         supabase.rpc("list_my_conversations_v3"),
       ]);
@@ -150,11 +153,10 @@ export function MessagesWorkspace({
         return null;
       }
 
-      const expectedRole: Conversation["my_role"] = sellerMode
-        ? "artisan"
-        : "client";
+      // O painel da loja é a única tela de mensagens de quem vende: mostra as
+      // conversas como loja e também as compras que a artesã fez.
       const roleConversations = ((listRes.data ?? []) as Conversation[])
-        .filter((conversation) => conversation.my_role === expectedRole)
+        .filter((conversation) => sellerMode || conversation.my_role === "client")
         .map((conversation) => ({
           ...conversation,
           artisan_id: conversation.artisan_id ?? "",
@@ -193,16 +195,16 @@ export function MessagesWorkspace({
       const { data } = await supabase.auth.getSession();
       if (!active) return;
       const params = new URLSearchParams(search);
-      const requestedProduct = !sellerMode ? params.get("produto") : null;
+      const requestedProduct = params.get("produto");
       const validProduct = validProductId(requestedProduct)
         ? requestedProduct
-        : !requestedProduct && !sellerMode ? pendingProductInquiry() : null;
+        : !requestedProduct ? pendingProductInquiry() : null;
       if (!data.session) {
         setUser(null);
         setCurrent(null);
         if (validProduct) {
           clearProductInquiry();
-          setSignInHref(accessHref(`/mensagens?produto=${validProduct}`));
+          setSignInHref(accessHref(`${sellerMode ? "/vendedor/mensagens" : "/mensagens"}?produto=${validProduct}`));
         }
         setStatus(
           "Você precisa estar logado. Faça login e volte para esta página.",
@@ -353,9 +355,9 @@ export function MessagesWorkspace({
     const query = listQuery.trim().toLocaleLowerCase("pt-BR");
     return conversations.filter((conversation) =>
       (listFilter === "todas" || conversation.kind === listFilter) &&
-      (!query || `${conversation.product_name} ${partnerName(conversation, sellerMode)}`
+      (!query || `${conversation.product_name} ${partnerName(conversation)}`
         .toLocaleLowerCase("pt-BR").includes(query)));
-  }, [conversations, listFilter, listQuery, sellerMode]);
+  }, [conversations, listFilter, listQuery]);
 
   const visibleMessages = useMemo(
     () => groupChat(messages.filter((message) => topicFilter === "todos" || message.topic === topicFilter)),
@@ -451,7 +453,7 @@ export function MessagesWorkspace({
   }
 
   const authorName = (message: Message) =>
-    message.sender_id === user?.id ? "Você" : current ? partnerName(current, sellerMode) : "";
+    message.sender_id === user?.id ? "Você" : current ? partnerName(current) : "";
   const suggestions = current
     ? getMessageSuggestions(topic, `“${current.product_name}”`, current.my_role)
     : [];
@@ -526,16 +528,17 @@ export function MessagesWorkspace({
                             className={`chat-row${active ? " is-active" : ""}${unread ? " has-unread" : ""}`}
                             aria-current={active ? "true" : undefined}
                             onClick={() => openConversation(conversation)}>
-                            <Avatar conversation={conversation} sellerMode={sellerMode} />
+                            <Avatar conversation={conversation} />
                             <span className="chat-row-copy">
                               <span className="chat-row-top">
-                                <strong>{partnerName(conversation, sellerMode)}</strong>
+                                <strong>{partnerName(conversation)}</strong>
                                 <time dateTime={conversation.last_message_at}>
                                   {formatListTime(conversation.last_message_at)}
                                 </time>
                               </span>
                               <span className="chat-row-sub">
                                 <span className={`chat-kind chat-kind--${conversation.kind}`}>{KIND_LABEL[conversation.kind]}</span>
+                                {sellerMode && conversation.my_role === "client" && <span className="chat-kind chat-kind--compra">Sua compra</span>}
                                 <span className="chat-row-product">{conversation.product_name}</span>
                                 {unread > 0 && (
                                   <span className="chat-unread">
@@ -554,7 +557,7 @@ export function MessagesWorkspace({
 
                 {orders.length > 0 && (
                   <section className="chat-orders" aria-labelledby="chat-orders-title">
-                    <h3 id="chat-orders-title">{sellerMode ? "Vendas sem conversa" : "Compras sem conversa"}</h3>
+                    <h3 id="chat-orders-title">{sellerMode ? "Pedidos sem conversa" : "Compras sem conversa"}</h3>
                     <ul className="chat-rows">
                       {orders.map((order) => (
                         <li key={order.id}>
@@ -586,9 +589,9 @@ export function MessagesWorkspace({
                     <button type="button" className="chat-back" onClick={backToList} aria-label="Voltar para as conversas">
                       <ChevronLeft size={20} />
                     </button>
-                    <Avatar conversation={current} sellerMode={sellerMode} size="lg" />
+                    <Avatar conversation={current} size="lg" />
                     <div className="chat-head-copy">
-                      <h2>{partnerName(current, sellerMode)}</h2>
+                      <h2>{partnerName(current)}</h2>
                       <p>{KIND_LABEL[current.kind]}</p>
                     </div>
                     <label className="chat-topic-filter">
@@ -613,7 +616,7 @@ export function MessagesWorkspace({
                       <small>{current.kind === "produto" ? "Peça desta conversa" : current.kind === "encomenda" ? "Encomenda" : "Pedido"}</small>
                       <strong>{current.product_name}</strong>
                     </div>
-                    {!sellerMode && current.artisan_id && (
+                    {current.my_role === "client" && current.artisan_id && (
                       <Link className="chat-context-link" href={`/loja?id=${encodeURIComponent(current.artisan_id)}`} aria-label="Ver loja">
                         <Store size={15} /> <span>Ver loja</span>
                       </Link>

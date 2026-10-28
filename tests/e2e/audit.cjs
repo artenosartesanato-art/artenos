@@ -23,7 +23,9 @@ const ROUTES = [
   ['artesa', '/vendedor'], ['artesa', '/vendedor/minha-loja'], ['artesa', '/vendedor/catalogo'], ['artesa', '/vendedor/encomendas'],
   ['artesa', '/vendedor/vendas'], ['artesa', '/vendedor/repasses'], ['artesa', '/vendedor/precificacao'], ['artesa', '/vendedor/mensagens'],
   ['artesa', '/vendedor/perfil'],
-  ['pendente', '/cadastro-em-analise'], ['admin', '/administracao'], ['anon', '/redefinir-senha'],
+  ['pendente', '/cadastro-em-analise'], ['admin', '/administracao'], ['admin', '/administracao/aprovacoes'], ['admin', '/administracao/vendedores'], ['admin', '/administracao/pedidos'],
+  ['admin', '/administracao/clientes'], ['admin', '/administracao/categorias'], ['admin', '/administracao/tarifa'], ['admin', '/administracao/equipe'],
+  ['admin', '/administracao/atividade'], ['admin', '/administracao/perfil'], ['anon', '/redefinir-senha'],
 ];
 const VIEWPORTS = (process.env.VIEWPORTS || '390,1440').split(',').map(Number);
 const slug = (r) => r.replace(/[^a-z0-9]+/gi, '_').replace(/^_|_$/g, '') || 'home';

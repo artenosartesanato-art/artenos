@@ -20,6 +20,7 @@ import { getSupabase } from "@/lib/supabase";
 import { accessHref } from "@/lib/navigation";
 import { useMarketplace } from "@/components/marketplace-state";
 import { orderProgress } from "@/lib/order-progress";
+import { messagesHref } from "@/lib/navigation";
 import "../storefront.css";
 import "./orders.css";
 import { OptimizedImage } from "@/components/optimized-image";
@@ -277,6 +278,7 @@ function OrderCard({
   expanded: boolean;
   onToggle: () => void;
 }) {
+  const { sellerPanelAvailable } = useMarketplace();
   const firstItem = order.items[0];
   const progress = orderProgress(order.status);
   const units = order.items.reduce((sum, item) => sum + item.quantity, 0);
@@ -410,7 +412,7 @@ function OrderCard({
                   </dd>
                 </div>
               </dl>
-              <Link className="an-btn an-btn--secondary an-btn--sm" href="/mensagens">
+              <Link className="an-btn an-btn--secondary an-btn--sm" href={messagesHref(sellerPanelAvailable)}>
                 <MessageCircle size={16} /> Abrir mensagens do pedido
               </Link>
             </section>

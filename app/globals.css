@@ -148,6 +148,11 @@ select,
 textarea {
   font: inherit;
 }
+/* Sem isso o Safari do iPhone pinta botões (e ícones de contorno) de azul. */
+button {
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
 a {
   color: inherit;
 }

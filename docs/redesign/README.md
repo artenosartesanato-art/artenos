@@ -105,6 +105,19 @@ Branch: `FEAT/REDESIGN-UX-UI-ARTE-NOSSA` (base `main`).
 
 ## Ações necessárias no Supabase
 
+- Painel administrativo completo (visão geral, vendedores, pedidos,
+  clientes, categorias, equipe, atividade): executar
+  `supabase/painel_admin_completo.sql` depois de `administracao_aprovacao.sql`,
+  `painel_administrativo.sql` e `tarifa_plataforma.sql`. Sem ele, as telas
+  novas mostram "O banco ainda não tem esta função"; as aprovações e a tarifa
+  continuam funcionando.
+
+- Conta administrativa: `supabase/criar_admin.sql` cria (ou recupera)
+  `artenosartesanato@gmail.com` com e-mail confirmado e acesso de
+  proprietária em `admin_users`. Troque `TROQUE_PELA_SENHA` pela senha antes
+  de executar (o script recusa rodar sem isso); a senha não fica no
+  repositório.
+
 - (Opcional, recomendado) executar
   `supabase/migrations/20261028_vitrine_carrinho_contexto.sql` para mostrar a
   foto no carrinho e o link da loja no detalhe da peça. O front funciona sem
@@ -117,6 +130,9 @@ Branch: `FEAT/REDESIGN-UX-UI-ARTE-NOSSA` (base `main`).
   (baixou o preço, voltou ao estoque, esgotou) para quem tem a peça nos
   favoritos ou no carrinho. Enquanto o script não roda, o sininho aparece
   para quem está logado, mas o painel mostra "Notificações em breve".
+  Para conferir em produção: `select tablename from pg_publication_tables
+  where pubname = 'supabase_realtime' and tablename in ('notifications',
+  'messages');` deve listar as duas tabelas.
 - Limpeza total de dados (mantém login, `profiles`, administradores e
   pedidos de cadastro das artesãs; por padrão mantém também categorias,
   coleções, banners e taxas): `supabase/limpar_dados_manter_contas.sql`.
