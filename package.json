@@ -6,7 +6,9 @@
     "dev": "next dev",
     "start": "next start",
     "build": "next build",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "node --test tests/unit/*.test.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@mercadopago/sdk-react": "^1.0.7",
