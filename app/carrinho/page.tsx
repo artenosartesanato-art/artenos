@@ -29,6 +29,7 @@ import { notifyCartChanged, useMarketplace } from "@/components/marketplace-stat
 import { brl, groupCartByStore, toCents, type CartItem, type ShippingGroup } from "@/lib/cart-groups";
 import "../storefront.css";
 import "./cart.css";
+import { OptimizedImage } from "@/components/optimized-image";
 
 const formatCep = (cep: string) => cep.replace(/(\d{5})(\d{3})/, "$1-$2");
 const days = (min: number, max: number) => (min === max ? `${max} ${max === 1 ? "dia útil" : "dias úteis"}` : `${min} a ${max} dias úteis`);
@@ -347,8 +348,7 @@ export default function CarrinhoPage() {
                           <li className={`cart-item${unavailable ? " is-unavailable" : ""}${busy ? " is-busy" : ""}`} key={item.item_id}>
                             <div className="cart-item-thumb">
                               {item.image_url
-                                // eslint-disable-next-line @next/next/no-img-element
-                                ? <img src={item.image_url} alt="" width={96} height={96} loading="lazy" />
+                                ? <OptimizedImage src={item.image_url} alt="" width={96} height={96} sizes="96px" />
                                 : <Sparkles size={22} />}
                             </div>
                             <div className="cart-item-copy">

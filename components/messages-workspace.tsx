@@ -16,7 +16,7 @@ import {
   X,
 } from "@/components/icons";
 import Link from "next/link";
-import Image from "next/image";
+import { OptimizedImage } from "@/components/optimized-image";
 import { useSearchParams } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
 import { getMessageSuggestions, messageTopics, type MessageTopic } from "@/lib/message-suggestions";
@@ -77,7 +77,7 @@ function Avatar({ conversation, sellerMode, size = "md" }: {
   return (
     <span className={`chat-avatar chat-avatar--${size}`} aria-hidden="true">
       {conversation.product_image_url
-        ? <Image src={conversation.product_image_url} alt="" width={48} height={48} unoptimized />
+        ? <OptimizedImage src={conversation.product_image_url} alt="" width={48} height={48} sizes="48px" />
         : <span>{initials(partnerName(conversation, sellerMode))}</span>}
     </span>
   );
@@ -606,7 +606,7 @@ export function MessagesWorkspace({
                   <div className="chat-context">
                     <span className="chat-context-thumb" aria-hidden="true">
                       {current.product_image_url
-                        ? <Image src={current.product_image_url} alt="" width={40} height={40} unoptimized />
+                        ? <OptimizedImage src={current.product_image_url} alt="" width={40} height={40} sizes="40px" />
                         : <PackageOpen size={18} />}
                     </span>
                     <div>

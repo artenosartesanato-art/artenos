@@ -16,7 +16,8 @@ import type { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { getSupabase } from "@/lib/supabase";
 import { notifyProfileChanged } from "@/components/marketplace-state";
-import { AvatarCropper, type CroppedAvatar } from "@/components/avatar-cropper";
+import dynamic from "next/dynamic";
+import type { CroppedAvatar } from "@/components/avatar-cropper";
 import { originalPathFor } from "@/lib/avatar-crop";
 import "../storefront.css";
 import "./profile.css";
@@ -41,6 +42,9 @@ type Profile = {
   created_at: string;
   avatar_path: string | null;
 };
+// O editor de enquadramento só é baixado quando alguém escolhe uma foto.
+const AvatarCropper = dynamic(() => import("@/components/avatar-cropper").then((module) => module.AvatarCropper), { ssr: false });
+
 const AVATAR_BUCKET = "artenos-profile-avatars";
 // A foto é recortada e reduzida no navegador antes do envio (512 px + original
 // até 1600 px), então aceitamos arquivos maiores, como os de celular.
@@ -778,7 +782,7 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
           )
         )}
       </Main>
-      <AvatarCropper src={cropSource?.url ?? null} onCancel={closeCropper} onSave={saveAvatar} />
+      {cropSource && <AvatarCropper src={cropSource.url} onCancel={closeCropper} onSave={saveAvatar} />}
     </div>
   );
 }

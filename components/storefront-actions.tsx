@@ -11,6 +11,7 @@ import { playUiSound } from "@/lib/ui-sound";
 import { accessHref, currentPath } from "@/lib/navigation";
 import { rememberFavoriteIntent, useMarketplace } from "@/components/marketplace-state";
 import { confirmFavoriteRemoved, confirmFavoriteSaved } from "@/components/marketplace-feedback";
+import { OptimizedImage } from "@/components/optimized-image";
 
 export type ActionProduct = {
   id: string;
@@ -122,8 +123,7 @@ export function StorefrontActionsProvider({ children }: { children: ReactNode })
             <article className="cart-drawer-item">
               <div className="cart-drawer-thumb">
                 {added.product.image_url
-                  // eslint-disable-next-line @next/next/no-img-element
-                  ? <img src={added.product.image_url} alt="" width={88} height={88} />
+                  ? <OptimizedImage src={added.product.image_url} alt="" width={88} height={88} sizes="88px" />
                   : <Sparkles size={24} />}
               </div>
               <div>
