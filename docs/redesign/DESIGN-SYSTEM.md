@@ -130,3 +130,25 @@ licenças de terceiros):
    da peça).
 7. Em erro (ex.: estoque insuficiente), um único aviso de erro e nenhuma
    confirmação de sucesso.
+
+## Notificações
+
+- **Onde aparecem:** sininho no cabeçalho único (só com sessão), com contador
+  (soma dos agrupamentos não lidos, "99+" acima de 99) e gaveta lateral com a
+  lista. A aba do navegador ganha o prefixo "(3)".
+- **Aviso flutuante:** mesmo desenho do item do painel (ícone do tipo,
+  título, trecho, "Abrir" e dispensar). Não aparece com o painel aberto.
+- **Agrupamento:** avisos não lidos do mesmo assunto (conversa, pedido ou
+  encomenda) viram um só, com contador ("3").
+- **Sons** (Web Audio, sem arquivos): mensagem = duas notas subindo;
+  atualização de pedido/encomenda = acorde de três notas mais calmo; mensagem
+  na conversa já aberta = uma nota baixa (e o aviso é lido na hora). Ligados
+  por padrão, com interruptor "Som das notificações" no painel, separado dos
+  "Sons da interface" (desligados por padrão). Várias chegando juntas tocam
+  uma vez.
+- **O que gera aviso:** mensagem nova; loja muda status, rastreio,
+  transportadora, previsão ou nota fiscal do pedido; venda paga; encomenda
+  nova, respondida ou cancelada. **Não gera:** editar peça no catálogo ou
+  mudanças internas do pedido (taxas, repasse).
+- **Lido automaticamente:** ao abrir a conversa ou a página do aviso
+  (Pedidos, Vendas, Encomendas).

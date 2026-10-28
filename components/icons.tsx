@@ -29,6 +29,7 @@ export const Archive = icon("archive");
 export const ArrowLeft = icon("arrow-left");
 export const ArrowRight = icon("arrow-right");
 export const BadgePercent = icon("patch-check");
+export const Bell = icon("bell");
 export const Box = icon("box");
 export const Boxes = icon("boxes");
 export const Calculator = icon("calculator");

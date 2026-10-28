@@ -880,3 +880,25 @@
   .chat-composer { padding: 8px 8px 6px; }
   .chat-topic-filter select { max-width: 104px; padding-right: 22px; }
 }
+
+/* Não lidas na lista (contador alimentado pelas notificações) */
+.chat-unread {
+  flex: 0 0 auto;
+  min-width: 20px;
+  height: 20px;
+  margin-left: auto;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 6px;
+  border-radius: var(--an-r-pill);
+  background: var(--an-musgo-escuro);
+  color: #fff;
+  font-size: var(--an-fs-2xs);
+  font-weight: 800;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.chat-row.has-unread .chat-row-top strong { font-weight: 800; }
+.chat-row.has-unread .chat-row-top time {
+  color: var(--an-musgo-escuro);
+  font-weight: 800;
+}

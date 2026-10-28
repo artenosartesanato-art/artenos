@@ -65,6 +65,10 @@ Branch: `FEAT/REDESIGN-UX-UI-ARTE-NOSSA` (base `main`).
    ```
 
    ```bash
+   BASE_URL=http://localhost:3000 node tests/e2e/notificacoes.cjs
+   ```
+
+   ```bash
    node tests/e2e/audit.cjs http://localhost:3000 ./auditoria
    ```
 
@@ -95,6 +99,9 @@ Branch: `FEAT/REDESIGN-UX-UI-ARTE-NOSSA` (base `main`).
   ela.
 - Incluir `https://SEU-DOMINIO/redefinir-senha` nas Redirect URLs do Auth
   para a recuperação de senha.
+- Para as notificações (sininho, sons e avisos): executar
+  `supabase/notificacoes.sql` uma vez. Até lá, o sininho fica escondido e o
+  restante do site funciona normalmente.
 - Para zerar o chat (testes), use `supabase/zerar_mensagens.sql`: apaga
   mensagens e conversas; cada conversa é recriada quando alguém a abre de
   novo (balão da peça, "Compras sem conversa" ou página de encomendas).
