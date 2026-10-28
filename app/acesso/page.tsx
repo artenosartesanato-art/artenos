@@ -492,7 +492,8 @@ function AccessContent() {
   const [tab, setTab] = useState<Tab>(initial);
   const [recovering, setRecovering] = useState(false);
   const tabRefs = useRef<Record<Tab, HTMLButtonElement | null>>({ login: null, client: null, artisan: null });
-  const returnTo = safeReturnPath(params.get("voltar"));
+  // `retorno` é aceito por compatibilidade com links antigos de mensagens.
+  const returnTo = safeReturnPath(params.get("voltar") ?? params.get("retorno"));
 
   function choose(next: Tab, focus = false) {
     setTab(next);
