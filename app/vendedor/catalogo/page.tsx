@@ -240,7 +240,7 @@ export default function ProductCatalogPage() {
       );
     } catch {
       setLoadError(
-        "Não foi possível carregar o catálogo. Confirme o script de produtos e execute supabase/dados_frete.sql no Supabase.",
+        "Não foi possível carregar seu catálogo agora. Confira sua conexão e tente novamente.",
       );
     } finally {
       setLoading(false);
@@ -815,7 +815,7 @@ export default function ProductCatalogPage() {
                     <small>
                       {categories.length
                         ? "Obrigatória para publicar na vitrine."
-                        : "Nenhuma categoria ativa foi encontrada no Supabase."}
+                        : "Nenhuma categoria disponível no momento."}
                     </small>
                   </label>
                   <section className="catalog-logistics-fields">

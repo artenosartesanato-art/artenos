@@ -202,7 +202,7 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
       } catch {
         if (active && request === requestCounter.current) {
           setProfileError(
-            "Não foi possível consultar seu perfil. Confirme que o script de perfil foi executado no Supabase e tente novamente.",
+            "Não foi possível carregar seu perfil agora. Confira sua conexão e tente novamente.",
           );
         }
       } finally {
@@ -231,7 +231,7 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
         if (active) {
           setAuthReady(true);
           setProfileError(
-            "Configure a conexão com o Supabase para acessar seu perfil.",
+            "Seu perfil está temporariamente indisponível.",
           );
         }
       });
@@ -285,7 +285,7 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
       toast.success("Foto de perfil atualizada.");
     } catch {
       setAvatarError(
-        "Não foi possível atualizar a foto. Confira o script do perfil e tente novamente.",
+        "Não foi possível atualizar a foto agora. Tente novamente em instantes.",
       );
       toast.error("Não foi possível atualizar a foto.");
     } finally {
@@ -308,7 +308,7 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
       if (data.user?.email?.toLowerCase() === email) {
         notifyProfileChanged();
         toast.success("E-mail atualizado.");
-      } else toast.success("Confirme a mudança pelos links enviados pelo Supabase. O e-mail atual continua válido até a confirmação.");
+      } else toast.success("Enviamos links de confirmação para os dois endereços. O e-mail atual continua valendo até você confirmar.");
     } catch {
       toast.error("Não foi possível solicitar a troca de e-mail. Verifique o endereço e tente novamente.");
     } finally { setContactBusy(false); }
@@ -413,7 +413,7 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
       setAwaitingNonce(false);
       toast.success("Senha alterada com sucesso.");
     } catch {
-      toast.error("Não foi possível conectar ao Supabase. Tente novamente.");
+      toast.error("Não foi possível conectar agora. Confira sua internet e tente novamente.");
     } finally {
       setChangingPassword(false);
     }
@@ -642,7 +642,7 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
                   </div>
                   <p className="profile-card-help">
                     Para trocar a senha, confirme sua senha atual. A nova senha
-                    é atualizada diretamente no Supabase Auth.
+                    vale para os próximos acessos.
                   </p>
                   <form
                     className="profile-password-form"

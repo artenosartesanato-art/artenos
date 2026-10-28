@@ -90,22 +90,28 @@ export default function RepassesPage() {
   return (
     <main className="seller-payouts">
       <h1>Meus repasses</h1>
-      <p>{status}</p>
+      <p role="status">{status}</p>
 
       {user && (
         <>
           <section>
             <h2>Chave Pix para receber</h2>
             <form onSubmit={saveKey}>
+              <label className="an-field">
+                <span>Tipo de chave</span>
               <select value={pixType} onChange={(e) => setPixType(e.target.value)}>
                 <option value="CPF">CPF</option>
                 <option value="CNPJ">CNPJ</option>
                 <option value="EMAIL">E-mail</option>
                 <option value="PHONE">Telefone</option>
                 <option value="PIX_CODE">Chave aleatória</option>
-              </select>{' '}
-              <input type="text" value={pixKey} onChange={(e) => setPixKey(e.target.value)} required minLength={5} />{' '}
-              <button type="submit">Salvar chave</button>
+              </select>
+              </label>
+              <label className="an-field seller-payouts-key">
+                <span>Chave Pix</span>
+                <input type="text" value={pixKey} onChange={(e) => setPixKey(e.target.value)} required minLength={5} autoComplete="off" />
+              </label>
+              <button type="submit" className="an-btn an-btn--moss">Salvar chave</button>
             </form>
           </section>
 

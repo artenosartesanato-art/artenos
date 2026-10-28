@@ -3,6 +3,7 @@
 import {
   Calculator,
   ChevronDown,
+  HandCoins,
   Heart,
   LayoutDashboard,
   LoaderCircle,
@@ -12,21 +13,21 @@ import {
   Menu,
   PackageCheck,
   Search,
-  Settings,
   ShoppingBag,
   Sparkles,
   Store,
   Tags,
   UserRound,
-  X,
 } from "@/components/icons";
 import Link from "next/link";
 import { BrandLogo } from "@/components/brand-logo";
 import { usePathname, useRouter } from "next/navigation";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { getSupabase } from "@/lib/supabase";
 import { useMarketplace } from "@/components/marketplace-state";
+import { Dialog } from "@/components/ui/dialog";
+import { SoundToggle } from "@/components/sound-toggle";
 
 export type SellerProfile = {
   id: string;
@@ -70,12 +71,12 @@ const managementLinks = [
   },
   { label: "Encomendas", href: "/vendedor/encomendas", icon: PackageCheck },
   { label: "Vendas", href: "/vendedor/vendas", icon: ShoppingBag },
-  { label: "Repasses", href: "/vendedor/repasses", icon: ShoppingBag },
+  { label: "Repasses", href: "/vendedor/repasses", icon: HandCoins },
   { label: "Mensagens", href: "/vendedor/mensagens", icon: Mail },
 ];
 
 const purchaseLinks = [
-  { label: "Comprar na Artenós", href: "/", icon: Sparkles },
+  { label: "Vitrine Artenós", href: "/", icon: Sparkles },
   { label: "Favoritos", href: "/favoritos", icon: Heart },
   { label: "Carrinho", href: "/carrinho", icon: ShoppingBag },
   { label: "Minhas compras", href: "/pedidos", icon: ShoppingBag },
@@ -112,14 +113,17 @@ function SellerNavLink({
       </span>
     );
   }
+  // "/" e "/vendedor" só ficam ativos na própria rota; antes, "/" casava com
+  // qualquer caminho e "Comprar na Artenós" aparecia sempre selecionado.
   const active =
-    item.href === "/vendedor"
+    item.href === "/vendedor" || item.href === "/"
       ? pathname === item.href
-      : pathname.startsWith(item.href);
+      : pathname === item.href || pathname.startsWith(`${item.href}/`);
   return (
     <Link
       className={`seller-nav-link${active ? " is-active" : ""}`}
       href={item.href}
+      aria-current={active ? "page" : undefined}
       onClick={onNavigate}
       aria-label={item.href === "/carrinho" ? `Carrinho, ${cartCount} ${cartCount === 1 ? "unidade" : "unidades"}` : undefined}
     >
@@ -142,6 +146,26 @@ export function SellerShell({ children }: { children: React.ReactNode }) {
   const [accountOpen, setAccountOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [showApprovalWelcome, setShowApprovalWelcome] = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!accountOpen) return;
+    function onPointer(event: PointerEvent) {
+      if (!accountRef.current?.contains(event.target as Node)) setAccountOpen(false);
+    }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setAccountOpen(false);
+        accountRef.current?.querySelector<HTMLButtonElement>(".seller-account-button")?.focus();
+      }
+    }
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [accountOpen]);
 
   useEffect(() => {
     let active = true;
@@ -238,7 +262,7 @@ export function SellerShell({ children }: { children: React.ReactNode }) {
       <main className="seller-gate" role="status">
         <LoaderCircle className="seller-spin" size={30} />
         <strong>Preparando o painel da sua loja...</strong>
-        <span>Estamos verificando sua aprovação no Supabase.</span>
+        <span>Estamos conferindo o acesso da sua loja.</span>
       </main>
     );
   }
@@ -249,7 +273,7 @@ export function SellerShell({ children }: { children: React.ReactNode }) {
         <Store size={34} />
         <h1>Não foi possível abrir sua loja</h1>
         <p>
-          Não conseguimos consultar seu perfil no Supabase. Recarregue a página
+          Não conseguimos carregar os dados da sua loja. Recarregue a página
           e tente novamente.
         </p>
         <div>
@@ -262,8 +286,33 @@ export function SellerShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  const navigation = (
+    <>
+      <nav aria-label="Gestão da loja">
+        <p>Gestão da loja</p>
+        {managementLinks.map((item) => (
+          <SellerNavLink key={item.label} item={item} pathname={pathname} onNavigate={() => setMenuOpen(false)} />
+        ))}
+      </nav>
+      <nav aria-label="Compras">
+        <p>Também quero comprar</p>
+        {purchaseLinks.map((item) => (
+          <SellerNavLink key={item.label} item={item} pathname={pathname} onNavigate={() => setMenuOpen(false)} />
+        ))}
+      </nav>
+      <div className="seller-sidebar-profile">
+        {avatar}
+        <div>
+          <strong>{profile.full_name}</strong>
+          <small>{profile.specialty || "Artesanato autoral"}</small>
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <SellerContext.Provider value={{ profile, updateProfile }}>
+      <a className="an-skip-link" href="#conteudo">Pular para o conteúdo</a>
       <div className="seller-shell">
         <header className="seller-header">
           <div className="seller-header-main seller-container">
@@ -290,12 +339,14 @@ export function SellerShell({ children }: { children: React.ReactNode }) {
                 <Search size={20} />
               </button>
             </form>
-            <div className="seller-account-wrap">
+            <div className="seller-account-wrap" ref={accountRef}>
               <button
                 className="seller-account-button"
                 type="button"
                 onClick={() => setAccountOpen((value) => !value)}
                 aria-expanded={accountOpen}
+                aria-controls="menu-conta-loja"
+                aria-label={`Conta de ${profile.full_name}`}
               >
                 {avatar}
                 <span>
@@ -305,13 +356,13 @@ export function SellerShell({ children }: { children: React.ReactNode }) {
                 <ChevronDown size={15} />
               </button>
               {accountOpen && (
-                <div className="seller-account-menu">
+                <div className="seller-account-menu" id="menu-conta-loja">
                   <Link href="/vendedor/perfil">
                     <UserRound size={17} /> Meu perfil
                   </Link>
-                  <span aria-disabled="true">
-                    <Settings size={17} /> Configurações <small>Em breve</small>
-                  </span>
+                  <Link href="/vendedor/minha-loja">
+                    <Store size={17} /> Configurar a loja
+                  </Link>
                   <button type="button" onClick={signOut}>
                     <LogOut size={17} /> Sair
                   </button>
@@ -322,7 +373,8 @@ export function SellerShell({ children }: { children: React.ReactNode }) {
               className="seller-menu-button"
               type="button"
               onClick={() => setMenuOpen(true)}
-              aria-label="Abrir menu"
+              aria-label="Abrir menu da loja"
+              aria-haspopup="dialog"
             >
               <Menu size={23} />
             </button>
@@ -339,59 +391,17 @@ export function SellerShell({ children }: { children: React.ReactNode }) {
         </header>
 
         <div className="seller-body seller-container">
-          <aside
-            className={`seller-sidebar${menuOpen ? " is-open" : ""}`}
-            aria-label="Menu do vendedor"
-          >
-            <div className="seller-mobile-nav-heading">
-              <strong>Menu da loja</strong>
-              <button
-                type="button"
-                onClick={() => setMenuOpen(false)}
-                aria-label="Fechar menu"
-              >
-                <X size={21} />
-              </button>
-            </div>
-            <nav>
-              <p>Gestão da loja</p>
-              {managementLinks.map((item) => (
-                <SellerNavLink
-                  key={item.label}
-                  item={item}
-                  pathname={pathname}
-                  onNavigate={() => setMenuOpen(false)}
-                />
-              ))}
-            </nav>
-            <nav>
-              <p>Também quero comprar</p>
-              {purchaseLinks.map((item) => (
-                <SellerNavLink
-                  key={item.label}
-                  item={item}
-                  pathname={pathname}
-                  onNavigate={() => setMenuOpen(false)}
-                />
-              ))}
-            </nav>
-            <div className="seller-sidebar-profile">
-              {avatar}
-              <div>
-                <strong>{profile.full_name}</strong>
-                <small>{profile.specialty || "Artesanato autoral"}</small>
-              </div>
-            </div>
+          <aside className="seller-sidebar" aria-label="Menu da loja">
+            {navigation}
           </aside>
-          {menuOpen && (
-            <button
-              className="seller-sidebar-backdrop"
-              type="button"
-              onClick={() => setMenuOpen(false)}
-              aria-label="Fechar menu"
-            />
-          )}
-          <main className="seller-content">{children}</main>
+          <Dialog open={menuOpen} onClose={() => setMenuOpen(false)} variant="drawer-left" label="Menu da loja"
+            className="seller-menu-drawer" closeLabel="Fechar menu">
+            <div className="an-drawer-body seller-sidebar is-drawer">
+              {navigation}
+              <SoundToggle className="seller-menu-sound" />
+            </div>
+          </Dialog>
+          <main id="conteudo" tabIndex={-1} className="seller-content">{children}</main>
         </div>
 
         <footer className="seller-footer">
@@ -412,17 +422,14 @@ export function SellerShell({ children }: { children: React.ReactNode }) {
           </div>
         </footer>
       </div>
-      {showApprovalWelcome && (
-        <div className="seller-approval-overlay" role="presentation">
-          <section className="seller-approval-dialog" role="dialog" aria-modal="true" aria-labelledby="seller-approval-title">
-            <Sparkles size={38} aria-hidden="true" />
-            <p className="seller-eyebrow">Bem-vinda à Artenós</p>
-            <h2 id="seller-approval-title">Sua loja foi aprovada!</h2>
-            <p>Agora você pode publicar suas peças e receber encomendas. Que bom ter você com a gente, {profile.full_name.trim().split(/\s+/)[0]}.</p>
-            <button type="button" onClick={() => setShowApprovalWelcome(false)}>Começar a criar</button>
-          </section>
-        </div>
-      )}
+      <Dialog open={showApprovalWelcome} onClose={() => setShowApprovalWelcome(false)} labelledBy="seller-approval-title"
+        className="seller-approval-dialog" closeButton={false}>
+        <Sparkles size={38} aria-hidden="true" />
+        <p className="seller-eyebrow">Boas-vindas à Artenós</p>
+        <h2 id="seller-approval-title">Sua loja foi aprovada!</h2>
+        <p>Agora você pode publicar suas peças e receber encomendas. Que bom ter você com a gente, {profile.full_name.trim().split(/\s+/)[0]}.</p>
+        <button type="button" data-autofocus onClick={() => setShowApprovalWelcome(false)}>Começar a criar</button>
+      </Dialog>
     </SellerContext.Provider>
   );
 }

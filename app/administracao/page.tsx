@@ -352,7 +352,7 @@ export default function AdministrationPage() {
       setPlatformFeeUpdatedAt(setting?.updated_at ?? null);
     } catch {
       toast.error(
-        "Não foi possível carregar a tarifa. Execute o script tarifa_plataforma.sql.",
+        "Não foi possível carregar a tarifa agora. Tente novamente; se persistir, confira a configuração da tarifa no banco.",
       );
     } finally {
       setFeeLoading(false);
@@ -561,8 +561,8 @@ export default function AdministrationPage() {
             <AlertTriangle size={34} />
             <h1>Não foi possível validar o acesso</h1>
             <p>
-              Confirme que o script do painel administrativo foi executado no
-              Supabase.
+              Tente novamente. Se o problema continuar, confirme que o painel
+              administrativo foi configurado no banco de dados.
             </p>
             <button type="button" onClick={() => void initialize()}>
               <RefreshCw size={17} /> Tentar novamente

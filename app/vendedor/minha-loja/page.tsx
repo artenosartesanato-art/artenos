@@ -180,7 +180,7 @@ export default function StorePanelPage() {
       });
     } catch {
       setError(
-        "Não foi possível carregar Minha loja. Confirme os scripts da loja e execute supabase/dados_frete.sql no Supabase.",
+        "Não foi possível carregar os dados da loja agora. Confira sua conexão e tente novamente.",
       );
     } finally {
       setLoading(false);
@@ -188,7 +188,10 @@ export default function StorePanelPage() {
   }
 
   useEffect(() => {
-    void loadStore();
+    // Adia o carregamento para fora do corpo do efeito (evita renderização em cascata).
+    const timer = window.setTimeout(() => void loadStore(), 0);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const coverUrl = useMemo(
@@ -266,7 +269,7 @@ export default function StorePanelPage() {
       toast.success("Informações da loja salvas.");
     } catch {
       toast.error(
-        "Não foi possível salvar a loja. Confira o script do banco e tente novamente.",
+        "Não foi possível salvar as alterações da loja. Tente novamente; seus textos continuam no formulário.",
       );
     } finally {
       setSaving(false);
@@ -309,7 +312,7 @@ export default function StorePanelPage() {
       toast.success("Capa da loja atualizada.");
     } catch {
       toast.error(
-        "Não foi possível enviar a capa. Confira o script e tente novamente.",
+        "Não foi possível enviar a capa. Use JPG, PNG ou WebP e tente novamente.",
       );
     } finally {
       setUploading(false);

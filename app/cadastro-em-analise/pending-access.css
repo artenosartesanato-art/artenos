@@ -36,7 +36,7 @@
   text-decoration: none;
 }
 
-.pending-brand > span {
+.pending-brand > span:not(.brand-wordmark) {
   width: 39px;
   height: 39px;
   border-radius: 50%;

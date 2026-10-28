@@ -11,3 +11,7 @@
 .seller-payouts ul { padding: 0; list-style: none; }
 .seller-payouts li { padding: 16px 0; border-top: 1px solid #e4d6c9; line-height: 1.6; overflow-wrap: anywhere; }
 @media(max-width:560px) { .seller-payouts form > * { width: 100%; } }
+.seller-payouts form { align-items: flex-end; }
+.seller-payouts .seller-payouts-key { flex: 1; min-width: 220px; }
+.seller-payouts > p { color: var(--an-text-muted); }
+.seller-payouts section { background: var(--an-surface); border: 0; box-shadow: var(--an-shadow-sm); }

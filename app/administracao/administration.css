@@ -28,7 +28,7 @@
   text-decoration: none;
 }
 
-.admin-brand > span {
+.admin-brand > span:not(.brand-wordmark) {
   width: 38px;
   height: 38px;
   border-radius: 50%;

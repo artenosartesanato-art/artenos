@@ -171,8 +171,8 @@
   display: grid;
   justify-items: center;
   gap: 8px;
-  color: var(--an-argila-texto);
-  font-size: 10px;
+  color: var(--artenos-marrom);
+  font-size: 11px;
 }
 .catalog-product-image > span {
   position: absolute;

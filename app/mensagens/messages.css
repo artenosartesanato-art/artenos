@@ -328,6 +328,13 @@
   .messages-chat {
     min-height: 460px;
   }
+  /* No celular, sem conversa aberta, a lista basta: evita um painel vazio. */
+  .messages-chat.is-empty {
+    display: none;
+  }
+  .messages-sidebar {
+    max-height: none;
+  }
   .messages-thread {
     max-height: 420px;
   }
