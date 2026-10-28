@@ -42,7 +42,7 @@ automática. "Estados" lista o que foi exercitado de fato.
 | Favoritos | cliente | vazio, com itens, remover, filtro | ok | auditoria | — |
 | Lojas e loja | visitante | lista, filtro, loja com capa, loja inexistente | ok | `capturas/loja-1440.jpg` | — |
 | Sob encomenda | visitante, cliente | lista, convite de login, formulário (render) | ok parcial | auditoria | Envio de solicitação não exercitado |
-| Mensagens por peça | visitante, cliente, artesã | ícone no card e no detalhe, login com retorno, conversa nova com texto sugerido, envio, recebimento em tempo real, resposta, reabertura | ok | `mensagens.cjs` | Validado contra o sandbox com `conversas_produtos_topicos.sql` e `contexto_conversas_produtos.sql`; em produção, os dois scripts precisam ter sido executados |
+| Mensagens por peça | visitante, cliente, artesã | ícone no card e no detalhe, login com retorno, conversa nova com texto sugerido, envio, recebimento em tempo real, resposta, reabertura | ok | `mensagens.cjs` | Validado contra o sandbox com `conversas_produtos_topicos.sql` e `contexto_conversas_produtos.sql`; em produção, a regra `conversations_context_check` bloqueava a conversa; corrigida por `supabase/permitir_conversas_por_produto.sql`, validado no sandbox com a mesma regra de produção (conversa de peça aceita; conversa sem contexto e pedido + encomenda juntos continuam recusados) |
 | Cabeçalho e rodapé | todos | 21 rotas × 5 perfis | ok | medição de caixas | — |
 | Login | visitante | vazio, senha errada, sucesso, retorno ao destino | ok | `capturas/acesso-390.jpg`, `auth` | — |
 | Cadastro de cliente | visitante | erros por campo, resumo, sucesso | ok | `auth` | ViaCEP simulado no teste (bloqueado na rede do ambiente) |

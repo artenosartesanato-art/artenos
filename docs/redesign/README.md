@@ -95,8 +95,11 @@ Branch: `FEAT/REDESIGN-UX-UI-ARTE-NOSSA` (base `main`).
   ela.
 - Incluir `https://SEU-DOMINIO/redefinir-senha` nas Redirect URLs do Auth
   para a recuperação de senha.
-- Para as conversas por peça: executar `supabase/conversas_produtos_topicos.sql`
-  e depois `supabase/contexto_conversas_produtos.sql`, e confirmar que a
+- Para as conversas por peça: executar `supabase/conversas_produtos_topicos.sql`,
+  `supabase/contexto_conversas_produtos.sql` e
+  `supabase/permitir_conversas_por_produto.sql` (a regra
+  `conversations_context_check` de produção só aceitava conversa de pedido ou
+  encomenda e bloqueava a conversa sobre a peça), e confirmar que a
   tabela `messages` está na publicação `supabase_realtime` (feito em
   `supabase/mensagens.sql`). Sem isso, o ícone de mensagem abre a página,
   mas a conversa não é criada.
