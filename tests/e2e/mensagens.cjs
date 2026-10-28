@@ -52,37 +52,41 @@ function check(label, ok) {
 
   const compose = client.locator('#messages-text');
   await compose.waitFor({ timeout: 15000 });
-  const header = await client.locator('.messages-chat').innerText();
+  const header = await client.locator('.chat-pane').innerText();
   check('conversa indica o produto', header.includes(PRODUCT));
   // A sugestão só é preenchida em conversa nova (sem mensagens), depois que o histórico carrega.
   const prefilled = await client.waitForFunction(
     (name) => document.querySelector('#messages-text')?.value.includes(name), PRODUCT, { timeout: 6000 },
   ).then(() => true, () => false);
-  if (await client.locator('.messages-bubble').count()) console.log('n/a   texto inicial (conversa já tinha mensagens)');
+  if (await client.locator('.chat-msg').count()) console.log('n/a   texto inicial (conversa já tinha mensagens)');
   else check('texto inicial sugerido com o nome do produto', prefilled);
   await client.screenshot({ path: out('1_cliente_conversa') });
 
   const seller = await login(browser, 'barro@sandbox.artenos.test', 1280);
   await seller.goto(base + '/vendedor/mensagens', { waitUntil: 'networkidle' });
-  const sellerItem = seller.locator('.messages-sidebar button', { hasText: PRODUCT }).first();
+  const sellerItem = seller.locator('.chat-list .chat-row', { hasText: PRODUCT }).first();
   await sellerItem.waitFor({ timeout: 15000 });
   await sellerItem.click();
   await seller.locator('#messages-text').waitFor({ timeout: 15000 });
 
   await compose.fill(question);
   await client.locator('form:has(#messages-text) button[type=submit]').click();
-  await client.locator('.messages-bubble', { hasText: question }).waitFor({ timeout: 10000 });
+  await client.locator('.chat-msg', { hasText: question }).waitFor({ timeout: 10000 });
   check('cliente: mensagem enviada aparece', true);
   check('cliente: campo limpo após envio', (await compose.inputValue()) === '');
 
-  const received = await seller.locator('.messages-bubble', { hasText: question })
+  const received = await seller.locator('.chat-msg', { hasText: question })
     .waitFor({ timeout: 15000 }).then(() => true, () => false);
   check('artesã recebe em tempo real (sem recarregar)', received);
-  check('artesã vê o produto na conversa', (await seller.locator('.messages-chat').innerText()).includes(PRODUCT));
+  check('artesã vê o produto na conversa', (await seller.locator('.chat-pane').innerText()).includes(PRODUCT));
 
+  // Shift+Enter quebra a linha; Enter envia.
+  await seller.fill('#messages-text', 'linha 1');
+  await seller.press('#messages-text', 'Shift+Enter');
+  check('Shift+Enter quebra a linha sem enviar', (await seller.inputValue('#messages-text')).includes('\n'));
   await seller.fill('#messages-text', answer);
-  await seller.locator('form:has(#messages-text) button[type=submit]').click();
-  const replied = await client.locator('.messages-bubble', { hasText: answer })
+  await seller.press('#messages-text', 'Enter');
+  const replied = await client.locator('.chat-msg', { hasText: answer })
     .waitFor({ timeout: 15000 }).then(() => true, () => false);
   check('cliente recebe a resposta em tempo real', replied);
   await client.screenshot({ path: out('2_cliente_resposta') });
@@ -90,7 +94,7 @@ function check(label, ok) {
 
   // Reabrir pelo mesmo produto reaproveita a conversa (não duplica).
   await client.goto(base + '/mensagens?produto=' + new URL(client.url()).searchParams.get('produto'), { waitUntil: 'networkidle' });
-  await client.locator('.messages-bubble', { hasText: question }).waitFor({ timeout: 15000 });
+  await client.locator('.chat-msg', { hasText: question }).waitFor({ timeout: 15000 });
   check('reabrir pelo produto reaproveita a conversa', true);
 
   await browser.close();

@@ -95,6 +95,9 @@ Branch: `FEAT/REDESIGN-UX-UI-ARTE-NOSSA` (base `main`).
   ela.
 - Incluir `https://SEU-DOMINIO/redefinir-senha` nas Redirect URLs do Auth
   para a recuperação de senha.
+- Para zerar o chat (testes), use `supabase/zerar_mensagens.sql`: apaga
+  mensagens e conversas; cada conversa é recriada quando alguém a abre de
+  novo (balão da peça, "Compras sem conversa" ou página de encomendas).
 - Para as conversas por peça: executar `supabase/conversas_produtos_topicos.sql`,
   `supabase/contexto_conversas_produtos.sql` e
   `supabase/permitir_conversas_por_produto.sql` (a regra
