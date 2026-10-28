@@ -134,7 +134,7 @@ export default function SellerCustomOrdersPage() {
       setError("");
     } catch {
       setError(
-        "Não foi possível carregar as encomendas. Confirme que o arquivo sob_encomenda.sql foi executado no Supabase.",
+        "Não foi possível carregar as encomendas agora. Confira sua conexão e tente novamente.",
       );
     } finally {
       setLoading(false);

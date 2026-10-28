@@ -9,18 +9,18 @@ import {
   Palette,
   Sparkles,
   Store,
-  X,
 } from "@/components/icons";
 import Link from "next/link";
 import type { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { CustomerFooter } from "@/components/customer-footer";
 import { CustomerHeader } from "@/components/customer-header";
+import { Dialog } from "@/components/ui/dialog";
+import { useStorefrontActions } from "@/components/storefront-actions";
 import { getSupabase } from "@/lib/supabase";
 import "../storefront.css";
 import "./custom-orders.css";
 
-type CepStatus = "loading" | "guest" | "account" | "error";
 type Profile = {
   account_type: "client" | "artisan";
   approval_status: "active" | "pending_review" | "assisted_review";
@@ -88,6 +88,7 @@ function displayDate(value: string | null) {
 }
 
 export default function CustomOrdersPage() {
+  const { requireAuth } = useStorefrontActions();
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -99,13 +100,7 @@ export default function CustomOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedService, setSelectedService] = useState<Service | null>(null);
-  const [authPromptOpen, setAuthPromptOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [cep, setCep] = useState("");
-  const [cepStatus, setCepStatus] = useState<CepStatus>("loading");
-  const [cepError, setCepError] = useState("");
-  const [cepOpen, setCepOpen] = useState(false);
-  const [cepInput, setCepInput] = useState("");
   const [requestTitle, setRequestTitle] = useState("");
   const [requestDescription, setRequestDescription] = useState("");
   const [requestQuantity, setRequestQuantity] = useState("1");
@@ -142,14 +137,7 @@ export default function CustomOrdersPage() {
       setUser(current);
       setProfile(null);
       setRequests([]);
-      setCepOpen(false);
-      if (!current) {
-        setCep(localStorage.getItem("artenos_guest_cep") || "");
-        setCepStatus("guest");
-        setCepError("");
-        return;
-      }
-      setCepStatus("loading");
+      if (!current) return;
       try {
         const { data, error: profileError } = await getSupabase()
           .from("profiles")
@@ -161,21 +149,9 @@ export default function CustomOrdersPage() {
           throw profileError || new Error("Perfil não encontrado");
         const loaded = data as Profile;
         setProfile(loaded);
-        const registeredCep = loaded.cep?.replace(/\D/g, "") || "";
-        if (registeredCep.length === 8) {
-          setCep(registeredCep);
-          setCepStatus("account");
-          setCepError("");
-        } else {
-          setCepStatus("error");
-          setCepError("O CEP salvo no cadastro é inválido.");
-        }
         await refreshAccountData(current, loaded);
       } catch {
-        if (request === profileRequest.current) {
-          setCepStatus("error");
-          setCepError("Não foi possível consultar seu perfil.");
-        }
+        if (request === profileRequest.current) setRequests([]);
       }
     },
     [refreshAccountData],
@@ -202,7 +178,7 @@ export default function CustomOrdersPage() {
     } catch {
       if (request === serviceRequest.current)
         setError(
-          "Não foi possível carregar as opções. Execute o script sob_encomenda.sql no Supabase.",
+          "Não foi possível carregar as opções sob encomenda agora.",
         );
     } finally {
       if (request === serviceRequest.current) setLoading(false);
@@ -244,8 +220,7 @@ export default function CustomOrdersPage() {
       };
     } catch {
       queueMicrotask(() => {
-        setCepStatus("error");
-        setError("Configure a conexão com o Supabase para acessar encomendas.");
+        setError("As encomendas estão temporariamente indisponíveis.");
         setLoading(false);
       });
     }
@@ -256,34 +231,9 @@ export default function CustomOrdersPage() {
     return () => window.clearTimeout(timer);
   }, [loadServices]);
 
-  function submitSearch(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setQuery(searchInput.trim().slice(0, 100));
-  }
-  async function saveCep(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (user) return;
-    const digits = cepInput.replace(/\D/g, "");
-    if (digits.length !== 8) {
-      toast.error("Digite um CEP com 8 números.");
-      return;
-    }
-    try {
-      const response = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
-      const address = await response.json();
-      if (!response.ok || address.erro) throw new Error();
-      localStorage.setItem("artenos_guest_cep", digits);
-      setCep(digits);
-      setCepOpen(false);
-      toast.success(`CEP de ${address.localidade}/${address.uf} selecionado.`);
-    } catch {
-      toast.error("CEP não encontrado. Confira e tente novamente.");
-    }
-  }
-
   function openRequest(service: Service) {
     if (!user) {
-      setAuthPromptOpen(true);
+      requireAuth("generic");
       return;
     }
     if (service.artisan_id === user.id) {
@@ -370,21 +320,8 @@ export default function CustomOrdersPage() {
   );
   return (
     <div className="store-page custom-page">
-      <CustomerHeader
-        userSignedIn={!!user}
-        cep={cep}
-        cepStatus={cepStatus}
-        cepError={cepError}
-        cepOpen={cepOpen}
-        cepInput={cepInput}
-        searchInput={searchInput}
-        onSearchInput={setSearchInput}
-        onSearch={submitSearch}
-        onToggleCep={() => setCepOpen(!cepOpen)}
-        onCepInput={setCepInput}
-        onSaveCep={saveCep}
-      />
-      <main>
+      <CustomerHeader />
+      <main id="conteudo" tabIndex={-1}>
         <section className="custom-hero">
           <div className="store-container custom-hero-inner">
             <div>
@@ -488,10 +425,18 @@ export default function CustomOrdersPage() {
                 : `${services.length} ${services.length === 1 ? "opção" : "opções"}`}
             </span>
           </div>
+          <form className="custom-search" role="search" onSubmit={(event) => { event.preventDefault(); setQuery(searchInput.trim().slice(0, 100)); }}>
+            <label htmlFor="busca-encomenda" className="an-visually-hidden">Buscar opções sob encomenda</label>
+            <input id="busca-encomenda" className="an-input" type="search" value={searchInput}
+              onChange={(event) => { setSearchInput(event.target.value); if (!event.target.value) setQuery(""); }}
+              placeholder="Buscar por peça ou técnica" />
+            <button type="submit" className="an-btn an-btn--secondary">Buscar</button>
+          </form>
           <div className="custom-category-chips">
             <button
               type="button"
               className={!categoryId ? "active" : ""}
+              aria-pressed={!categoryId}
               onClick={() => setCategoryId(null)}
             >
               Todas
@@ -500,6 +445,7 @@ export default function CustomOrdersPage() {
               <button
                 type="button"
                 className={categoryId === category.id ? "active" : ""}
+                aria-pressed={categoryId === category.id}
                 onClick={() => setCategoryId(category.id)}
                 key={category.id}
               >
@@ -513,19 +459,21 @@ export default function CustomOrdersPage() {
             </div>
           )}
           {loading ? (
-            <div className="custom-empty">
-              <Clock3 size={35} />
-              <p>Carregando opções...</p>
+            <div className="custom-service-grid" role="status" aria-label="Carregando opções">
+              {[0, 1, 2].map((index) => <span key={index} className="an-skeleton custom-service-skeleton" />)}
             </div>
           ) : services.length ? (
             <div className="custom-service-grid">
               {services.map((service) => (
                 <article className="custom-service-card" key={service.id}>
                   {service.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={service.image_url}
-                      alt={service.title}
+                      alt=""
                       loading="lazy"
+                      width={480}
+                      height={360}
                     />
                   ) : (
                     <div className="custom-service-image">
@@ -570,61 +518,14 @@ export default function CustomOrdersPage() {
           )}
         </section>
       </main>
-      <CustomerFooter
-        userSignedIn={!!user}
-        authLoading={cepStatus === "loading"}
-      />
+      <CustomerFooter />
 
-      {authPromptOpen && (
-        <div
-          className="custom-modal-backdrop"
-          onMouseDown={() => setAuthPromptOpen(false)}
-        >
-          <div
-            className="custom-modal custom-auth-modal"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <button
-              type="button"
-              className="custom-modal-close"
-              onClick={() => setAuthPromptOpen(false)}
-              aria-label="Fechar"
-            >
-              <X size={20} />
-            </button>
-            <p className="store-eyebrow">CONTINUE NA ARTENÓS</p>
-            <h2>Entre para solicitar sua encomenda</h2>
-            <p className="custom-modal-lead">
-              Sua conta é necessária para enviar a ideia, acompanhar a resposta
-              da artesã e manter o histórico da solicitação.
-            </p>
-            <Link className="custom-primary" href="/acesso">
-              Entrar ou criar conta <ArrowRight size={17} />
-            </Link>
-          </div>
-        </div>
-      )}
-
-      {selectedService && (
-        <div
-          className="custom-modal-backdrop"
-          onMouseDown={() => setSelectedService(null)}
-        >
-          <form
-            className="custom-modal"
-            onSubmit={createRequest}
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <button
-              type="button"
-              className="custom-modal-close"
-              onClick={() => setSelectedService(null)}
-              aria-label="Fechar"
-            >
-              <X size={20} />
-            </button>
-            <p className="store-eyebrow">SOLICITAR ORÇAMENTO</p>
-            <h2>{selectedService.title}</h2>
+      <Dialog open={selectedService !== null} onClose={() => setSelectedService(null)} labelledBy="orcamento-titulo"
+        className="custom-request-dialog" closeLabel="Fechar solicitação">
+        {selectedService && (
+          <form className="custom-modal" onSubmit={createRequest}>
+            <p className="store-eyebrow">Solicitar orçamento</p>
+            <h2 id="orcamento-titulo">{selectedService.title}</h2>
             <p className="custom-modal-lead">
               Sua solicitação será enviada para{" "}
               {selectedService.store_name || "a artesã"}.
@@ -632,6 +533,7 @@ export default function CustomOrdersPage() {
             <label>
               Título da encomenda
               <input
+                data-autofocus
                 value={requestTitle}
                 onChange={(event) => setRequestTitle(event.target.value)}
                 minLength={3}
@@ -641,6 +543,7 @@ export default function CustomOrdersPage() {
             </label>
             <label>
               Conte como você imagina a peça
+              <small>Cores, tamanho, materiais e para que a peça será usada (mínimo de 20 caracteres).</small>
               <textarea
                 value={requestDescription}
                 onChange={(event) => setRequestDescription(event.target.value)}
@@ -682,16 +585,18 @@ export default function CustomOrdersPage() {
                 onChange={(event) => setRequestDate(event.target.value)}
               />
             </label>
+            <p className="custom-modal-note">Nada é cobrado nesta etapa: a loja responde com uma proposta de valor e prazo.</p>
             <button
-              className="custom-primary"
+              className="an-btn an-btn--lg an-btn--block"
               type="submit"
               disabled={submitting}
+              aria-busy={submitting}
             >
-              {submitting ? "Enviando..." : "Enviar solicitação"}
+              {submitting ? "Enviando…" : "Enviar solicitação"}
             </button>
           </form>
-        </div>
-      )}
+        )}
+      </Dialog>
 
     </div>
   );

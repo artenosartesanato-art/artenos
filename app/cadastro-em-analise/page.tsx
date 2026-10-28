@@ -377,7 +377,7 @@ export default function PendingArtisanAccessPage() {
             >
               <div className="pending-section-heading">
                 <p className="pending-eyebrow">
-                  Atualizações reais do Supabase
+                  Atualizações da equipe Artenós
                 </p>
                 <h2 id="pending-timeline-title">Histórico da solicitação</h2>
               </div>

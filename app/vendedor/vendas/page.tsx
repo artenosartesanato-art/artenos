@@ -186,7 +186,7 @@ export default function SellerSalesPage() {
       setError("");
     } catch {
       setError(
-        "Não foi possível carregar as vendas. Confirme que o arquivo pedidos.sql foi executado no Supabase.",
+        "Não foi possível carregar suas vendas agora. Confira sua conexão e tente novamente.",
       );
     } finally {
       setLoading(false);
@@ -194,7 +194,8 @@ export default function SellerSalesPage() {
   }, [profile]);
 
   useEffect(() => {
-    void loadOrders();
+    const timer = window.setTimeout(() => void loadOrders(), 0);
+    return () => window.clearTimeout(timer);
   }, [loadOrders]);
 
   const filteredOrders = useMemo(

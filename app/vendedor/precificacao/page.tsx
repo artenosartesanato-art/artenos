@@ -120,7 +120,7 @@ export default function PricingCalculatorPage() {
     } catch {
       setFeePercent(null);
       setLoadError(
-        "A calculadora ainda não está conectada. Execute supabase/calculadora_precificacao.sql no Supabase e tente novamente.",
+        "A calculadora está temporariamente indisponível. Tente novamente em instantes.",
       );
     }
 
@@ -141,7 +141,8 @@ export default function PricingCalculatorPage() {
   }
 
   useEffect(() => {
-    void loadCalculator();
+    const timer = window.setTimeout(() => void loadCalculator(), 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const values = useMemo(() => {

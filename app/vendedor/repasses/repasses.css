@@ -4,10 +4,14 @@
 .seller-payouts section { background: #fffdfa; border: 1px solid #e4d6c9; border-radius: 20px; padding: clamp(20px, 3vw, 32px); margin: 20px 0; }
 .seller-payouts h2 { font: 600 2rem var(--font-display); margin: 0 0 16px; }
 .seller-payouts form { display: flex; flex-wrap: wrap; gap: 12px; }
-.seller-payouts select, .seller-payouts input { min-height: 44px; border: 1px solid #cab8a8; border-radius: 10px; background: #fff; color: #4b3026; padding: 8px 12px; }
+.seller-payouts select, .seller-payouts input { min-height: 44px; border: 1px solid #cab8a8; border-radius: 10px; background: #fff; color: var(--artenos-marrom); padding: 8px 12px; }
 .seller-payouts input { flex: 1; min-width: 220px; }
-.seller-payouts button { border: 0; border-radius: 10px; padding: 10px 22px; background: #566044; color: #fff; font-weight: 700; cursor: pointer; }
+.seller-payouts button { border: 0; border-radius: 10px; padding: 10px 22px; background: var(--artenos-musgo); color: #fff; font-weight: 700; cursor: pointer; }
 .seller-payouts button:hover { background: #414c31; }
 .seller-payouts ul { padding: 0; list-style: none; }
 .seller-payouts li { padding: 16px 0; border-top: 1px solid #e4d6c9; line-height: 1.6; overflow-wrap: anywhere; }
 @media(max-width:560px) { .seller-payouts form > * { width: 100%; } }
+.seller-payouts form { align-items: flex-end; }
+.seller-payouts .seller-payouts-key { flex: 1; min-width: 220px; }
+.seller-payouts > p { color: var(--an-text-muted); }
+.seller-payouts section { background: var(--an-surface); border: 0; box-shadow: var(--an-shadow-sm); }

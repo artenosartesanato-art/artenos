@@ -1,5 +1,5 @@
 .pricing-page {
-  color: #4b3026;
+  color: var(--artenos-marrom);
 }
 
 .pricing-heading {
@@ -12,7 +12,7 @@
 
 .pricing-heading h1 {
   margin: 0;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font: 700 clamp(36px, 4vw, 54px) var(--font-display);
   letter-spacing: -1.8px;
 }
@@ -20,7 +20,7 @@
 .pricing-heading > div > p:last-child {
   max-width: 720px;
   margin: 8px 0 0;
-  color: #b26b4f;
+  color: var(--an-argila-texto);
   font-size: 14px;
   line-height: 1.55;
 }
@@ -29,8 +29,8 @@
   flex: 0 0 auto;
   padding: 9px 13px;
   border-radius: 999px;
-  background: #faf2eb;
-  color: #566044;
+  background: var(--artenos-perola);
+  color: var(--artenos-musgo);
   font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
@@ -40,9 +40,9 @@
 .pricing-error {
   margin-bottom: 22px;
   padding: 16px 18px;
-  border: 1px solid #edc5ad;
+  border: 1px solid var(--artenos-pessego);
   border-radius: 11px;
-  background: #faf2eb;
+  background: var(--artenos-perola);
   color: #9f2f1c;
 }
 
@@ -71,7 +71,7 @@
 .pricing-inputs,
 .pricing-summary,
 .pricing-history {
-  border: 1px solid #edc5ad;
+  border: 1px solid var(--artenos-pessego);
   border-radius: 17px;
   background: #fff;
   box-shadow: 0 10px 28px #4b30260d;
@@ -96,21 +96,21 @@
   display: grid;
   place-items: center;
   border-radius: 11px;
-  background: #edc5ad;
-  color: #4b3026;
+  background: var(--artenos-pessego);
+  color: var(--artenos-marrom);
 }
 
 .pricing-section-title h2,
 .pricing-history-heading h2 {
   margin: 0;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font: 700 23px var(--font-display);
 }
 
 .pricing-section-title p,
 .pricing-history-heading p {
   margin: 4px 0 0;
-  color: #b26b4f;
+  color: var(--an-argila-texto);
   font-size: 12px;
 }
 
@@ -124,7 +124,7 @@
 .pricing-identification {
   margin: 27px 0 22px;
   padding-bottom: 22px;
-  border-bottom: 1px solid #edc5ad;
+  border-bottom: 1px solid var(--artenos-pessego);
 }
 
 .pricing-inputs label {
@@ -132,7 +132,7 @@
   display: flex;
   flex-direction: column;
   gap: 7px;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font-size: 12px;
   font-weight: 750;
 }
@@ -140,7 +140,7 @@
 .pricing-inputs label > small {
   min-height: 14px;
   margin-top: -4px;
-  color: #b26b4f;
+  color: var(--an-argila-texto);
   font-size: 10px;
   font-weight: 400;
 }
@@ -149,11 +149,11 @@
 .pricing-inputs select {
   width: 100%;
   height: 46px;
-  border: 1px solid #edc5ad;
+  border: 1px solid var(--artenos-pessego);
   border-radius: 9px;
   outline: none;
   background: #fff;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   padding: 0 13px;
   font-size: 13px;
 }
@@ -161,7 +161,7 @@
 .pricing-inputs input:focus,
 .pricing-inputs select:focus,
 .pricing-field-affix:focus-within {
-  border-color: #4b3026;
+  border-color: var(--artenos-marrom);
   box-shadow: 0 0 0 3px #4b302616;
 }
 
@@ -169,7 +169,7 @@
   height: 46px;
   display: flex;
   align-items: center;
-  border: 1px solid #edc5ad;
+  border: 1px solid var(--artenos-pessego);
   border-radius: 9px;
   background: #fff;
   overflow: hidden;
@@ -185,7 +185,7 @@
 
 .pricing-field-affix > span {
   padding: 0 12px;
-  color: #b26b4f;
+  color: var(--an-argila-texto);
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
@@ -203,15 +203,15 @@
   position: sticky;
   top: 170px;
   padding: 27px 24px 24px;
-  border-color: #edc5ad;
-  background: #faf2eb;
+  border-color: var(--artenos-pessego);
+  background: var(--artenos-perola);
 }
 
 .pricing-summary h2 {
   margin: 0 0 17px;
   padding-bottom: 15px;
-  border-bottom: 1px solid #edc5ad;
-  color: #4b3026;
+  border-bottom: 1px solid var(--artenos-pessego);
+  color: var(--artenos-marrom);
   font: 700 18px var(--font-display);
 }
 
@@ -225,7 +225,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 7px 0;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font-size: 12px;
 }
 
@@ -236,28 +236,28 @@
 
 .pricing-summary dd {
   flex: 0 0 auto;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font-weight: 800;
 }
 
 .pricing-summary .is-strong {
   margin-top: 7px;
   padding-top: 14px;
-  border-top: 1px solid #edc5ad;
-  color: #4b3026;
+  border-top: 1px solid var(--artenos-pessego);
+  color: var(--artenos-marrom);
   font-weight: 800;
 }
 
 .pricing-summary .is-profit,
 .pricing-summary .is-profit dd {
-  color: #566044;
+  color: var(--artenos-musgo);
 }
 
 .pricing-result {
   margin-top: 18px;
   padding: 20px;
   border-radius: 13px;
-  background: linear-gradient(135deg, #4b3026, #b13b10);
+  background: linear-gradient(135deg, var(--artenos-marrom), #b13b10);
   color: #fff;
   text-align: center;
   box-shadow: 0 12px 24px #4b302625;
@@ -279,7 +279,7 @@
 
 .pricing-formula-note {
   margin: 13px 2px;
-  color: #b26b4f;
+  color: var(--an-argila-texto);
   font-size: 10px;
   line-height: 1.45;
 }
@@ -293,7 +293,7 @@
   gap: 8px;
   border: 0;
   border-radius: 9px;
-  background: #4b3026;
+  background: var(--artenos-marrom);
   color: #fff;
   font-weight: 800;
   cursor: pointer;
@@ -311,20 +311,20 @@
   align-items: center;
   justify-content: center;
   gap: 7px;
-  border: 1px solid #edc5ad;
+  border: 1px solid var(--artenos-pessego);
   border-radius: 9px;
   background: #fff;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font-weight: 750;
   cursor: pointer;
 }
 
 .pricing-cancel:hover:not(:disabled) {
-  background: #faf2eb;
+  background: var(--artenos-perola);
 }
 
 .pricing-save:hover:not(:disabled) {
-  background: #4b3026;
+  background: var(--artenos-marrom);
 }
 
 .pricing-save:disabled {
@@ -344,11 +344,11 @@
   justify-content: space-between;
   gap: 20px;
   padding: 18px 24px;
-  border-bottom: 1px solid #edc5ad;
+  border-bottom: 1px solid var(--artenos-pessego);
 }
 
 .pricing-history-heading > small {
-  color: #b26b4f;
+  color: var(--an-argila-texto);
   font-size: 11px;
 }
 
@@ -359,7 +359,7 @@
   align-items: center;
   gap: 13px;
   padding: 13px 24px;
-  border-bottom: 1px solid #faf2eb;
+  border-bottom: 1px solid var(--artenos-perola);
 }
 
 .pricing-history-list article:last-child {
@@ -372,8 +372,8 @@
   display: grid;
   place-items: center;
   border-radius: 10px;
-  background: #faf2eb;
-  color: #4b3026;
+  background: var(--artenos-perola);
+  color: var(--artenos-marrom);
 }
 
 .pricing-history-copy {
@@ -396,7 +396,7 @@
 
 .pricing-history-copy span,
 .pricing-history-copy time {
-  color: #b26b4f;
+  color: var(--an-argila-texto);
   font-size: 10px;
 }
 
@@ -415,12 +415,12 @@
 }
 
 .pricing-history-values span {
-  color: #b26b4f;
+  color: var(--an-argila-texto);
   font-size: 10px;
 }
 
 .pricing-history-values strong {
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font-size: 15px;
 }
 
@@ -435,28 +435,28 @@
   height: 34px;
   display: grid;
   place-items: center;
-  border: 1px solid #edc5ad;
+  border: 1px solid var(--artenos-pessego);
   border-radius: 8px;
   background: #fff;
   cursor: pointer;
 }
 
 .pricing-history-actions .is-edit {
-  color: #4b3026;
+  color: var(--artenos-marrom);
 }
 
 .pricing-history-actions .is-edit:hover:not(:disabled) {
-  background: #faf2eb;
-  border-color: #edc5ad;
+  background: var(--artenos-perola);
+  border-color: var(--artenos-pessego);
 }
 
 .pricing-history-actions .is-delete {
-  color: #b26b4f;
+  color: var(--an-argila-texto);
 }
 
 .pricing-history-actions .is-delete:hover:not(:disabled) {
-  background: #faf2eb;
-  border-color: #edc5ad;
+  background: var(--artenos-perola);
+  border-color: var(--artenos-pessego);
 }
 
 .pricing-history-actions button:disabled,
@@ -472,12 +472,12 @@
   align-items: center;
   justify-content: center;
   gap: 7px;
-  color: #b26b4f;
+  color: var(--an-argila-texto);
   text-align: center;
 }
 
 .pricing-history-state strong {
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font: 700 18px var(--font-display);
 }
 

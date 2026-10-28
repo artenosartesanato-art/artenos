@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   Box,
@@ -9,23 +9,22 @@ import {
   CircleDollarSign,
   Clock3,
   FileText,
-  MapPin,
   MessageCircle,
-  PackageCheck,
+  RefreshCw,
   Search,
   Sparkles,
   Truck,
 } from "@/components/icons";
 import Link from "next/link";
-import type { User } from "@supabase/supabase-js";
-import { toast } from "sonner";
 import { CustomerFooter } from "@/components/customer-footer";
 import { CustomerHeader } from "@/components/customer-header";
 import { getSupabase } from "@/lib/supabase";
+import { accessHref } from "@/lib/navigation";
+import { useMarketplace } from "@/components/marketplace-state";
+import { orderProgress } from "@/lib/order-progress";
 import "../storefront.css";
 import "./orders.css";
 
-type CepStatus = "loading" | "guest" | "account" | "error";
 type AccountType = "client" | "artisan";
 type OrderStatus =
   | "payment_confirmed"
@@ -130,349 +129,144 @@ function cepMask(value: string | null) {
 }
 
 export default function OrdersPage() {
-  const [user, setUser] = useState<User | null>(null);
-  const [authReady, setAuthReady] = useState(false);
+  const { authReady, userId } = useMarketplace();
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
-  const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [attempt, setAttempt] = useState(0);
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [cep, setCep] = useState("");
-  const [cepStatus, setCepStatus] = useState<CepStatus>("loading");
-  const [cepError, setCepError] = useState("");
-  const [cepOpen, setCepOpen] = useState(false);
-  const [cepInput, setCepInput] = useState("");
-  const sessionRequest = useRef(0);
   const orderRequest = useRef(0);
 
-  const loadOrders = useCallback(async (current: User) => {
-    const request = ++orderRequest.current;
-    setLoading(true);
-    try {
-      const { data: rows, error: orderError } =
-        await getSupabase().rpc("list_my_orders");
-      if (request !== orderRequest.current) return;
-      if (orderError) throw orderError;
-      setOrders(
-        ((rows || []) as Order[]).filter(
-          (order) =>
-            order.my_role === "client" && order.client_id === current.id,
-        ),
-      );
-      setError("");
-    } catch {
-      if (request === orderRequest.current)
-        setError(
-          "Não foi possível carregar os pedidos. Execute o script pedidos.sql no Supabase e tente novamente.",
-        );
-    } finally {
-      if (request === orderRequest.current) setLoading(false);
-    }
-  }, []);
-
-  const loadSession = useCallback(
-    async (current: User | null) => {
-      const request = ++sessionRequest.current;
-      setUser(current);
-      setAuthReady(true);
-      setCepOpen(false);
-      if (!current) {
-        setOrders([]);
-        setLoading(false);
-        setCep(localStorage.getItem("artenos_guest_cep") || "");
-        setCepStatus("guest");
-        setCepError("");
-        return;
-      }
-      setCepStatus("loading");
-      try {
-        const { data: profile, error: profileError } = await getSupabase()
-          .from("profiles")
-          .select("cep")
-          .eq("id", current.id)
-          .single();
-        if (request !== sessionRequest.current) return;
-        if (profileError) throw profileError;
-        const digits = profile.cep?.replace(/\D/g, "") || "";
-        if (digits.length === 8) {
-          setCep(digits);
-          setCepStatus("account");
-          setCepError("");
-        } else {
-          setCepStatus("error");
-          setCepError("O CEP salvo no cadastro é inválido.");
-        }
-        await loadOrders(current);
-      } catch {
-        if (request === sessionRequest.current) {
-          setCepStatus("error");
-          setCepError("Não foi possível consultar seu perfil.");
-          setError("Não foi possível carregar os dados da sua conta.");
-          setLoading(false);
-        }
-      }
-    },
-    [loadOrders],
-  );
-
   useEffect(() => {
-    let active = true;
-    try {
-      const supabase = getSupabase();
-      const { data: listener } = supabase.auth.onAuthStateChange(
-        (event, session) => {
-          if (
-            [
-              "INITIAL_SESSION",
-              "SIGNED_IN",
-              "SIGNED_OUT",
-              "USER_UPDATED",
-            ].includes(event)
-          ) {
-            window.setTimeout(() => {
-              if (active) void loadSession(session?.user || null);
-            }, 0);
-          }
-        },
-      );
-      return () => {
-        active = false;
-        sessionRequest.current++;
-        orderRequest.current++;
-        listener.subscription.unsubscribe();
-      };
-    } catch {
+    const request = ++orderRequest.current;
+    if (!authReady || !userId) {
       queueMicrotask(() => {
-        setAuthReady(true);
-        setLoading(false);
-        setCepStatus("error");
-        setCepError("Supabase não configurado.");
-        setError("Configure as variáveis públicas do Supabase.");
+        if (request !== orderRequest.current) return;
+        setOrders([]);
+        setLoading(!authReady);
       });
-    }
-  }, [loadSession]);
-
-  const filteredOrders = useMemo(
-    () =>
-      orders.filter((order) => {
-        const groupMatches =
-          filter === "all" ||
-          (filter === "active" &&
-            ["payment_confirmed", "preparing"].includes(order.status)) ||
-          (filter === "shipping" &&
-            ["shipped", "out_for_delivery", "delivery_failed"].includes(
-              order.status,
-            )) ||
-          (filter === "delivered" && order.status === "delivered") ||
-          (filter === "cancelled" &&
-            ["cancelled", "refunded"].includes(order.status));
-        const term = query.toLocaleLowerCase("pt-BR");
-        const searchMatches =
-          !term ||
-          [
-            order.order_code,
-            order.product_name,
-            order.client_name,
-            order.artisan_name,
-          ].some((value) => value?.toLocaleLowerCase("pt-BR").includes(term));
-        return groupMatches && searchMatches;
-      }),
-    [orders, filter, query],
-  );
-
-  function submitSearch(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setQuery(searchInput.trim().slice(0, 100));
-  }
-
-  async function saveCep(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (user) return;
-    const digits = cepInput.replace(/\D/g, "");
-    if (digits.length !== 8) {
-      toast.error("Digite um CEP com 8 números.");
       return;
     }
-    try {
-      const response = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
-      const address = await response.json();
-      if (!response.ok || address.erro) throw new Error();
-      localStorage.setItem("artenos_guest_cep", digits);
-      setCep(digits);
-      setCepOpen(false);
-      toast.success(`CEP de ${address.localidade}/${address.uf} selecionado.`);
-    } catch {
-      toast.error("CEP não encontrado. Confira e tente novamente.");
-    }
-  }
+    queueMicrotask(() => { if (request === orderRequest.current) { setLoading(true); setError(""); } });
+    void Promise.resolve(getSupabase().rpc("list_my_orders"))
+      .then(({ data: rows, error: orderError }) => {
+        if (request !== orderRequest.current) return;
+        if (orderError) throw orderError;
+        setOrders(((rows || []) as Order[]).filter((order) => order.my_role === "client" && order.client_id === userId));
+      })
+      .catch(() => { if (request === orderRequest.current) setError("Não foi possível carregar seus pedidos agora."); })
+      .finally(() => { if (request === orderRequest.current) setLoading(false); });
+  }, [authReady, userId, attempt]);
 
-  const pendingCount = orders.filter((item) =>
-    ["payment_confirmed", "preparing"].includes(item.status),
-  ).length;
-  const shippingCount = orders.filter((item) =>
-    ["shipped", "out_for_delivery", "delivery_failed"].includes(item.status),
-  ).length;
-  const deliveredCount = orders.filter(
-    (item) => item.status === "delivered",
-  ).length;
+  const groupOf = (order: Order): Filter =>
+    ["payment_confirmed", "preparing"].includes(order.status) ? "active"
+      : ["shipped", "out_for_delivery", "delivery_failed"].includes(order.status) ? "shipping"
+        : order.status === "delivered" ? "delivered" : "cancelled";
+
+  const filteredOrders = useMemo(() => {
+    const term = query.trim().toLocaleLowerCase("pt-BR");
+    return orders.filter((order) => (filter === "all" || groupOf(order) === filter) && (!term ||
+      [order.order_code, order.product_name, order.artisan_name, ...order.items.map((item) => item.product_name)]
+        .some((value) => value?.toLocaleLowerCase("pt-BR").includes(term))));
+  }, [orders, filter, query]);
+
+  const counts = useMemo(() => {
+    const result: Record<Filter, number> = { all: orders.length, active: 0, shipping: 0, delivered: 0, cancelled: 0 };
+    orders.forEach((order) => { result[groupOf(order)]++; });
+    return result;
+  }, [orders]);
+
+  const tabs: [Filter, string][] = [
+    ["all", "Todos"], ["active", "Em preparação"], ["shipping", "A caminho"], ["delivered", "Entregues"], ["cancelled", "Cancelados"],
+  ];
 
   return (
     <div className="store-page orders-page">
-      <CustomerHeader
-        userSignedIn={!!user}
-        cep={cep}
-        cepStatus={cepStatus}
-        cepError={cepError}
-        cepOpen={cepOpen}
-        cepInput={cepInput}
-        searchInput={searchInput}
-        onSearchInput={setSearchInput}
-        onSearch={submitSearch}
-        onToggleCep={() => setCepOpen(!cepOpen)}
-        onCepInput={setCepInput}
-        onSaveCep={saveCep}
-      />
-      <main className="store-container orders-main">
-        <section className="orders-intro">
-          <div>
-            <p className="store-eyebrow">ACOMPANHAMENTO</p>
-            <h1>Pedidos</h1>
-            <p>Acompanhe suas compras do pagamento confirmado até a entrega.</p>
-          </div>
-          <PackageCheck size={47} aria-hidden="true" />
-        </section>
+      <CustomerHeader />
+      <main id="conteudo" tabIndex={-1} className="store-container orders-main">
+        <header className="orders-intro">
+          <p className="store-eyebrow">Acompanhamento</p>
+          <h1>Meus pedidos</h1>
+          <p>Acompanhe cada compra do pagamento confirmado até a entrega. Cada loja envia o seu pedido separadamente.</p>
+        </header>
 
-        {!authReady || loading ? (
-          <div className="orders-empty">
-            <Clock3 size={36} />
-            <p>Carregando pedidos...</p>
+        {!authReady || (userId && loading) ? (
+          <div className="orders-list" role="status" aria-label="Carregando pedidos">
+            {[0, 1, 2].map((index) => <span key={index} className="an-skeleton orders-skeleton" />)}
           </div>
-        ) : !user ? (
-          <div className="orders-empty">
-            <Box size={40} />
+        ) : !userId ? (
+          <section className="an-state">
+            <Box size={36} />
             <h2>Entre para acompanhar seus pedidos</h2>
-            <p>
-              Suas compras e atualizações de entrega ficam disponíveis na sua
-              conta.
-            </p>
-            <Link href="/acesso">
-              Entrar ou criar conta <ArrowRight size={17} />
-            </Link>
-          </div>
+            <p>Suas compras e as atualizações de entrega ficam na sua conta.</p>
+            <div className="an-state-actions">
+              <Link className="an-btn" href={accessHref("/pedidos")}>Entrar ou criar conta <ArrowRight size={16} /></Link>
+            </div>
+          </section>
+        ) : error ? (
+          <section className="an-state" role="alert">
+            <Box size={36} />
+            <h2>{error}</h2>
+            <p>Confira sua conexão e tente novamente.</p>
+            <div className="an-state-actions">
+              <button type="button" className="an-btn" onClick={() => setAttempt((value) => value + 1)}><RefreshCw size={15} /> Tentar novamente</button>
+            </div>
+          </section>
+        ) : orders.length === 0 ? (
+          <section className="an-state">
+            <Box size={36} />
+            <h2>Você ainda não fez nenhum pedido</h2>
+            <p>Quando um pagamento for confirmado, o pedido aparece aqui com o andamento da entrega.</p>
+            <div className="an-state-actions">
+              <Link className="an-btn" href="/categorias">Explorar peças <ArrowRight size={16} /></Link>
+            </div>
+          </section>
         ) : (
           <>
             <section className="orders-summary" aria-label="Resumo dos pedidos">
-              <article>
-                <Clock3 size={21} />
-                <div>
-                  <strong>{pendingCount}</strong>
-                  <span>em preparação</span>
-                </div>
-              </article>
-              <article>
-                <Truck size={22} />
-                <div>
-                  <strong>{shippingCount}</strong>
-                  <span>a caminho</span>
-                </div>
-              </article>
-              <article>
-                <CheckCircle2 size={22} />
-                <div>
-                  <strong>{deliveredCount}</strong>
-                  <span>entregues</span>
-                </div>
-              </article>
-              <article>
-                <CircleDollarSign size={22} />
-                <div>
-                  <strong>
-                    {money.format(
-                      orders.reduce(
-                        (sum, item) => sum + Number(item.total_amount || 0),
-                        0,
-                      ),
-                    )}
-                  </strong>
-                  <span>em pedidos</span>
-                </div>
-              </article>
+              <div><Clock3 size={20} /><span><strong>{counts.active}</strong> em preparação</span></div>
+              <div><Truck size={20} /><span><strong>{counts.shipping}</strong> a caminho</span></div>
+              <div><CheckCircle2 size={20} /><span><strong>{counts.delivered}</strong> entregues</span></div>
+              <div><CircleDollarSign size={20} /><span><strong>{money.format(orders.reduce((sum, item) => sum + Number(item.total_amount || 0), 0))}</strong> em compras</span></div>
             </section>
             <div className="orders-controls">
-              <div className="orders-tabs">
-                {(
-                  [
-                    ["all", "Todos"],
-                    ["active", "Preparando"],
-                    ["shipping", "A caminho"],
-                    ["delivered", "Entregues"],
-                    ["cancelled", "Cancelados"],
-                  ] as [Filter, string][]
-                ).map(([value, label]) => (
-                  <button
-                    type="button"
-                    className={filter === value ? "active" : ""}
-                    onClick={() => setFilter(value)}
-                    key={value}
-                  >
-                    {label}
+              <div className="orders-tabs" role="group" aria-label="Filtrar pedidos por situação">
+                {tabs.map(([value, label]) => (
+                  <button type="button" aria-pressed={filter === value} onClick={() => setFilter(value)} key={value}>
+                    {label} <small>{counts[value]}</small>
                   </button>
                 ))}
               </div>
-              {query && (
-                <button
-                  type="button"
-                  className="orders-clear-search"
-                  onClick={() => {
-                    setSearchInput("");
-                    setQuery("");
-                  }}
-                >
-                  Limpar busca
-                </button>
-              )}
+              <label className="orders-search">
+                <Search size={16} />
+                <span className="an-visually-hidden">Buscar nos pedidos</span>
+                <input className="an-input" type="search" value={query} onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Número, peça ou loja" />
+              </label>
             </div>
-            {error && (
-              <div className="store-error" role="alert">
-                {error}
+            {filteredOrders.length ? (
+              <section className="orders-list" aria-label="Pedidos">
+                {filteredOrders.map((order) => (
+                  <OrderCard key={order.id} order={order} expanded={expanded === order.id}
+                    onToggle={() => setExpanded(expanded === order.id ? null : order.id)} />
+                ))}
+              </section>
+            ) : (
+              <div className="an-state">
+                <Box size={34} />
+                <h2>Nenhum pedido nesta seleção</h2>
+                <p>{query ? "Tente buscar outro número, peça ou loja." : "Escolha outra situação para ver mais pedidos."}</p>
+                <div className="an-state-actions">
+                  <button type="button" className="an-btn an-btn--secondary" onClick={() => { setFilter("all"); setQuery(""); }}>Ver todos os pedidos</button>
+                </div>
               </div>
             )}
-            {!error &&
-              (filteredOrders.length ? (
-                <section className="orders-list" aria-live="polite">
-                  {filteredOrders.map((order) => (
-                    <OrderCard
-                      key={order.id}
-                      order={order}
-                      expanded={expanded === order.id}
-                      onToggle={() =>
-                        setExpanded(expanded === order.id ? null : order.id)
-                      }
-                    />
-                  ))}
-                </section>
-              ) : (
-                <div className="orders-empty">
-                  <Box size={38} />
-                  <h2>Nenhum pedido nesta seleção</h2>
-                  <p>
-                    {query
-                      ? "Tente buscar outro número, produto ou nome."
-                      : "Quando uma compra for confirmada, ela aparecerá aqui automaticamente."}
-                  </p>
-                  {!query && (
-                    <Link href="/categorias">
-                      Explorar peças <ArrowRight size={17} />
-                    </Link>
-                  )}
-                </div>
-              ))}
           </>
         )}
       </main>
-      <CustomerFooter userSignedIn={!!user} authLoading={!authReady} />
+      <CustomerFooter />
     </div>
   );
 }
@@ -487,36 +281,46 @@ function OrderCard({
   onToggle: () => void;
 }) {
   const firstItem = order.items[0];
+  const progress = orderProgress(order.status);
+  const units = order.items.reduce((sum, item) => sum + item.quantity, 0);
   return (
     <article className="order-card">
       <div className="order-card-top">
         <div>
-          <span>Pedido {order.order_code}</span>
+          <h2>Pedido {order.order_code}</h2>
           <time dateTime={order.created_at}>
-            Realizado em {formatDate(order.created_at)}
+            Feito em {formatDate(order.created_at)}
           </time>
         </div>
         <strong className={`order-status is-${order.status}`}>
           {statusLabel[order.status]}
         </strong>
       </div>
+      {progress.steps.length > 0 && (
+        <ol className="order-progress" aria-label={`Andamento: ${statusLabel[order.status]}`}>
+          {progress.steps.map((step, index) => (
+            <li key={step.label} className={index < progress.current ? "is-done" : index === progress.current ? "is-current" : ""}
+              aria-current={index === progress.current ? "step" : undefined}>
+              <span aria-hidden="true" />
+              {step.label}
+            </li>
+          ))}
+        </ol>
+      )}
       <div className="order-card-main">
         <div className="order-product-image">
           {firstItem?.image_url ? (
-            <img src={firstItem.image_url} alt={firstItem.product_name} />
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={firstItem.image_url} alt="" width={96} height={96} loading="lazy" />
           ) : (
             <Sparkles size={27} />
           )}
         </div>
         <div className="order-product-copy">
           <small>{order.artisan_name}</small>
-          <h2>{order.product_name}</h2>
+          <h3>{order.product_name}</h3>
           <p>
-            {order.items.reduce((sum, item) => sum + item.quantity, 0)}{" "}
-            {order.items.reduce((sum, item) => sum + item.quantity, 0) === 1
-              ? "item"
-              : "itens"}{" "}
-            · Total {money.format(Number(order.total_amount || 0))}
+            {units} {units === 1 ? "unidade" : "unidades"} · Total {money.format(Number(order.total_amount || 0))}
           </p>
           {order.estimated_delivery_date && (
             <span>
@@ -531,13 +335,14 @@ function OrderCard({
             className="order-details-button"
             onClick={onToggle}
             aria-expanded={expanded}
+            aria-controls={`pedido-${order.id}`}
           >
-            Ver detalhes <ChevronDown size={16} />
+            {expanded ? "Ocultar detalhes" : "Ver detalhes"} <ChevronDown size={16} />
           </button>
         </div>
       </div>
       {expanded && (
-        <div className="order-details">
+        <div className="order-details" id={`pedido-${order.id}`}>
           <div className="order-detail-grid">
             <section>
               <h3>Andamento</h3>
@@ -609,7 +414,7 @@ function OrderCard({
                   </dd>
                 </div>
               </dl>
-              <Link href="/mensagens">
+              <Link className="an-btn an-btn--secondary an-btn--sm" href="/mensagens">
                 <MessageCircle size={16} /> Abrir mensagens do pedido
               </Link>
             </section>
@@ -624,6 +429,10 @@ function OrderCard({
                 <strong>{money.format(Number(item.subtotal))}</strong>
               </div>
             ))}
+            <div>
+              <span>Frete</span>
+              <strong>{money.format(Number(order.shipping_amount || 0))}</strong>
+            </div>
             <div className="order-total">
               <span>Total</span>
               <strong>{money.format(Number(order.total_amount || 0))}</strong>

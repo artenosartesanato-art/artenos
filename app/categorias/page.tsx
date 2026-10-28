@@ -1,215 +1,203 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  ArrowRight,
-  Heart,
-  PackageOpen,
-  SlidersHorizontal,
-  Sparkles,
-  X,
-} from "@/components/icons";
-import Link from "next/link";
-import { toast } from "sonner";
-import type { User } from "@supabase/supabase-js";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowRight, LoaderCircle, PackageOpen, RefreshCw, SlidersHorizontal, X } from "@/components/icons";
 import { CustomerHeader } from "@/components/customer-header";
 import { CustomerFooter } from "@/components/customer-footer";
+import { Dialog } from "@/components/ui/dialog";
 import { getSupabase } from "@/lib/supabase";
-import { addProductToCart } from "@/lib/cart";
-import { MarketplaceProductCard } from "@/components/marketplace-product-card";
-import { rememberFavoriteIntent, useMarketplace } from "@/components/marketplace-state";
-import { confirmAddedToCart, confirmFavoriteRemoved, confirmFavoriteSaved } from "@/components/marketplace-feedback";
+import { MarketplaceProductCard, ProductGridSkeleton, type MarketplaceProduct } from "@/components/marketplace-product-card";
 import "../storefront.css";
 import "./categories.css";
 
-type Category = {
-  id: string;
-  name: string;
-  slug: string;
-  image_url: string | null;
-  product_count: number;
-};
-type Product = {
-  id: string;
-  name: string;
-  price: number;
-  image_url: string | null;
-  stock: number | null;
-  ready_to_ship: boolean;
-  category_name: string | null;
-  shop_name: string | null;
-  total_count: number;
-};
-type CepStatus = "loading" | "guest" | "account" | "error";
+type Category = { id: string; name: string; slug: string; image_url: string | null; product_count: number };
+type Product = MarketplaceProduct & { total_count: number };
 type Sort = "newest" | "price_asc" | "price_desc";
+type Filters = {
+  query: string;
+  categoryId: string | null;
+  min: number | null;
+  max: number | null;
+  readyOnly: boolean;
+  sort: Sort;
+};
 const PAGE_SIZE = 12;
+const SORTS: Record<Sort, string> = { newest: "Mais recentes", price_asc: "Menor preço", price_desc: "Maior preço" };
+const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const emptyFilters: Filters = { query: "", categoryId: null, min: null, max: null, readyOnly: false, sort: "newest" };
+
+function readFilters(): Filters {
+  const params = new URLSearchParams(window.location.search);
+  const category = params.get("categoria");
+  const number = (value: string | null) => {
+    if (value === null || value === "") return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+  };
+  const sort = params.get("ordem");
+  return {
+    query: (params.get("busca") || "").trim().slice(0, 100),
+    categoryId: category && /^[0-9a-f-]{36}$/i.test(category) ? category : null,
+    min: number(params.get("min")),
+    max: number(params.get("max")),
+    readyOnly: params.get("pronta") === "1",
+    sort: sort === "price_asc" || sort === "price_desc" ? sort : "newest",
+  };
+}
+
+function writeFilters(filters: Filters) {
+  const params = new URLSearchParams();
+  if (filters.query) params.set("busca", filters.query);
+  if (filters.categoryId) params.set("categoria", filters.categoryId);
+  if (filters.min !== null) params.set("min", String(filters.min));
+  if (filters.max !== null) params.set("max", String(filters.max));
+  if (filters.readyOnly) params.set("pronta", "1");
+  if (filters.sort !== "newest") params.set("ordem", filters.sort);
+  const query = params.toString();
+  window.history.replaceState(null, "", query ? `/categorias?${query}` : "/categorias");
+}
+
+function FilterPanel({ categories, filters, onChange, onClear, idPrefix }: {
+  categories: Category[];
+  filters: Filters;
+  onChange: (patch: Partial<Filters>) => void;
+  onClear: () => void;
+  idPrefix: string;
+}) {
+  const [minPrice, setMinPrice] = useState(filters.min?.toString() ?? "");
+  const [maxPrice, setMaxPrice] = useState(filters.max?.toString() ?? "");
+  const [priceError, setPriceError] = useState("");
+
+  function applyPrices(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const minimum = minPrice === "" ? null : Number(minPrice.replace(",", "."));
+    const maximum = maxPrice === "" ? null : Number(maxPrice.replace(",", "."));
+    if ((minimum !== null && (!Number.isFinite(minimum) || minimum < 0)) ||
+      (maximum !== null && (!Number.isFinite(maximum) || maximum < 0))) {
+      setPriceError("Use apenas números positivos.");
+      return;
+    }
+    if (minimum !== null && maximum !== null && minimum > maximum) {
+      setPriceError("O valor mínimo precisa ser menor que o máximo.");
+      return;
+    }
+    setPriceError("");
+    onChange({ min: minimum, max: maximum });
+  }
+
+  return (
+    <div className="category-filter-panel">
+      <fieldset className="category-filter-block">
+        <legend>Categoria</legend>
+        <label className="category-option">
+          <input type="radio" name={`${idPrefix}-categoria`} checked={!filters.categoryId}
+            onChange={() => onChange({ categoryId: null })} />
+          <span>Todas as peças</span>
+        </label>
+        {categories.map((category) => (
+          <label className="category-option" key={category.id}>
+            <input type="radio" name={`${idPrefix}-categoria`} checked={filters.categoryId === category.id}
+              onChange={() => onChange({ categoryId: category.id })} />
+            <span>{category.name}</span>
+            <small aria-label={`${category.product_count} peças`}>{category.product_count}</small>
+          </label>
+        ))}
+      </fieldset>
+      <form className="category-filter-block" onSubmit={applyPrices} noValidate>
+        <fieldset>
+          <legend>Faixa de preço</legend>
+          <div className="category-price-inputs">
+            <label className="an-field">
+              <span>Mínimo (R$)</span>
+              <input type="text" inputMode="decimal" value={minPrice} onChange={(event) => setMinPrice(event.target.value)}
+                aria-invalid={priceError ? true : undefined} aria-describedby={priceError ? `${idPrefix}-preco-erro` : undefined}
+                placeholder="0" />
+            </label>
+            <label className="an-field">
+              <span>Máximo (R$)</span>
+              <input type="text" inputMode="decimal" value={maxPrice} onChange={(event) => setMaxPrice(event.target.value)}
+                aria-invalid={priceError ? true : undefined} aria-describedby={priceError ? `${idPrefix}-preco-erro` : undefined}
+                placeholder="Sem limite" />
+            </label>
+          </div>
+          {priceError && <p className="an-field-error" id={`${idPrefix}-preco-erro`} role="alert">{priceError}</p>}
+          <button type="submit" className="an-btn an-btn--secondary an-btn--sm an-btn--block category-apply">Aplicar preço</button>
+        </fieldset>
+      </form>
+      <fieldset className="category-filter-block">
+        <legend>Disponibilidade</legend>
+        <label className="category-check">
+          <input type="checkbox" checked={filters.readyOnly} onChange={(event) => onChange({ readyOnly: event.target.checked })} />
+          Só pronta entrega
+        </label>
+      </fieldset>
+      <button type="button" className="category-clear" onClick={() => { setMinPrice(""); setMaxPrice(""); setPriceError(""); onClear(); }}>
+        Limpar filtros
+      </button>
+    </div>
+  );
+}
 
 export default function CategoriesPage() {
-  const { favoriteIds, pendingFavoriteIds, toggleFavorite: saveFavorite } = useMarketplace();
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
+  const [filters, setFilters] = useState<Filters>(emptyFilters);
   const [searchInput, setSearchInput] = useState("");
-  const [query, setQuery] = useState("");
-  const [minPrice, setMinPrice] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
-  const [appliedMin, setAppliedMin] = useState<number | null>(null);
-  const [appliedMax, setAppliedMax] = useState<number | null>(null);
-  const [readyOnly, setReadyOnly] = useState(false);
-  const [sort, setSort] = useState<Sort>("newest");
+  const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [featuredFallback, setFeaturedFallback] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
-  const [user, setUser] = useState<User | null>(null);
-  const [authPrompt, setAuthPrompt] = useState(false);
-  const [cep, setCep] = useState("");
-  const [cepStatus, setCepStatus] = useState<CepStatus>("loading");
-  const [cepError, setCepError] = useState("");
-  const [cepOpen, setCepOpen] = useState(false);
-  const [cepInput, setCepInput] = useState("");
-  const profileRequest = useRef(0);
-  const cartPending = useRef(new Set<string>());
-  const [busyCart, setBusyCart] = useState<ReadonlySet<string>>(new Set());
+  const [moreError, setMoreError] = useState("");
+  const [attempt, setAttempt] = useState(0);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [panelKey, setPanelKey] = useState(0);
   const productRequest = useRef(0);
-  const selectedCategory = categories.find(
-    (category) => category.id === categoryId,
-  );
+  const resultsHeading = useRef<HTMLHeadingElement>(null);
 
-  const loadUser = useCallback(async (current: User | null) => {
-    const request = ++profileRequest.current;
-    setUser(current);
-    setCepOpen(false);
-    if (!current) {
-      setCep(localStorage.getItem("artenos_guest_cep") || "");
-      setCepStatus("guest");
-      setCepError("");
-      return;
-    }
-    setCepStatus("loading");
-    try {
-      const supabase = getSupabase();
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("cep")
-        .eq("id", current.id)
-        .single();
-      if (request !== profileRequest.current) return;
-      const registeredCep = profile?.cep?.replace(/\D/g, "") || "";
-      if (profileError || registeredCep.length !== 8) {
-        setCepStatus("error");
-        setCepError(
-          profileError
-            ? "Não foi possível consultar seu CEP no momento."
-            : "O CEP salvo no cadastro é inválido.",
-        );
-      } else {
-        setCep(registeredCep);
-        setCepStatus("account");
-        setCepError("");
-      }
-    } catch {
-      if (request === profileRequest.current) {
-        setCepStatus("error");
-        setCepError("Não foi possível conectar ao seu perfil.");
-      }
-    }
+  useEffect(() => {
+    const initial = readFilters();
+    queueMicrotask(() => {
+      setFilters(initial);
+      setSearchInput(initial.query);
+      setReady(true);
+    });
+    let active = true;
+    void Promise.resolve(getSupabase().rpc("list_storefront_categories_with_products"))
+      .then(({ data, error: categoryError }) => {
+        if (!active) return;
+        if (categoryError) throw categoryError;
+        setCategories((data || []) as Category[]);
+      })
+      .catch(() => { if (active) setError("Não foi possível carregar as categorias."); });
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
-    let active = true;
-    const requestCounter = profileRequest;
-    const params = new URLSearchParams(window.location.search);
-    const fromUrl = params.get("categoria");
-    const searchFromUrl = (params.get("busca") || "").trim().slice(0, 100);
-    queueMicrotask(() => {
-      if (active) {
-        setCategoryId(
-          fromUrl && /^[0-9a-f-]{36}$/i.test(fromUrl) ? fromUrl : null,
-        );
-        setSearchInput(searchFromUrl);
-        setQuery(searchFromUrl);
-      }
-    });
-    try {
-      const supabase = getSupabase();
-      const { data: listener } = supabase.auth.onAuthStateChange(
-        (event, session) => {
-          if (
-            [
-              "INITIAL_SESSION",
-              "SIGNED_IN",
-              "SIGNED_OUT",
-              "USER_UPDATED",
-            ].includes(event)
-          ) {
-            window.setTimeout(() => {
-              if (active) void loadUser(session?.user || null);
-            }, 0);
-          }
-        },
-      );
-      void Promise.resolve(
-        supabase.rpc("list_storefront_categories_with_products"),
-      )
-        .then(({ data, error: categoryError }) => {
-          if (!active) return;
-          if (categoryError) throw categoryError;
-          setCategories((data || []) as Category[]);
-        })
-        .catch(() => {
-          if (active)
-            setError(
-              "Não foi possível carregar as categorias. Confirme que o script de categorias foi executado no Supabase.",
-            );
-        });
-      return () => {
-        active = false;
-        requestCounter.current++;
-        listener.subscription.unsubscribe();
-      };
-    } catch {
-      queueMicrotask(() => {
-        setCepStatus("error");
-        setCepError("Supabase não configurado.");
-        setError("Configure as variáveis públicas do Supabase.");
-        setLoading(false);
-      });
-    }
-  }, [loadUser]);
-
-  useEffect(() => {
+    if (!ready) return;
     const request = ++productRequest.current;
+    writeFilters(filters);
     queueMicrotask(() => {
-      if (request === productRequest.current) {
-        setLoading(true);
-        setProducts([]);
-        setTotal(0);
-      }
+      if (request !== productRequest.current) return;
+      setLoading(true);
+      setMoreError("");
     });
-    void Promise.resolve(
-      getSupabase().rpc("browse_storefront_products", {
-        p_query: query || null,
-        p_category_id: categoryId,
-        p_min_price: appliedMin,
-        p_max_price: appliedMax,
-        p_ready_only: readyOnly,
-        p_sort: sort,
-        p_limit: PAGE_SIZE,
-        p_offset: 0,
-      }),
-    )
+    const supabase = getSupabase();
+    void Promise.resolve(supabase.rpc("browse_storefront_products", {
+      p_query: filters.query || null, p_category_id: filters.categoryId, p_min_price: filters.min,
+      p_max_price: filters.max, p_ready_only: filters.readyOnly, p_sort: filters.sort,
+      p_limit: PAGE_SIZE, p_offset: 0,
+    }))
       .then(async ({ data, error: productsError }) => {
         if (request !== productRequest.current) return;
         if (productsError) throw productsError;
         const rows = (data || []) as Product[];
         setProducts(rows);
         setTotal(Number(rows[0]?.total_count || 0));
-        if (query && rows.length === 0) {
-          const { data: featured } = await getSupabase().rpc("search_storefront_products", {
-            p_query: null, p_category_id: null, p_collection_id: null,
-            p_section: "featured", p_limit: 8,
+        if (filters.query && rows.length === 0) {
+          const { data: featured } = await supabase.rpc("search_storefront_products", {
+            p_query: null, p_category_id: null, p_collection_id: null, p_section: "featured", p_limit: 8,
           });
           if (request === productRequest.current) setFeaturedFallback((featured || []) as Product[]);
         } else {
@@ -218,400 +206,207 @@ export default function CategoriesPage() {
         setError("");
       })
       .catch(() => {
-        if (request === productRequest.current)
-          setError(
-            "Não foi possível carregar as peças. Confirme que o script de categorias foi executado no Supabase.",
-          );
+        if (request === productRequest.current) {
+          setProducts([]);
+          setTotal(0);
+          setError("Não foi possível carregar as peças agora.");
+        }
       })
-      .finally(() => {
-        if (request === productRequest.current) setLoading(false);
-      });
-  }, [query, categoryId, appliedMin, appliedMax, readyOnly, sort]);
+      .finally(() => { if (request === productRequest.current) setLoading(false); });
+  }, [filters, ready, attempt]);
 
-  function chooseCategory(id: string | null) {
-    setCategoryId(id);
-    const url = new URL(window.location.href);
-    if (id) url.searchParams.set("categoria", id);
-    else url.searchParams.delete("categoria");
-    window.history.replaceState(null, "", url.pathname + url.search);
-  }
-  function submitSearch(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const next = searchInput.trim().slice(0, 100);
-    setQuery(next);
-    const url = new URL(window.location.href);
-    if (next) url.searchParams.set("busca", next);
-    else url.searchParams.delete("busca");
-    window.history.replaceState(null, "", url.pathname + url.search);
-  }
-  function applyPrices(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const minimum = minPrice === "" ? null : Number(minPrice);
-    const maximum = maxPrice === "" ? null : Number(maxPrice);
-    if (
-      (minimum !== null && (!Number.isFinite(minimum) || minimum < 0)) ||
-      (maximum !== null && (!Number.isFinite(maximum) || maximum < 0)) ||
-      (minimum !== null && maximum !== null && minimum > maximum)
-    ) {
-      toast.error("Confira os valores mínimo e máximo.");
-      return;
-    }
-    setAppliedMin(minimum);
-    setAppliedMax(maximum);
+  function update(patch: Partial<Filters>) {
+    setFilters((current) => ({ ...current, ...patch }));
   }
   function clearFilters() {
-    chooseCategory(null);
-    setQuery("");
     setSearchInput("");
-    setMinPrice("");
-    setMaxPrice("");
-    const url = new URL(window.location.href);
-    url.searchParams.delete("busca");
-    window.history.replaceState(null, "", url.pathname + url.search);
-    setAppliedMin(null);
-    setAppliedMax(null);
-    setReadyOnly(false);
-    setSort("newest");
+    setPanelKey((value) => value + 1);
+    setFilters(emptyFilters);
   }
+  function search(query: string) {
+    update({ query });
+    window.requestAnimationFrame(() => resultsHeading.current?.focus({ preventScroll: false }));
+  }
+
   async function loadMore() {
     if (loadingMore || products.length >= total) return;
     const request = productRequest.current;
     setLoadingMore(true);
+    setMoreError("");
     try {
-      const { data, error: moreError } = await getSupabase().rpc(
-        "browse_storefront_products",
-        {
-          p_query: query || null,
-          p_category_id: categoryId,
-          p_min_price: appliedMin,
-          p_max_price: appliedMax,
-          p_ready_only: readyOnly,
-          p_sort: sort,
-          p_limit: PAGE_SIZE,
-          p_offset: products.length,
-        },
-      );
-      if (moreError) throw moreError;
-      if (request === productRequest.current)
-        setProducts((previous) => [
-          ...previous,
-          ...((data || []) as Product[]),
-        ]);
+      const { data, error: loadError } = await getSupabase().rpc("browse_storefront_products", {
+        p_query: filters.query || null, p_category_id: filters.categoryId, p_min_price: filters.min,
+        p_max_price: filters.max, p_ready_only: filters.readyOnly, p_sort: filters.sort,
+        p_limit: PAGE_SIZE, p_offset: products.length,
+      });
+      if (loadError) throw loadError;
+      if (request === productRequest.current) {
+        setProducts((previous) => {
+          const known = new Set(previous.map((product) => product.id));
+          return [...previous, ...((data || []) as Product[]).filter((product) => !known.has(product.id))];
+        });
+      }
     } catch {
-      toast.error("Não foi possível carregar mais peças.");
+      setMoreError("Não foi possível carregar mais peças.");
     } finally {
       setLoadingMore(false);
     }
   }
-  async function toggleFavorite(product: Product) {
-    if (!user) {
-      rememberFavoriteIntent(product.id, product.name);
-      setAuthPrompt(true);
-      return;
+
+  const selectedCategory = categories.find((category) => category.id === filters.categoryId);
+  const activeChips = useMemo(() => {
+    const chips: { key: string; label: string; clear: Partial<Filters> }[] = [];
+    if (filters.query) chips.push({ key: "q", label: `“${filters.query}”`, clear: { query: "" } });
+    if (selectedCategory) chips.push({ key: "c", label: selectedCategory.name, clear: { categoryId: null } });
+    if (filters.min !== null || filters.max !== null) {
+      const label = filters.min !== null && filters.max !== null
+        ? `${money.format(filters.min)} a ${money.format(filters.max)}`
+        : filters.min !== null ? `A partir de ${money.format(filters.min)}` : `Até ${money.format(filters.max!)}`;
+      chips.push({ key: "p", label, clear: { min: null, max: null } });
     }
-    try {
-      const saved = await saveFavorite(product.id);
-      if (saved) confirmFavoriteSaved(product.name);
-      else confirmFavoriteRemoved(product.name);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível atualizar seus favoritos.");
-    }
-  }
-  async function addToCart(product: Product) {
-    if (!user) {
-      setAuthPrompt(true);
-      return;
-    }
-    if (cartPending.current.has(product.id)) return;
-    cartPending.current.add(product.id);
-    setBusyCart(new Set(cartPending.current));
-    try {
-      await addProductToCart(product.id);
-      confirmAddedToCart(product.name);
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Não foi possível adicionar este produto ao carrinho.",
-      );
-    } finally {
-      cartPending.current.delete(product.id);
-      setBusyCart(new Set(cartPending.current));
-    }
-  }
-  async function saveCep(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (user) return;
-    const digits = cepInput.replace(/\D/g, "");
-    if (digits.length !== 8) {
-      toast.error("Digite um CEP com 8 números.");
-      return;
-    }
-    try {
-      const response = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
-      const address = await response.json();
-      if (!response.ok || address.erro) throw new Error();
-      localStorage.setItem("artenos_guest_cep", digits);
-      setCep(digits);
-      setCepOpen(false);
-      toast.success(`CEP de ${address.localidade}/${address.uf} selecionado.`);
-    } catch {
-      toast.error("CEP não encontrado. Confira e tente novamente.");
-    }
-  }
+    if (filters.readyOnly) chips.push({ key: "r", label: "Pronta entrega", clear: { readyOnly: false } });
+    return chips;
+  }, [filters, selectedCategory]);
+  const filterCount = activeChips.filter((chip) => chip.key !== "q").length;
 
   return (
     <div className="store-page category-page">
-      <CustomerHeader
-        userSignedIn={!!user}
-        cep={cep}
-        cepStatus={cepStatus}
-        cepError={cepError}
-        cepOpen={cepOpen}
-        cepInput={cepInput}
-        searchInput={searchInput}
-        onSearchInput={setSearchInput}
-        onSearch={submitSearch}
-        onToggleCep={() => setCepOpen(!cepOpen)}
-        onCepInput={setCepInput}
-        onSaveCep={saveCep}
-      />
-      <main className="store-container category-main">
-        <div className="category-intro">
-          <div>
-            <p className="store-eyebrow">Descubra o feito à mão</p>
-            <h1>Categorias de artesanato</h1>
-            <p>
-              Explore as peças publicadas por nossas artesãs. Cada categoria
-              aparece conforme as lojas cadastram seus produtos.
-            </p>
-          </div>
-          <Sparkles size={39} aria-hidden="true" />
-        </div>
-        <div className="category-chips" aria-label="Categorias disponíveis">
-          <button
-            type="button"
-            className={!categoryId ? "active" : ""}
-            onClick={() => chooseCategory(null)}
-          >
-            Todas as peças
-          </button>
+      <CustomerHeader searchValue={searchInput} onSearchValueChange={setSearchInput} onSearch={search} />
+      <main id="conteudo" tabIndex={-1} className="store-container category-main">
+        <header className="category-intro">
+          <p className="store-eyebrow">Descubra o feito à mão</p>
+          <h1>{filters.query ? `Resultados para “${filters.query}”` : selectedCategory?.name || "Todas as peças"}</h1>
+          <p>Peças publicadas por lojas aprovadas na Artenós. Use os filtros para encontrar pronta entrega, faixas de preço e técnicas.</p>
+        </header>
+
+        <nav className="category-chips" aria-label="Categorias">
+          <button type="button" aria-pressed={!filters.categoryId} onClick={() => update({ categoryId: null })}>Todas</button>
           {categories.map((category) => (
-            <button
-              type="button"
-              key={category.id}
-              className={categoryId === category.id ? "active" : ""}
-              onClick={() => chooseCategory(category.id)}
-            >
+            <button type="button" key={category.id} aria-pressed={filters.categoryId === category.id}
+              onClick={() => update({ categoryId: category.id })}>
               {category.name}
-              <small>{category.product_count}</small>
+              <small aria-hidden="true">{category.product_count}</small>
             </button>
           ))}
-        </div>
-        {error && (
-          <div className="store-error" role="alert">
-            {error}
-          </div>
-        )}
+        </nav>
+
         <div className="category-layout">
-          <aside className="category-filters" aria-label="Filtros de produtos">
-            <h2>
-              <SlidersHorizontal size={18} /> Filtros
-            </h2>
-            <div className="category-filter-block">
-              <h3>Categorias</h3>
-              <button
-                type="button"
-                className={!categoryId ? "active" : ""}
-                onClick={() => chooseCategory(null)}
-              >
-                Todas as peças
-              </button>
-              {categories.map((category) => (
-                <button
-                  type="button"
-                  key={category.id}
-                  className={categoryId === category.id ? "active" : ""}
-                  onClick={() => chooseCategory(category.id)}
-                >
-                  {category.name}
-                  <small>{category.product_count}</small>
-                </button>
-              ))}
-            </div>
-            <form className="category-filter-block" onSubmit={applyPrices}>
-              <h3>Faixa de preço</h3>
-              <div className="category-price-inputs">
-                <label>
-                  De R$
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    inputMode="decimal"
-                    value={minPrice}
-                    onChange={(event) => setMinPrice(event.target.value)}
-                  />
-                </label>
-                <label>
-                  Até R$
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    inputMode="decimal"
-                    value={maxPrice}
-                    onChange={(event) => setMaxPrice(event.target.value)}
-                  />
-                </label>
-              </div>
-              <button type="submit" className="category-apply">
-                Aplicar preço
-              </button>
-            </form>
-            <div className="category-filter-block">
-              <h3>Disponibilidade</h3>
-              <label className="category-check">
-                <input
-                  type="checkbox"
-                  checked={readyOnly}
-                  onChange={(event) => setReadyOnly(event.target.checked)}
-                />{" "}
-                Pronta para envio
-              </label>
-            </div>
-            <button
-              type="button"
-              className="category-clear"
-              onClick={clearFilters}
-            >
-              Limpar filtros
-            </button>
+          <aside className="category-filters" aria-labelledby="filtros-titulo">
+            <h2 id="filtros-titulo"><SlidersHorizontal size={17} /> Filtros</h2>
+            <FilterPanel key={`desk-${panelKey}-${filters.min}-${filters.max}`} categories={categories} filters={filters}
+              onChange={update} onClear={clearFilters} idPrefix="desk" />
           </aside>
-          <section className="category-results" aria-live="polite">
+
+          <section className="category-results" aria-labelledby="resultados-titulo">
             <div className="category-toolbar">
               <div>
-                <h2>{selectedCategory?.name || "Todas as peças"}</h2>
-                <p>
-                  {loading
-                    ? "Buscando peças..."
-                    : `${total} ${total === 1 ? "peça encontrada" : "peças encontradas"}`}
-                  {query && ` para “${query}”`}
+                <h2 id="resultados-titulo" ref={resultsHeading} tabIndex={-1}>
+                  {loading ? "Buscando peças…" : `${total} ${total === 1 ? "peça encontrada" : "peças encontradas"}`}
+                </h2>
+                <p aria-live="polite" className="an-visually-hidden">
+                  {loading ? "" : `${total} ${total === 1 ? "peça encontrada" : "peças encontradas"}`}
                 </p>
               </div>
-              <label>
-                Ordenar por{" "}
-                <select
-                  value={sort}
-                  onChange={(event) => setSort(event.target.value as Sort)}
-                >
-                  <option value="newest">Mais recentes</option>
-                  <option value="price_asc">Menor preço</option>
-                  <option value="price_desc">Maior preço</option>
-                </select>
-              </label>
+              <div className="category-toolbar-actions">
+                <button type="button" className="an-btn an-btn--secondary category-filter-button" onClick={() => setFiltersOpen(true)}
+                  aria-haspopup="dialog">
+                  <SlidersHorizontal size={16} /> Filtros{filterCount ? ` (${filterCount})` : ""}
+                </button>
+                <label className="category-sort">
+                  <span>Ordenar</span>
+                  <select className="an-input" value={filters.sort} onChange={(event) => update({ sort: event.target.value as Sort })}>
+                    {Object.entries(SORTS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  </select>
+                </label>
+              </div>
             </div>
-            {loading ? (
-              <div className="category-empty">Carregando peças...</div>
+
+            {activeChips.length > 0 && (
+              <ul className="category-active" aria-label="Filtros aplicados">
+                {activeChips.map((chip) => (
+                  <li key={chip.key}>
+                    <button type="button" onClick={() => { if (chip.key === "q") setSearchInput(""); if (chip.key === "p") setPanelKey((v) => v + 1); update(chip.clear); }}
+                      aria-label={`Remover filtro ${chip.label}`}>
+                      {chip.label} <X size={11} />
+                    </button>
+                  </li>
+                ))}
+                <li><button type="button" className="category-active-clear" onClick={clearFilters}>Limpar tudo</button></li>
+              </ul>
+            )}
+
+            {error ? (
+              <div className="an-state" role="alert">
+                <PackageOpen size={36} />
+                <h2>{error}</h2>
+                <p>Confira sua conexão. Seus filtros foram mantidos.</p>
+                <div className="an-state-actions">
+                  <button type="button" className="an-btn" onClick={() => setAttempt((value) => value + 1)}>
+                    <RefreshCw size={15} /> Tentar novamente
+                  </button>
+                </div>
+              </div>
+            ) : loading ? (
+              <ProductGridSkeleton count={8} className="category-grid" />
             ) : products.length ? (
               <>
                 <div className="category-grid">
-                  {products.map((product) => (
-                    <MarketplaceProductCard key={product.id} product={product}
-                      saved={favoriteIds.has(product.id)}
-                      favoritePending={pendingFavoriteIds.has(product.id)}
-                      cartPending={busyCart.has(product.id)}
-                      onFavorite={() => { void toggleFavorite(product); }}
-                      onCart={() => addToCart(product)} />
-                  ))}
+                  {products.map((product, index) => <MarketplaceProductCard key={product.id} product={product} priority={index < 4} />)}
                 </div>
                 {products.length < total && (
-                  <button
-                    type="button"
-                    className="category-more"
-                    onClick={loadMore}
-                    disabled={loadingMore}
-                  >
-                    {loadingMore ? "Carregando..." : "Carregar mais peças"}{" "}
-                    <ArrowRight size={17} />
-                  </button>
+                  <div className="category-more-wrap">
+                    <p>Mostrando {products.length} de {total}</p>
+                    <button type="button" className="an-btn an-btn--secondary" onClick={() => void loadMore()} disabled={loadingMore} aria-busy={loadingMore}>
+                      {loadingMore ? <LoaderCircle size={16} className="spin" /> : null}
+                      {loadingMore ? "Carregando…" : "Carregar mais peças"} {!loadingMore && <ArrowRight size={16} />}
+                    </button>
+                    {moreError && <p className="an-field-error" role="alert">{moreError}</p>}
+                  </div>
                 )}
               </>
             ) : (
-              !error && (
-              <><div className="category-empty">
+              <>
+                <div className="an-state">
                   <PackageOpen size={38} />
-                <h3>{query ? `Não encontramos produtos para “${query}”` : "Ainda não há peças nesta seleção"}</h3>
-                <p>{query ? "Confira a escrita ou tente pesquisar com outras palavras." : "As peças aparecerão aqui quando forem publicadas por artesãs aprovadas."}</p>
-                  {(categoryId ||
-                    query ||
-                    readyOnly ||
-                    appliedMin !== null ||
-                    appliedMax !== null) && (
-                    <button type="button" onClick={clearFilters}>
-                      Ver todas as peças
-                    </button>
+                  <h2>{filters.query ? `Nada encontrado para “${filters.query}”` : "Nenhuma peça com esses filtros"}</h2>
+                  <p>{filters.query ? "Confira a escrita ou tente palavras mais gerais, como “vaso” ou “crochê”." : "Tente remover algum filtro para ver mais peças."}</p>
+                  {activeChips.length > 0 && (
+                    <div className="an-state-actions">
+                      <button type="button" className="an-btn" onClick={clearFilters}>Ver todas as peças</button>
+                    </div>
                   )}
-              </div>
-                {query && featuredFallback.length > 0 && (
-                  <section className="category-featured-fallback">
-                    <div><p className="store-eyebrow">OUTRAS DESCOBERTAS</p><h2>Produtos em destaque</h2></div>
+                </div>
+                {filters.query && featuredFallback.length > 0 && (
+                  <section className="category-featured-fallback" aria-labelledby="sugestoes-titulo">
+                    <p className="store-eyebrow">Outras descobertas</p>
+                    <h2 id="sugestoes-titulo">Peças em destaque</h2>
                     <div className="category-grid">
-                      {featuredFallback.map((product) => (
-                        <MarketplaceProductCard key={product.id} product={product}
-                          saved={favoriteIds.has(product.id)}
-                          favoritePending={pendingFavoriteIds.has(product.id)}
-                          cartPending={busyCart.has(product.id)}
-                          onFavorite={() => { void toggleFavorite(product); }}
-                          onCart={() => addToCart(product)} />
-                      ))}
+                      {featuredFallback.map((product) => <MarketplaceProductCard key={product.id} product={product} />)}
                     </div>
                   </section>
-                )}</>
-              )
+                )}
+              </>
             )}
           </section>
         </div>
       </main>
-      <CustomerFooter
-        userSignedIn={!!user}
-        authLoading={cepStatus === "loading"}
-      />
-      {authPrompt && (
-        <div
-          className="store-modal-backdrop"
-          role="presentation"
-          onMouseDown={() => setAuthPrompt(false)}
-        >
-          <div
-            className="store-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="category-auth-title"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <button
-              type="button"
-              className="store-modal-close"
-              onClick={() => setAuthPrompt(false)}
-              aria-label="Fechar"
-            >
-              <X size={20} />
-            </button>
-            <div className="store-modal-icon">
-              <Heart size={25} />
-            </div>
-            <h2 id="category-auth-title">Entre para continuar</h2>
-            <p>
-              Crie sua conta ou entre para salvar favoritos e adicionar produtos
-              ao carrinho.
-            </p>
-            <Link href="/acesso">
-              Entrar ou criar conta <ArrowRight size={18} />
-            </Link>
-          </div>
+      <CustomerFooter />
+
+      <Dialog open={filtersOpen} onClose={() => setFiltersOpen(false)} variant="drawer-left" labelledBy="filtros-mobile-titulo"
+        className="category-filter-drawer" closeLabel="Fechar filtros">
+        <header className="an-drawer-header">
+          <h2 id="filtros-mobile-titulo">Filtros</h2>
+        </header>
+        <div className="an-drawer-body">
+          <FilterPanel key={`mob-${panelKey}-${filters.min}-${filters.max}`} categories={categories} filters={filters}
+            onChange={update} onClear={clearFilters} idPrefix="mob" />
         </div>
-      )}
+        <footer className="an-drawer-footer">
+          <button type="button" className="an-btn an-btn--lg an-btn--block" onClick={() => setFiltersOpen(false)} disabled={loading}>
+            {loading ? "Atualizando…" : `Ver ${total} ${total === 1 ? "peça" : "peças"}`}
+          </button>
+        </footer>
+      </Dialog>
     </div>
   );
 }

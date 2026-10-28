@@ -1,5 +1,5 @@
 .profile-page {
-  background: #faf2eb;
+  background: var(--artenos-perola);
 }
 .profile-page-seller .profile-main { width: 100%; margin: 0; padding: 0; }
 .profile-edit-toggle { margin-top: 18px; border: 1px solid var(--artenos-terracota, #a66040); border-radius: 10px; background: transparent; color: var(--artenos-marrom); padding: 10px 15px; cursor: pointer; font-weight: 700; }
@@ -19,22 +19,22 @@
 .profile-heading h1 {
   font:
     normal clamp(36px, 4vw, 51px)/1.1 var(--font-display);
-  color: #4b3026;
+  color: var(--artenos-marrom);
   margin: 0 0 10px;
 }
 .profile-heading > p:last-child {
-  color: #b26b4f;
+  color: var(--an-argila-texto);
   font-size: 14px;
   margin: 0;
 }
 .profile-notice,
 .profile-gate {
   background: #fff;
-  border: 1px solid #edc5ad;
+  border: 1px solid var(--artenos-pessego);
   border-radius: 13px;
   padding: 50px 24px;
   text-align: center;
-  color: #b26b4f;
+  color: var(--an-argila-texto);
 }
 .profile-gate {
   display: grid;
@@ -42,12 +42,12 @@
   gap: 13px;
 }
 .profile-gate > svg {
-  color: #b26b4f;
+  color: var(--an-argila-texto);
 }
 .profile-gate h2 {
   font:
     normal 29px var(--font-display);
-  color: #4b3026;
+  color: var(--artenos-marrom);
   margin: 0;
 }
 .profile-gate p {
@@ -59,7 +59,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: #4b3026;
+  background: var(--artenos-marrom);
   color: #fff;
   padding: 12px 17px;
   border-radius: 6px;
@@ -67,8 +67,8 @@
   font-weight: 700;
 }
 .profile-summary {
-  background: linear-gradient(115deg, #edc5ad, #faf2eb);
-  border: 1px solid #edc5ad;
+  background: linear-gradient(115deg, var(--artenos-pessego), var(--artenos-perola));
+  border: 1px solid var(--artenos-pessego);
   border-radius: 15px;
   display: flex;
   align-items: center;
@@ -87,7 +87,7 @@
   width: 112px;
   height: 112px;
   border-radius: 50%;
-  background: #b26b4f;
+  background: var(--artenos-argila);
   border: 5px solid white;
   box-shadow: 0 5px 16px #4b302625;
   display: grid;
@@ -107,7 +107,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  background: #4b3026;
+  background: var(--artenos-marrom);
   color: #fff;
   border-radius: 6px;
   padding: 9px 11px;
@@ -125,7 +125,7 @@
 }
 .profile-avatar-wrap small {
   font-size: 10px;
-  color: #b26b4f;
+  color: var(--an-argila-texto);
   text-align: center;
 }
 .profile-photo-error {
@@ -143,8 +143,8 @@
   align-items: center;
   gap: 5px;
   border-radius: 40px;
-  background: #edc5ad;
-  color: #566044;
+  background: var(--artenos-pessego);
+  color: var(--an-musgo-escuro);
   padding: 6px 10px;
   font-size: 11px;
   font-weight: 700;
@@ -152,17 +152,17 @@
 .profile-summary h2 {
   font:
     normal clamp(29px, 3vw, 39px) var(--font-display);
-  color: #4b3026;
+  color: var(--artenos-marrom);
   margin: 12px 0 5px;
 }
 .profile-summary-copy p {
-  color: #4b3026;
+  color: var(--artenos-marrom);
   margin: 0 0 12px;
   overflow-wrap: anywhere;
 }
 .profile-summary-copy > span:last-child {
   font-size: 12px;
-  color: #b26b4f;
+  color: var(--an-argila-texto);
   text-transform: uppercase;
   letter-spacing: 1px;
   font-weight: 700;
@@ -174,7 +174,7 @@
 }
 .profile-card {
   background: #fff;
-  border: 1px solid #edc5ad;
+  border: 1px solid var(--artenos-pessego);
   border-radius: 12px;
   padding: 26px 29px;
   box-shadow: 0 4px 18px #4b302609;
@@ -186,14 +186,14 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   padding-bottom: 17px;
-  border-bottom: 1px solid #edc5ad;
+  border-bottom: 1px solid var(--artenos-pessego);
 }
 .profile-card-title h2 {
   font:
     normal 24px var(--font-display);
-  color: #4b3026;
+  color: var(--artenos-marrom);
   margin: 0;
 }
 .profile-card dl {
@@ -206,7 +206,7 @@
   min-width: 0;
 }
 .profile-detail dt {
-  color: #b26b4f;
+  color: var(--an-argila-texto);
   text-transform: uppercase;
   letter-spacing: 1.1px;
   font-size: 10px;
@@ -214,7 +214,7 @@
   margin-bottom: 6px;
 }
 .profile-detail dd {
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font-size: 14px;
   line-height: 1.5;
   margin: 0;
@@ -222,7 +222,7 @@
   white-space: pre-wrap;
 }
 .profile-card-help {
-  color: #b26b4f;
+  color: var(--an-argila-texto);
   font-size: 13px;
   line-height: 1.6;
   margin: 17px 0 20px;
@@ -236,27 +236,27 @@
 .profile-password-form label {
   display: grid;
   gap: 7px;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font-size: 12px;
   font-weight: 700;
 }
 .profile-password-form input {
   height: 42px;
-  border: 1px solid #edc5ad;
+  border: 1px solid var(--artenos-pessego);
   border-radius: 6px;
   padding: 9px 11px;
   background: #fff;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   min-width: 0;
 }
 .profile-password-form input:focus {
-  outline: 2px solid #b26b4f;
+  outline: 2px solid var(--artenos-argila);
   outline-offset: 1px;
 }
 .profile-password-form button {
   grid-column: 1/-1;
   justify-self: start;
-  background: #4b3026;
+  background: var(--artenos-marrom);
   color: #fff;
   border: 0;
   border-radius: 6px;
@@ -273,9 +273,9 @@
   align-items: center;
   gap: 8px;
   background: transparent;
-  border: 1px solid #b26b4f;
+  border: 1px solid var(--artenos-argila);
   border-radius: 6px;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   padding: 11px 16px;
   margin: 26px 0 0;
   font-size: 13px;
@@ -341,10 +341,10 @@
 }
 .profile-nonce button {
   background: transparent;
-  border: 1px solid #b26b4f;
+  border: 1px solid var(--artenos-argila);
   border-radius: 6px;
   padding: 11px 13px;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font-size: 12px;
   font-weight: 700;
 }

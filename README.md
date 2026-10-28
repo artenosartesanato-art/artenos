@@ -1,3 +1,6 @@
+> **Redesenho de UX/UI (2026):** diagnóstico, sistema visual, validação e
+> sandbox local estão em [`docs/redesign/`](docs/redesign/README.md).
+
 # Conectar a Artenós ao Supabase
 
 O projeto entregue não está conectado a nenhum banco. A integração fica isolada em `lib/supabase.ts`.

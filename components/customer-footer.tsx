@@ -1,47 +1,49 @@
+"use client";
+
 import Link from "next/link";
 import { BrandLogo } from "@/components/brand-logo";
+import { useMarketplace } from "@/components/marketplace-state";
+import { SoundToggle } from "@/components/sound-toggle";
 
-type CustomerFooterProps = {
-  userSignedIn: boolean;
-  authLoading?: boolean;
-};
-
-export function CustomerFooter({
-  userSignedIn,
-  authLoading = false,
-}: CustomerFooterProps) {
+/** As props antigas continuam aceitas, mas o estado vem do MarketplaceProvider. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function CustomerFooter(_props: { userSignedIn?: boolean; authLoading?: boolean } = {}) {
+  const { authReady, userId, sellerPanelAvailable } = useMarketplace();
   return (
     <footer className="store-footer">
       <div className="store-container store-footer-grid">
         <div>
-          <Link href="/" className="store-logo" aria-label="Artenós, início">
+          <Link href="/" className="store-logo" aria-label="Artenós, página inicial">
             <BrandLogo variant="perola" />
           </Link>
-          <p>Um espaço para descobrir o valor de cada história feita à mão.</p>
+          <p>Um espaço para descobrir o valor de cada história feita à mão — e de quem faz.</p>
+          <SoundToggle className="store-footer-sound" />
         </div>
         <div>
-          <h3>Explore</h3>
+          <h2>Explore</h2>
           <Link href="/">Início</Link>
           <Link href="/categorias">Categorias</Link>
+          <Link href="/lojas">Lojas e artesãs</Link>
           <Link href="/sob-encomenda">Sob encomenda</Link>
-          <Link href="/favoritos">Favoritos</Link>
         </div>
         <div>
-          <h3>Sua conta</h3>
-          {authLoading ? (
-            <span aria-live="polite">Verificando sua conta...</span>
-          ) : userSignedIn ? (
-            <Link href="/perfil">Meu perfil</Link>
+          <h2>Sua conta</h2>
+          {!authReady ? (
+            <span aria-live="polite">Verificando sua conta…</span>
+          ) : userId ? (
+            <Link href={sellerPanelAvailable ? "/vendedor" : "/perfil"}>{sellerPanelAvailable ? "Painel da loja" : "Meu perfil"}</Link>
           ) : (
             <Link href="/acesso">Entrar ou cadastrar</Link>
           )}
+          <Link href="/favoritos">Favoritos</Link>
           <Link href="/pedidos">Pedidos</Link>
           <Link href="/mensagens">Mensagens</Link>
         </div>
         <div>
-          <h3>Informações</h3>
+          <h2>Informações</h2>
           <Link href="/termos">Termos de Uso</Link>
           <Link href="/privacidade">Privacidade</Link>
+          {!userId && <Link href="/acesso">Venda na Artenós</Link>}
         </div>
       </div>
       <div className="store-container store-footer-bottom">

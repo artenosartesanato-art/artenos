@@ -118,7 +118,7 @@ export function MessagesWorkspace({
       try {
         supabase = getSupabase();
       } catch {
-        setStatus("Configure a conexão com o Supabase para acessar mensagens.");
+        setStatus("As mensagens estão temporariamente indisponíveis.");
         return;
       }
 
@@ -164,8 +164,11 @@ export function MessagesWorkspace({
       });
     }
 
-    setMessages([]);
-    void loadMessages(current.id);
+    queueMicrotask(() => {
+      if (!active) return;
+      setMessages([]);
+      void loadMessages(current.id);
+    });
 
     const channel = supabase
       .channel("chat-" + current.id)
@@ -363,7 +366,7 @@ export function MessagesWorkspace({
             </aside>
 
             <section
-              className="messages-chat"
+              className={`messages-chat${current ? "" : " is-empty"}`}
               aria-label="Conversa selecionada"
             >
               {current ? (
