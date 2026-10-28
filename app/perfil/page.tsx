@@ -41,7 +41,6 @@ type Profile = {
   created_at: string;
   avatar_path: string | null;
 };
-type CepStatus = "loading" | "guest" | "account" | "error";
 const AVATAR_BUCKET = "artenos-profile-avatars";
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 const IMAGE_EXTENSIONS: Record<string, string> = {
@@ -145,12 +144,6 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
   const [confirmPassword, setConfirmPassword] = useState("");
   const [awaitingNonce, setAwaitingNonce] = useState(false);
   const [nonce, setNonce] = useState("");
-  const [searchInput, setSearchInput] = useState("");
-  const [cep, setCep] = useState("");
-  const [cepStatus, setCepStatus] = useState<CepStatus>("loading");
-  const [cepError, setCepError] = useState("");
-  const [cepOpen, setCepOpen] = useState(false);
-  const [cepInput, setCepInput] = useState("");
   const avatarUrlRef = useRef("");
   const profileRequest = useRef(0);
 
@@ -169,16 +162,12 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
       setProfile(null);
       setProfileError("");
       setAvatarError("");
-      setCepOpen(false);
       revokeAvatar();
       if (!current) {
         setProfileLoading(false);
-        setCep(localStorage.getItem("artenos_guest_cep") || "");
-        setCepStatus("guest");
         return;
       }
       setProfileLoading(true);
-      setCepStatus("loading");
       try {
         const supabase = getSupabase();
         const { data, error } = await supabase
@@ -195,15 +184,6 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
         setNextEmail(current.email || loaded.email);
         setNextPhone(loaded.phone || "");
         setAddressForm({ cep: loaded.cep || "", address: loaded.address || "", address_number: loaded.address_number || "", city: loaded.city || "", state: loaded.state || "" });
-        const registeredCep = loaded.cep?.replace(/\D/g, "") || "";
-        if (registeredCep.length === 8) {
-          setCep(registeredCep);
-          setCepStatus("account");
-          setCepError("");
-        } else {
-          setCepStatus("error");
-          setCepError("O CEP salvo no cadastro é inválido.");
-        }
         if (loaded.avatar_path) {
           const { data: image, error: imageError } = await supabase.storage
             .from(AVATAR_BUCKET)
@@ -224,8 +204,6 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
           setProfileError(
             "Não foi possível consultar seu perfil. Confirme que o script de perfil foi executado no Supabase e tente novamente.",
           );
-          setCepStatus("error");
-          setCepError("Não foi possível consultar seu CEP no momento.");
         }
       } finally {
         if (active && request === requestCounter.current)
@@ -255,40 +233,10 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
           setProfileError(
             "Configure a conexão com o Supabase para acessar seu perfil.",
           );
-          setCepStatus("error");
         }
       });
     }
   }, []);
-
-  function submitSearch(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const query = searchInput.trim().slice(0, 100);
-    router.push(
-      query ? `/categorias?busca=${encodeURIComponent(query)}` : "/categorias",
-    );
-  }
-
-  async function saveCep(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (user) return;
-    const digits = cepInput.replace(/\D/g, "");
-    if (digits.length !== 8) {
-      toast.error("Digite um CEP com 8 números.");
-      return;
-    }
-    try {
-      const response = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
-      const address = await response.json();
-      if (!response.ok || address.erro) throw new Error();
-      localStorage.setItem("artenos_guest_cep", digits);
-      setCep(digits);
-      setCepOpen(false);
-      toast.success(`CEP de ${address.localidade}/${address.uf} selecionado.`);
-    } catch {
-      toast.error("CEP não encontrado. Confira e tente novamente.");
-    }
-  }
 
   async function uploadAvatar(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -409,8 +357,6 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
         .select("cep,address,address_number,city,state").single();
       if (error) throw error;
       setProfile((previous) => previous ? { ...previous, ...patch } : previous);
-      setCep(cep);
-      setCepStatus("account");
       setEditingAddress(false);
       notifyProfileChanged();
       toast.success("Endereço atualizado. Novas compras usarão este endereço.");
@@ -507,20 +453,7 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
 
   return (
     <div className={sellerMode ? "profile-page profile-page-seller" : "store-page profile-page"}>
-      {!sellerMode && <CustomerHeader
-        userSignedIn={!!user}
-        cep={cep}
-        cepStatus={cepStatus}
-        cepError={cepError}
-        cepOpen={cepOpen}
-        cepInput={cepInput}
-        searchInput={searchInput}
-        onSearchInput={setSearchInput}
-        onSearch={submitSearch}
-        onToggleCep={() => setCepOpen(!cepOpen)}
-        onCepInput={setCepInput}
-        onSaveCep={saveCep}
-      />}
+      {!sellerMode && <CustomerHeader />}
       <main className="store-container profile-main">
         <div className="profile-heading">
           <p className="store-eyebrow">Sua conta Artenós</p>
