@@ -1165,9 +1165,30 @@ img {
   align-items: center;
 }
 .login-row {
-  justify-content: flex-end;
-  gap: 16px;
-  margin: -6px 0 20px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: -6px 0 6px;
+}
+.remember-device {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  color: var(--an-text);
+  font-size: var(--an-fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+.remember-help {
+  margin: 0 0 20px;
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-xs);
+  line-height: 1.5;
+}
+.session-reason {
+  max-width: 520px;
+  margin: 0 auto 18px;
 }
 .link-button {
   min-height: 44px;

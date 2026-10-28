@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { authStorage } from "@/lib/session";
 
 let client: SupabaseClient | null = null;
 
@@ -17,6 +18,8 @@ export function getSupabase() {
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
+      // localStorage ("manter conectado") ou cookies de sessão; ver lib/session.ts.
+      storage: authStorage,
     },
   });
   return client;

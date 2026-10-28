@@ -73,6 +73,14 @@ Branch: `FEAT/REDESIGN-UX-UI-ARTE-NOSSA` (base `main`).
    ```
 
    ```bash
+   BASE_URL=http://localhost:3000 node tests/e2e/visitante.cjs
+   ```
+
+   ```bash
+   BASE_URL=http://localhost:3000 node tests/e2e/sessao.cjs
+   ```
+
+   ```bash
    node tests/e2e/audit.cjs http://localhost:3000 ./auditoria
    ```
 

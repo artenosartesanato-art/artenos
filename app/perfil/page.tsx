@@ -21,6 +21,8 @@ import type { CroppedAvatar } from "@/components/avatar-cropper";
 import { originalPathFor } from "@/lib/avatar-crop";
 import "../storefront.css";
 import "./profile.css";
+import { endSession, rememberDevice } from "@/lib/session";
+import { Dialog } from "@/components/ui/dialog";
 
 type Profile = {
   id: string;
@@ -152,6 +154,8 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
   const [nonce, setNonce] = useState("");
   const avatarUrlRef = useRef("");
   const [cropSource, setCropSource] = useState<{ url: string; revoke: boolean } | null>(null);
+  const [confirmEverywhere, setConfirmEverywhere] = useState(false);
+  const [endingAll, setEndingAll] = useState(false);
   const [loadingOriginal, setLoadingOriginal] = useState(false);
   const profileRequest = useRef(0);
 
@@ -457,7 +461,11 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
       setConfirmPassword("");
       setNonce("");
       setAwaitingNonce(false);
-      toast.success("Senha alterada com sucesso.");
+      // Quem sabia a senha antiga perde o acesso: encerra os outros aparelhos.
+      const othersError = await endSession("others");
+      toast.success(othersError
+        ? "Senha alterada com sucesso."
+        : "Senha alterada. Por segurança, encerramos sua sessão nos outros aparelhos.");
     } catch {
       toast.error("Não foi possível conectar agora. Confira sua internet e tente novamente.");
     } finally {
@@ -474,8 +482,20 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
     toast.info("Um novo código foi enviado.");
   }
 
+  async function signOutEverywhere() {
+    setEndingAll(true);
+    const error = await endSession("global");
+    setEndingAll(false);
+    if (error) {
+      toast.error("Não foi possível encerrar as sessões agora. Tente novamente.");
+      return;
+    }
+    setConfirmEverywhere(false);
+    router.replace("/acesso?motivo=todos");
+  }
+
   async function signOut() {
-    const { error } = await getSupabase().auth.signOut();
+    const error = await endSession("local");
     if (error) {
       toast.error("Não foi possível sair da conta agora.");
       return;
@@ -771,6 +791,38 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
                   </form>
                 </section>
               </div>
+              <section className="profile-card profile-security" aria-labelledby="seguranca-titulo">
+                <h2 id="seguranca-titulo"><ShieldCheck size={20} /> Segurança da conta</h2>
+                <dl>
+                  <div>
+                    <dt>Último acesso</dt>
+                    <dd>{user.last_sign_in_at
+                      ? new Date(user.last_sign_in_at).toLocaleString("pt-BR", { dateStyle: "long", timeStyle: "short" })
+                      : "Não informado"}</dd>
+                  </div>
+                  <div>
+                    <dt>Neste aparelho</dt>
+                    <dd>{rememberDevice()
+                      ? "Você continua conectado até sair da conta."
+                      : "A sessão termina ao fechar o navegador ou após 30 min sem uso."}</dd>
+                  </div>
+                </dl>
+                <p>Perdeu um aparelho ou entrou em um computador de outra pessoa? Encerre todas as sessões abertas.</p>
+                <button type="button" className="an-btn an-btn--secondary" onClick={() => setConfirmEverywhere(true)}>
+                  <LogOut size={16} /> Sair de todos os aparelhos
+                </button>
+              </section>
+              <Dialog open={confirmEverywhere} onClose={() => { if (!endingAll) setConfirmEverywhere(false); }}
+                labelledBy="sair-todos-titulo" describedBy="sair-todos-texto" className="profile-confirm-dialog">
+                <h2 id="sair-todos-titulo">Sair de todos os aparelhos?</h2>
+                <p id="sair-todos-texto">Todas as sessões abertas, inclusive esta, serão encerradas. Você vai precisar entrar de novo em cada aparelho.</p>
+                <div className="profile-confirm-actions">
+                  <button type="button" className="an-btn an-btn--secondary" onClick={() => setConfirmEverywhere(false)} disabled={endingAll}>Cancelar</button>
+                  <button type="button" className="an-btn" onClick={() => void signOutEverywhere()} disabled={endingAll} aria-busy={endingAll} data-autofocus>
+                    {endingAll ? "Encerrando…" : "Sair de todos"}
+                  </button>
+                </div>
+              </Dialog>
               <button
                 type="button"
                 className="profile-signout"

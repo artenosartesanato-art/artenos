@@ -1977,3 +1977,37 @@
   background: transparent !important;
   box-shadow: none !important;
 }
+
+/* Aviso de inatividade ----------------------------------------------------- */
+.session-dialog-body {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 28px 24px 24px;
+  text-align: center;
+}
+.session-dialog-icon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--artenos-pessego) 50%, #fff);
+  color: var(--artenos-marrom);
+}
+.session-dialog-body h2 {
+  margin: 6px 0 0;
+  font: 500 var(--an-fs-2xl) / 1.15 var(--font-display);
+  color: var(--artenos-marrom);
+}
+.session-dialog-body p {
+  margin: 0;
+  color: var(--an-text-muted);
+  line-height: 1.55;
+}
+.session-dialog-actions {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  margin-top: 12px;
+}

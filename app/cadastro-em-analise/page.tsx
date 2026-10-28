@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { getSupabase } from "@/lib/supabase";
 import { useMarketplace } from "@/components/marketplace-state";
 import "./pending-access.css";
+import { endSession } from "@/lib/session";
 
 type Profile = {
   account_type: "client" | "artisan";
@@ -206,12 +207,12 @@ export default function PendingArtisanAccessPage() {
   );
 
   async function signOut() {
-    const { error } = await getSupabase().auth.signOut();
+    const error = await endSession("local");
     if (error) {
       toast.error("Não foi possível sair da conta agora.");
       return;
     }
-    router.replace("/acesso");
+    router.replace("/acesso?motivo=saiu");
   }
 
   return (

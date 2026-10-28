@@ -3,6 +3,7 @@
 import {
   ChevronDown,
   Heart,
+  LogOut,
   MapPin,
   Menu,
   Search,
@@ -18,6 +19,8 @@ import { useMarketplace } from "@/components/marketplace-state";
 import { Dialog } from "@/components/ui/dialog";
 import { SoundToggle } from "@/components/sound-toggle";
 import { accessHref } from "@/lib/navigation";
+import { endSession } from "@/lib/session";
+import { toast } from "sonner";
 import { useHeaderSearch } from "@/components/header-search";
 import { NotificationBell } from "@/components/notifications";
 
@@ -269,6 +272,16 @@ export function CustomerHeader() {
               onClick={() => setMenuOpen(false)}>
               <UserRound size={18} /> {userSignedIn ? "Meu perfil" : "Entrar ou criar conta"}
             </Link>
+            {userSignedIn && (
+              <button type="button" className="an-btn an-btn--ghost an-btn--block" onClick={async () => {
+                setMenuOpen(false);
+                await endSession("local");
+                router.replace("/");
+                toast.success("Você saiu da sua conta.");
+              }}>
+                <LogOut size={18} /> Sair da conta
+              </button>
+            )}
           </div>
           <SoundToggle className="store-menu-sound" />
         </div>
