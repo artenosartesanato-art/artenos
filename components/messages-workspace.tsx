@@ -22,6 +22,7 @@ import { getSupabase } from "@/lib/supabase";
 import { getMessageSuggestions, messageTopics, type MessageTopic } from "@/lib/message-suggestions";
 import { clearProductInquiry, pendingProductInquiry, validProductId } from "@/lib/product-inquiry-intent";
 import { accessHref } from "@/lib/navigation";
+import { useNotifications } from "@/components/notifications";
 import { formatClock, formatListTime, groupChat, initials } from "@/lib/message-format";
 
 type Order = { id: string; product_name: string; created_at: string };
@@ -110,6 +111,9 @@ export function MessagesWorkspace({
   const textRef = useRef<HTMLTextAreaElement>(null);
   const suggestionsToggleRef = useRef<HTMLButtonElement>(null);
   const productEntryRef = useRef<string | null>(null);
+  const notifications = useNotifications();
+  const setActiveRef = notifications?.setActiveRef;
+  const unreadByConversation = notifications?.unreadByRef;
 
   // Mensagens que chegam depois do carregamento (enviadas ou em tempo real)
   // ganham a animação de entrada; o histórico carregado aparece sem animar.
@@ -317,6 +321,18 @@ export function MessagesWorkspace({
     };
   }, [current, addMessage]);
 
+  // Chegou mensagem em outra conversa: reordena a lista (horário e contador).
+  const unreadTotal = notifications?.unread ?? 0;
+  useEffect(() => {
+    if (user && unreadTotal > 0) queueMicrotask(() => void refreshAll(user));
+  }, [unreadTotal, user, refreshAll]);
+
+  // Conversa aberta: os avisos dela são lidos e novas mensagens tocam só um som discreto.
+  useEffect(() => {
+    if (!setActiveRef) return;
+    setActiveRef(current?.conversation_id ?? null);
+    return () => setActiveRef(null);
+  }, [current, setActiveRef]);
 
   useEffect(() => {
     // Rola só o histórico: scrollIntoView também rolava a página e deixava o
@@ -503,10 +519,11 @@ export function MessagesWorkspace({
                   <ul className="chat-rows">
                     {visibleConversations.map((conversation) => {
                       const active = current?.conversation_id === conversation.conversation_id;
+                      const unread = active ? 0 : unreadByConversation?.get(conversation.conversation_id) ?? 0;
                       return (
                         <li key={conversation.conversation_id}>
                           <button type="button" id={`conversa-${conversation.conversation_id}`}
-                            className={`chat-row${active ? " is-active" : ""}`}
+                            className={`chat-row${active ? " is-active" : ""}${unread ? " has-unread" : ""}`}
                             aria-current={active ? "true" : undefined}
                             onClick={() => openConversation(conversation)}>
                             <Avatar conversation={conversation} sellerMode={sellerMode} />
@@ -520,6 +537,12 @@ export function MessagesWorkspace({
                               <span className="chat-row-sub">
                                 <span className={`chat-kind chat-kind--${conversation.kind}`}>{KIND_LABEL[conversation.kind]}</span>
                                 <span className="chat-row-product">{conversation.product_name}</span>
+                                {unread > 0 && (
+                                  <span className="chat-unread">
+                                    {unread > 99 ? "99+" : unread}
+                                    <span className="messages-visually-hidden"> {unread === 1 ? "mensagem nova" : "mensagens novas"}</span>
+                                  </span>
+                                )}
                               </span>
                             </span>
                           </button>

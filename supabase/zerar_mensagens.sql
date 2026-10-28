@@ -4,7 +4,9 @@
 -- O que faz:
 --   * apaga todas as mensagens (public.messages);
 --   * apaga todas as conversas (public.conversations) de peça, pedido e
---     encomenda.
+--     encomenda;
+--   * apaga os avisos de mensagem do sininho (se notificacoes.sql já foi
+--     executado). Avisos de pedido, venda e encomenda são mantidos.
 --
 -- Por que não quebra nada: cada conversa é recriada sozinha quando alguém a
 -- abre de novo —
@@ -23,6 +25,13 @@ begin;
 
 delete from public.messages;
 delete from public.conversations;
+-- Avisos de mensagem apontariam para conversas que não existem mais.
+do $$
+begin
+  if to_regclass('public.notifications') is not null then
+    delete from public.notifications where kind = 'mensagem';
+  end if;
+end $$;
 
 commit;
 

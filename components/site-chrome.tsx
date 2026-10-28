@@ -4,16 +4,19 @@ import "@/app/storefront.css";
 import { CustomerFooter } from "@/components/customer-footer";
 import { CustomerHeader } from "@/components/customer-header";
 import { HeaderSearchProvider } from "@/components/header-search";
+import { NotificationsProvider } from "@/components/notifications";
 
 /** Cabeçalho e rodapé únicos para todas as páginas (vitrine, conta, painel da loja e administração). */
 export function SiteChrome({ children }: { children: React.ReactNode }) {
   return (
     <HeaderSearchProvider>
-      <div className="an-site">
-        <CustomerHeader />
-        <div className="an-site-body">{children}</div>
-        <CustomerFooter />
-      </div>
+      <NotificationsProvider>
+        <div className="an-site">
+          <CustomerHeader />
+          <div className="an-site-body">{children}</div>
+          <CustomerFooter />
+        </div>
+      </NotificationsProvider>
     </HeaderSearchProvider>
   );
 }

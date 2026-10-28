@@ -13,7 +13,7 @@ while read -r file; do
 done < ordem.txt
 psql "$DB_URL" -v ON_ERROR_STOP=1 -q -f 90_rpcs_ausentes.sql
 # Conversas por produto dependem de conversations.custom_order_request_id (criada acima).
-for file in ../../../supabase/conversas_produtos_topicos.sql ../../../supabase/contexto_conversas_produtos.sql ../../../supabase/permitir_conversas_por_produto.sql; do
+for file in ../../../supabase/conversas_produtos_topicos.sql ../../../supabase/contexto_conversas_produtos.sql ../../../supabase/permitir_conversas_por_produto.sql ../../../supabase/notificacoes.sql; do
   echo "→ $file"
   psql "$DB_URL" -v ON_ERROR_STOP=1 -q -f "$file"
 done

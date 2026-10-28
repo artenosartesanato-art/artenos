@@ -19,6 +19,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { SoundToggle } from "@/components/sound-toggle";
 import { accessHref } from "@/lib/navigation";
 import { useHeaderSearch } from "@/components/header-search";
+import { NotificationBell } from "@/components/notifications";
 
 const NAV_LINKS = [
   { href: "/categorias", label: "Categorias" },
@@ -205,6 +206,7 @@ export function CustomerHeader() {
               <span>Painel da loja</span>
             </Link>
           )}
+          {userSignedIn && <NotificationBell />}
           <Link className="store-header-link store-header-favorites" href="/favoritos" aria-label="Favoritos">
             <Heart size={21} />
           </Link>
