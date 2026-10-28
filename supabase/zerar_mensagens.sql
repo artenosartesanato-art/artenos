@@ -1,33 +1,32 @@
--- Zera o histórico de mensagens sem afetar o funcionamento do chat.
+-- Zera o chat (mensagens e conversas) sem afetar o funcionamento.
 -- Execute no SQL Editor do Supabase quando quiser recomeçar os testes.
 --
 -- O que faz:
 --   * apaga todas as mensagens (public.messages);
---   * mantém todas as conversas (de pedido, encomenda e peça), com seus
---     vínculos, para que continuem abrindo normalmente;
---   * volta a data da "última mensagem" de cada conversa para a data em que
---     ela foi criada, para a lista não mostrar atividade que não existe mais.
+--   * apaga todas as conversas (public.conversations) de peça, pedido e
+--     encomenda.
 --
--- O que NÃO faz: não apaga conversas, pedidos, encomendas, peças, contas,
--- regras (RLS), funções, gatilhos nem a configuração de tempo real.
+-- Por que não quebra nada: cada conversa é recriada sozinha quando alguém a
+-- abre de novo —
+--   * peça: pelo balão de mensagem no card/detalhe (start_product_conversation);
+--   * pedido: em Mensagens > "Compras/Vendas sem conversa" (start_conversation);
+--   * encomenda: pela página de encomendas (open_custom_order_conversation).
 --
--- Diferença para zerar_mensagens_teste.sql: aquele também apaga as conversas.
--- Este mantém as conversas, então nada precisa ser recriado depois.
+-- O que NÃO faz: não apaga pedidos, encomendas, peças, contas, regras (RLS),
+-- funções, gatilhos, a regra conversations_context_check nem a configuração
+-- de tempo real.
 --
 -- Segurança: roda numa transação. Se algo falhar (por exemplo, outra tabela
--- que dependa de mensagens), nada é apagado. Não há como desfazer depois do
+-- que dependa de conversas), nada é apagado. Não há como desfazer depois do
 -- commit; faça um backup antes se o histórico tiver valor.
 begin;
 
 delete from public.messages;
-
-update public.conversations
-set last_message_at = created_at
-where last_message_at is distinct from created_at;
+delete from public.conversations;
 
 commit;
 
--- Conferência (deve mostrar 0 mensagens e as conversas preservadas):
+-- Conferência (deve mostrar 0 e 0):
 select
   (select count(*) from public.messages) as mensagens,
   (select count(*) from public.conversations) as conversas;
