@@ -1,19 +1,19 @@
 .seller-sales {
-  color: #4b3026;
+  color: var(--artenos-marrom);
 }
 .sales-heading {
   margin-bottom: 28px;
 }
 .sales-heading h1 {
   margin: 0;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font:
     500 clamp(38px, 5vw, 54px) var(--font-display);
   letter-spacing: -1.3px;
 }
 .sales-heading p:not(.seller-eyebrow) {
   margin: 9px 0 0;
-  color: #b26b4f;
+  color: var(--an-argila-texto);
   font-size: 14px;
 }
 .sales-summary {
@@ -28,12 +28,12 @@
   align-items: center;
   gap: 12px;
   padding: 17px;
-  border: 1px solid #edc5ad;
+  border: 1px solid var(--artenos-pessego);
   border-radius: 13px;
   background: #fff;
 }
 .sales-summary svg {
-  color: #4b3026;
+  color: var(--artenos-marrom);
 }
 .sales-summary div {
   min-width: 0;
@@ -42,19 +42,19 @@
 }
 .sales-summary strong {
   overflow: hidden;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font:
     600 21px var(--font-display);
   text-overflow: ellipsis;
 }
 .sales-summary span {
   margin-top: 3px;
-  color: #b26b4f;
+  color: var(--an-argila-texto);
   font-size: 10px;
 }
 .sales-panel {
   padding: 23px;
-  border: 1px solid #edc5ad;
+  border: 1px solid var(--artenos-pessego);
   border-radius: 15px;
   background: #fff;
 }
@@ -72,16 +72,16 @@
 }
 .sales-tabs button {
   padding: 8px 11px;
-  border: 1px solid #edc5ad;
+  border: 1px solid var(--artenos-pessego);
   border-radius: 999px;
   background: #fff;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font-size: 10px;
   cursor: pointer;
 }
 .sales-tabs button.active {
-  border-color: #4b3026;
-  background: #4b3026;
+  border-color: var(--artenos-marrom);
+  background: var(--artenos-marrom);
   color: #fff;
 }
 .sales-search {
@@ -91,10 +91,10 @@
   align-items: center;
   gap: 8px;
   padding: 0 11px;
-  border: 1px solid #edc5ad;
+  border: 1px solid var(--artenos-pessego);
   border-radius: 8px;
-  background: #faf2eb;
-  color: #b26b4f;
+  background: var(--artenos-perola);
+  color: var(--an-argila-texto);
 }
 .sales-search input {
   min-width: 0;
@@ -110,7 +110,7 @@
 }
 .sale-card {
   overflow: hidden;
-  border: 1px solid #edc5ad;
+  border: 1px solid var(--artenos-pessego);
   border-radius: 12px;
   background: #fff;
 }
@@ -121,8 +121,8 @@
   justify-content: space-between;
   gap: 16px;
   padding: 12px 17px;
-  border-bottom: 1px solid #edc5ad;
-  background: #faf2eb;
+  border-bottom: 1px solid var(--artenos-pessego);
+  background: var(--artenos-perola);
 }
 .sale-card-top > div {
   display: flex;
@@ -130,30 +130,30 @@
   gap: 3px;
 }
 .sale-card-top span {
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font-size: 11px;
   font-weight: 800;
 }
 .sale-card-top time {
-  color: #b26b4f;
+  color: var(--an-argila-texto);
   font-size: 9px;
 }
 .sale-card-top > strong {
   padding: 5px 8px;
   border-radius: 999px;
-  background: #faf2eb;
-  color: #4b3026;
+  background: var(--artenos-perola);
+  color: var(--artenos-marrom);
   font-size: 9px;
 }
 .sale-card-top > strong.is-delivered {
-  background: #faf2eb;
-  color: #566044;
+  background: var(--artenos-perola);
+  color: var(--artenos-musgo);
 }
 .sale-card-top > strong.is-cancelled,
 .sale-card-top > strong.is-refunded,
 .sale-card-top > strong.is-delivery_failed {
-  background: #faf2eb;
-  color: #4b3026;
+  background: var(--artenos-perola);
+  color: var(--artenos-marrom);
 }
 .sale-card-main {
   display: grid;
@@ -169,8 +169,8 @@
   place-items: center;
   overflow: hidden;
   border-radius: 9px;
-  background: #edc5ad;
-  color: #4b3026;
+  background: var(--artenos-pessego);
+  color: var(--artenos-marrom);
 }
 .sale-image img {
   width: 100%;
@@ -178,20 +178,20 @@
   object-fit: cover;
 }
 .sale-copy small {
-  color: #b26b4f;
+  color: var(--an-argila-texto);
   font-size: 9px;
   font-weight: 800;
   text-transform: uppercase;
 }
 .sale-copy h2 {
   margin: 5px 0;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font:
     600 18px var(--font-display);
 }
 .sale-copy p {
   margin: 0;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font-size: 11px;
 }
 .sale-copy > span {
@@ -199,7 +199,7 @@
   align-items: center;
   gap: 5px;
   margin-top: 7px;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font-size: 10px;
 }
 .sale-actions {
@@ -212,23 +212,23 @@
   align-items: center;
   gap: 5px;
   padding: 9px 11px;
-  border: 1px solid #edc5ad;
+  border: 1px solid var(--artenos-pessego);
   border-radius: 7px;
   background: #fff;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font-size: 10px;
   font-weight: 750;
   cursor: pointer;
 }
 .sale-actions .sale-update {
-  border-color: #4b3026;
-  background: #4b3026;
+  border-color: var(--artenos-marrom);
+  background: var(--artenos-marrom);
   color: #fff;
 }
 .sale-details {
   padding: 20px;
-  border-top: 1px solid #edc5ad;
-  background: #faf2eb;
+  border-top: 1px solid var(--artenos-pessego);
+  background: var(--artenos-perola);
 }
 .sale-detail-grid {
   display: grid;
@@ -237,7 +237,7 @@
 }
 .sale-details h3 {
   margin: 0 0 15px;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font:
     600 17px var(--font-display);
 }
@@ -260,7 +260,7 @@
   width: 9px;
   height: 9px;
   margin-top: 3px;
-  border: 2px solid #b26b4f;
+  border: 2px solid var(--artenos-argila);
   border-radius: 50%;
   background: #fff;
 }
@@ -271,22 +271,22 @@
   top: 11px;
   bottom: 0;
   width: 1px;
-  background: #edc5ad;
+  background: var(--artenos-pessego);
 }
 .sale-details ol li.current > span {
-  border-color: #4b3026;
-  background: #4b3026;
+  border-color: var(--artenos-marrom);
+  background: var(--artenos-marrom);
 }
 .sale-details ol strong {
   font-size: 10px;
 }
 .sale-details ol p {
   margin: 3px 0;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font-size: 10px;
 }
 .sale-details ol time {
-  color: #b26b4f;
+  color: var(--an-argila-texto);
   font-size: 8px;
 }
 .sale-info dl {
@@ -300,12 +300,12 @@
   gap: 10px;
 }
 .sale-info dt {
-  color: #b26b4f;
+  color: var(--an-argila-texto);
   font-size: 9px;
 }
 .sale-info dd {
   margin: 0;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font-size: 10px;
   line-height: 1.5;
 }
@@ -315,7 +315,7 @@
   align-items: center;
   gap: 5px;
   margin-top: 4px;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font-weight: 750;
 }
 .sale-info > a {
@@ -325,21 +325,21 @@
 .sale-items {
   margin-top: 22px;
   padding-top: 18px;
-  border-top: 1px solid #edc5ad;
+  border-top: 1px solid var(--artenos-pessego);
 }
 .sale-items > div {
   display: flex;
   justify-content: space-between;
   gap: 20px;
   padding: 7px 0;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font-size: 10px;
 }
 .sale-items .sale-total {
   margin-top: 4px;
   padding-top: 12px;
-  border-top: 1px solid #edc5ad;
-  color: #4b3026;
+  border-top: 1px solid var(--artenos-pessego);
+  color: var(--artenos-marrom);
   font-size: 12px;
 }
 .sales-empty {
@@ -348,7 +348,7 @@
   align-content: center;
   justify-items: center;
   gap: 8px;
-  color: #b26b4f;
+  color: var(--an-argila-texto);
   text-align: center;
 }
 .sales-empty h2,
@@ -356,7 +356,7 @@
   margin: 0;
 }
 .sales-empty h2 {
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font:
     600 22px var(--font-display);
 }
@@ -365,9 +365,9 @@
 }
 .sales-error {
   padding: 13px;
-  border: 1px solid #edc5ad;
+  border: 1px solid var(--artenos-pessego);
   border-radius: 8px;
-  background: #faf2eb;
+  background: var(--artenos-perola);
   color: #a03f2d;
   font-size: 12px;
 }
@@ -392,7 +392,7 @@
 }
 .sales-modal h2 {
   margin: 0 0 19px;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font:
     600 27px var(--font-display);
 }
@@ -406,8 +406,8 @@
   place-items: center;
   border: 0;
   border-radius: 50%;
-  background: #faf2eb;
-  color: #4b3026;
+  background: var(--artenos-perola);
+  color: var(--artenos-marrom);
   cursor: pointer;
 }
 .sales-modal > label,
@@ -415,7 +415,7 @@
   display: grid;
   gap: 6px;
   margin-top: 12px;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font-size: 11px;
   font-weight: 700;
 }
@@ -423,11 +423,11 @@
 .sales-modal textarea,
 .sales-modal select {
   width: 100%;
-  border: 1px solid #edc5ad;
+  border: 1px solid var(--artenos-pessego);
   border-radius: 8px;
   background: #fff;
   padding: 11px;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   outline: 0;
 }
 .sales-modal textarea {
@@ -445,7 +445,7 @@
   margin-top: 19px;
   border: 0;
   border-radius: 8px;
-  background: #4b3026;
+  background: var(--artenos-marrom);
   color: #fff;
   font-weight: 750;
   cursor: pointer;

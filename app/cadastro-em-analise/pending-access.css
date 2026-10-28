@@ -1,19 +1,19 @@
 .pending-page {
   min-height: 100vh;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   background:
     radial-gradient(
       circle at 12% 0%,
       rgba(190, 122, 76, 0.14),
       transparent 31rem
     ),
-    linear-gradient(180deg, #faf2eb 0%, #faf2eb 100%);
+    linear-gradient(180deg, var(--artenos-perola) 0%, var(--artenos-perola) 100%);
 }
 
 .pending-header {
   min-height: 78px;
   padding: 0 5vw;
-  border-bottom: 1px solid #edc5ad;
+  border-bottom: 1px solid var(--artenos-pessego);
   background: rgba(255, 253, 249, 0.92);
   backdrop-filter: blur(14px);
   display: flex;
@@ -32,7 +32,7 @@
 
 .pending-brand {
   gap: 11px;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   text-decoration: none;
 }
 
@@ -40,8 +40,8 @@
   width: 39px;
   height: 39px;
   border-radius: 50%;
-  color: #faf2eb;
-  background: #4b3026;
+  color: var(--artenos-perola);
+  background: var(--artenos-marrom);
   display: grid;
   place-items: center;
 }
@@ -61,9 +61,9 @@
   min-height: 40px;
   padding: 0 15px;
   gap: 8px;
-  border: 1px solid #edc5ad;
+  border: 1px solid var(--artenos-pessego);
   border-radius: 999px;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   background: #fff;
   font: inherit;
   font-weight: 700;
@@ -97,7 +97,7 @@
   border: 0;
   border-radius: 10px;
   color: white;
-  background: #4b3026;
+  background: var(--artenos-marrom);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -126,10 +126,10 @@
   width: 66px;
   height: 66px;
   margin: 0 auto 22px;
-  border: 1px solid #edc5ad;
+  border: 1px solid var(--artenos-pessego);
   border-radius: 22px;
-  color: #4b3026;
-  background: #faf2eb;
+  color: var(--artenos-marrom);
+  background: var(--artenos-perola);
   display: grid;
   place-items: center;
   box-shadow: 0 18px 45px rgba(106, 62, 44, 0.12);
@@ -137,7 +137,7 @@
 
 .pending-eyebrow {
   margin: 0 0 10px;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.2em;
@@ -156,7 +156,7 @@
 .pending-hero > p:not(.pending-eyebrow) {
   max-width: 640px;
   margin: 20px auto 0;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font-size: 18px;
   line-height: 1.65;
 }
@@ -172,9 +172,9 @@
 .pending-status-row span {
   min-height: 34px;
   padding: 0 13px;
-  border: 1px solid #edc5ad;
+  border: 1px solid var(--artenos-pessego);
   border-radius: 999px;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   background: rgba(255, 255, 255, 0.75);
   display: flex;
   align-items: center;
@@ -186,9 +186,9 @@
 .pending-note {
   margin-bottom: 24px;
   padding: 22px 25px;
-  border: 1px solid #edc5ad;
+  border: 1px solid var(--artenos-pessego);
   border-radius: 16px;
-  background: #faf2eb;
+  background: var(--artenos-perola);
 }
 
 .pending-note h2,
@@ -202,7 +202,7 @@
 }
 
 .pending-note p {
-  color: #4b3026;
+  color: var(--artenos-marrom);
   line-height: 1.6;
 }
 
@@ -214,7 +214,7 @@
 
 .pending-card,
 .pending-timeline {
-  border: 1px solid #edc5ad;
+  border: 1px solid var(--artenos-pessego);
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.88);
   box-shadow: 0 18px 55px rgba(78, 49, 37, 0.07);
@@ -232,11 +232,11 @@
 
 .pending-card-heading > svg {
   margin-top: 4px;
-  color: #4b3026;
+  color: var(--artenos-marrom);
 }
 
 .pending-card-heading span {
-  color: #b26b4f;
+  color: var(--an-argila-texto);
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.12em;
@@ -256,14 +256,14 @@
 
 .pending-card dl > div {
   padding: 13px 0;
-  border-bottom: 1px solid #edc5ad;
+  border-bottom: 1px solid var(--artenos-pessego);
   display: grid;
   grid-template-columns: 145px 1fr;
   gap: 16px;
 }
 
 .pending-card dt {
-  color: #b26b4f;
+  color: var(--an-argila-texto);
   font-size: 13px;
 }
 
@@ -280,7 +280,7 @@
 }
 
 .pending-profile-link {
-  color: #4b3026;
+  color: var(--artenos-marrom);
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -302,21 +302,21 @@
 
 .pending-permissions svg {
   flex: 0 0 auto;
-  color: #566044;
+  color: var(--artenos-musgo);
 }
 
 .pending-restriction {
   margin: 0 0 20px;
   padding: 14px;
   border-radius: 12px;
-  color: #4b3026;
-  background: #faf2eb;
+  color: var(--artenos-marrom);
+  background: var(--artenos-perola);
   font-size: 14px;
   line-height: 1.55;
 }
 
 .pending-secondary-link {
-  color: #4b3026;
+  color: var(--artenos-marrom);
 }
 
 .pending-timeline {
@@ -349,7 +349,7 @@
   bottom: -4px;
   left: 7px;
   width: 1px;
-  background: #edc5ad;
+  background: var(--artenos-pessego);
 }
 
 .pending-timeline-dot {
@@ -358,9 +358,9 @@
   left: 1px;
   width: 13px;
   height: 13px;
-  border: 3px solid #faf2eb;
+  border: 3px solid var(--artenos-perola);
   border-radius: 50%;
-  background: #4b3026;
+  background: var(--artenos-marrom);
 }
 
 .pending-timeline strong,
@@ -370,13 +370,13 @@
 
 .pending-timeline p {
   margin: 6px 0;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   line-height: 1.5;
 }
 
 .pending-timeline time {
   margin-top: 5px;
-  color: #b26b4f;
+  color: var(--an-argila-texto);
   font-size: 12px;
 }
 
@@ -384,8 +384,8 @@
   margin: 24px 0 0;
   padding: 18px;
   border-radius: 12px;
-  color: #4b3026;
-  background: #faf2eb;
+  color: var(--artenos-marrom);
+  background: var(--artenos-perola);
 }
 
 @media (max-width: 760px) {

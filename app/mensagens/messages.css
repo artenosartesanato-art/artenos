@@ -8,7 +8,7 @@
 }
 .messages-header {
   background: #fff;
-  border-bottom: 1px solid #edc5ad;
+  border-bottom: 1px solid var(--artenos-pessego);
 }
 .messages-header-inner {
   min-height: 94px;
@@ -21,7 +21,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: #4b3026 !important;
+  color: var(--artenos-marrom) !important;
   font-size: 13px;
   font-weight: 700;
 }
@@ -35,17 +35,17 @@
 .messages-intro h1 {
   font:
     normal clamp(38px, 5vw, 60px)/1.1 var(--font-display);
-  color: #4b3026;
+  color: var(--artenos-marrom);
   margin: 0 0 10px;
 }
 .messages-intro > p:last-child {
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font-size: 15px;
   margin: 0 0 30px;
 }
 .messages-status {
   min-height: 20px;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font-size: 13px;
   margin: 0 0 18px;
 }
@@ -58,7 +58,7 @@
 .messages-sidebar,
 .messages-chat {
   background: #fff;
-  border: 1px solid #edc5ad;
+  border: 1px solid var(--artenos-pessego);
   border-radius: 12px;
   box-shadow: 0 5px 20px #4b302608;
   min-width: 0;
@@ -70,19 +70,19 @@
   padding: 21px 0 8px;
 }
 .messages-list-section + .messages-list-section {
-  border-top: 1px solid #edc5ad;
+  border-top: 1px solid var(--artenos-pessego);
 }
 .messages-list-section h2 {
   margin: 0 20px 14px;
   font-size: 14px;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 .messages-list-section h2 span {
-  background: #faf2eb;
-  color: #4b3026;
+  background: var(--artenos-perola);
+  color: var(--artenos-marrom);
   padding: 4px 8px;
   border-radius: 99px;
   font-size: 11px;
@@ -93,7 +93,7 @@
   margin: 0;
 }
 .messages-list-section li + li {
-  border-top: 1px solid #faf2eb;
+  border-top: 1px solid var(--artenos-perola);
 }
 .messages-list-section li button {
   width: 100%;
@@ -104,11 +104,11 @@
   border: 0;
   background: #fff;
   padding: 14px 18px;
-  color: #4b3026;
+  color: var(--artenos-marrom);
 }
 .messages-list-section li button:hover,
 .messages-list-section li button.is-active {
-  background: #faf2eb;
+  background: var(--artenos-perola);
 }
 .messages-list-icon,
 .messages-chat-icon {
@@ -116,8 +116,8 @@
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: #edc5ad;
-  color: #4b3026;
+  background: var(--artenos-pessego);
+  color: var(--artenos-marrom);
   display: grid;
   place-items: center;
 }
@@ -135,17 +135,17 @@
 .messages-list-copy small,
 .messages-list-copy time {
   font-size: 11px;
-  color: #b26b4f;
+  color: var(--an-argila-texto);
   line-height: 1.35;
 }
 .messages-orders .messages-list-copy small {
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font-weight: 700;
 }
 .messages-empty-list {
   font-size: 12px;
   line-height: 1.5;
-  color: #b26b4f;
+  color: var(--an-argila-texto);
   margin: 0;
   padding: 0 20px 18px;
 }
@@ -160,17 +160,17 @@
   align-items: center;
   gap: 12px;
   padding: 17px 20px;
-  border-bottom: 1px solid #edc5ad;
+  border-bottom: 1px solid var(--artenos-pessego);
 }
 .messages-chat-heading small {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: #b26b4f;
+  color: var(--an-argila-texto);
 }
 .messages-chat-heading h2 {
   font-size: 17px;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   margin: 4px 0 0;
 }
 .messages-thread {
@@ -181,51 +181,51 @@
   max-height: 560px;
   overflow-y: auto;
   padding: 22px;
-  background: #faf2eb;
+  background: var(--artenos-perola);
 }
 .messages-bubble {
   align-self: flex-start;
   max-width: min(75%, 520px);
   background: #fff;
-  border: 1px solid #edc5ad;
+  border: 1px solid var(--artenos-pessego);
   border-radius: 12px 12px 12px 3px;
   padding: 11px 14px;
   overflow-wrap: anywhere;
 }
 .messages-bubble.is-own {
   align-self: flex-end;
-  background: #edc5ad;
-  border-color: #edc5ad;
+  background: var(--artenos-pessego);
+  border-color: var(--artenos-pessego);
   border-radius: 12px 12px 3px 12px;
 }
 .messages-bubble span {
   font-size: 11px;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   font-weight: 700;
 }
 .messages-bubble p {
   font-size: 13px;
   line-height: 1.5;
   margin: 6px 0;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   white-space: pre-wrap;
 }
 .messages-bubble time {
   font-size: 10px;
-  color: #b26b4f;
+  color: var(--an-argila-texto);
 }
 .messages-compose {
   display: flex;
   gap: 10px;
   padding: 16px;
-  border-top: 1px solid #edc5ad;
+  border-top: 1px solid var(--artenos-pessego);
 }
 .messages-compose input {
-  border: 1px solid #edc5ad;
+  border: 1px solid var(--artenos-pessego);
   border-radius: 7px;
   padding: 12px 13px;
   background: #fff;
-  color: #4b3026;
+  color: var(--artenos-marrom);
   outline: none;
 }
 .messages-compose input {
@@ -233,14 +233,14 @@
   min-width: 0;
 }
 .messages-compose input:focus {
-  border-color: #b26b4f;
+  border-color: var(--artenos-argila);
   box-shadow: 0 0 0 3px #b26b4f20;
 }
 .messages-compose button,
 .messages-signin a {
   border: 0;
   border-radius: 7px;
-  background: #4b3026;
+  background: var(--artenos-marrom);
   color: #fff !important;
   display: inline-flex;
   align-items: center;
@@ -252,7 +252,7 @@
 }
 .messages-compose button:hover,
 .messages-signin a:hover {
-  background: #4b3026;
+  background: var(--artenos-marrom);
 }
 .messages-placeholder,
 .messages-empty-chat,
@@ -262,7 +262,7 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  color: #b26b4f;
+  color: var(--an-argila-texto);
 }
 .messages-placeholder {
   flex: 1;
@@ -272,7 +272,7 @@
 .messages-signin h2 {
   font:
     normal 26px var(--font-display);
-  color: #4b3026;
+  color: var(--artenos-marrom);
   margin: 14px 0 7px;
 }
 .messages-placeholder p,
@@ -280,7 +280,7 @@
 .messages-signin p {
   font-size: 13px;
   line-height: 1.6;
-  color: #b26b4f;
+  color: var(--an-argila-texto);
   max-width: 340px;
   margin: 0;
 }
@@ -291,7 +291,7 @@
 }
 .messages-signin {
   background: #fff;
-  border: 1px solid #edc5ad;
+  border: 1px solid var(--artenos-pessego);
   border-radius: 12px;
   min-height: 330px;
   padding: 30px;
