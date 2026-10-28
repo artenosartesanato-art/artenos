@@ -171,9 +171,7 @@ export function CustomerHeader() {
   const profileHref = sellerPanelAvailable ? "/vendedor/perfil" : "/perfil";
   const accountHref = userSignedIn ? profileHref : accessHref(pathname);
   const accountLabel = authReady ? (userSignedIn ? displayName || "Minha conta" : "Entrar") : "Minha conta";
-  const cartLabel = userSignedIn
-    ? `Carrinho, ${cartCount} ${cartCount === 1 ? "unidade" : "unidades"}`
-    : "Carrinho (entre para ver)";
+  const cartLabel = `Carrinho, ${cartCount} ${cartCount === 1 ? "unidade" : "unidades"}`;
 
   const searchForm = (id: string) => (
     <form className="store-search" role="search" onSubmit={submit}>
@@ -219,9 +217,9 @@ export function CustomerHeader() {
             <span className="store-account-name">{accountLabel}</span>
           </Link>
           <Link className={`store-header-link store-cart-link${pulsing ? " is-pulsing" : ""}`}
-            href={userSignedIn ? "/carrinho" : accessHref("/carrinho")} aria-label={cartLabel}>
+            href="/carrinho" aria-label={cartLabel}>
             <ShoppingBag size={21} />
-            {userSignedIn && cartCount > 0 && (
+            {cartCount > 0 && (
               <span className="store-cart-count" aria-hidden="true">{cartCount > 99 ? "99+" : cartCount}</span>
             )}
           </Link>
@@ -255,7 +253,7 @@ export function CustomerHeader() {
                   </Link>
                 </li>
               ))}
-              <li><Link href="/carrinho" onClick={() => setMenuOpen(false)}>Carrinho{userSignedIn && cartCount > 0 ? ` (${cartCount})` : ""}</Link></li>
+              <li><Link href="/carrinho" onClick={() => setMenuOpen(false)}>Carrinho{cartCount > 0 ? ` (${cartCount})` : ""}</Link></li>
             </ul>
           </nav>
           <div className="store-menu-section">

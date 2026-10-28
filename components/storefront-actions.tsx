@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { ArrowRight, Heart, ShoppingBag, Sparkles, Truck, X } from "@/components/icons";
+import { ArrowRight, Heart, ShoppingBag, Sparkles, Truck, UserRound, X } from "@/components/icons";
 import { Dialog } from "@/components/ui/dialog";
 import { SoundToggle } from "@/components/sound-toggle";
 import { addProductToCart } from "@/lib/cart";
 import { playUiSound } from "@/lib/ui-sound";
 import { accessHref, currentPath } from "@/lib/navigation";
-import { rememberFavoriteIntent, useMarketplace } from "@/components/marketplace-state";
+import { useMarketplace } from "@/components/marketplace-state";
 import { confirmFavoriteRemoved, confirmFavoriteSaved } from "@/components/marketplace-feedback";
 import { OptimizedImage } from "@/components/optimized-image";
 
@@ -40,7 +40,7 @@ const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL
 export function StorefrontActionsProvider({ children }: { children: ReactNode }) {
   const {
     authReady, userId, cartCount, cartSubtotalCents, refreshCart, pulseCart,
-    toggleFavorite: saveFavorite,
+    toggleFavorite: saveFavorite, addGuestToCart,
   } = useMarketplace();
   const pending = useRef(new Set<string>());
   const [pendingCartIds, setPendingCartIds] = useState<ReadonlySet<string>>(new Set());
@@ -56,8 +56,19 @@ export function StorefrontActionsProvider({ children }: { children: ReactNode })
       return false;
     }
     if (!userId) {
-      setAuthReason("cart");
-      return false;
+      // Visitante: carrinho na memória desta aba (some ao recarregar).
+      try {
+        addGuestToCart(product, quantity);
+        setAdded({ product, quantity });
+        setDrawerOpen(true);
+        pulseCart();
+        playUiSound("added");
+        return true;
+      } catch (error) {
+        playUiSound("error");
+        toast.error(error instanceof Error ? error.message : "Não foi possível adicionar este produto ao carrinho.");
+        return false;
+      }
     }
     if (pending.current.has(product.id)) return false;
     pending.current.add(product.id);
@@ -78,22 +89,18 @@ export function StorefrontActionsProvider({ children }: { children: ReactNode })
       pending.current.delete(product.id);
       setPendingCartIds(new Set(pending.current));
     }
-  }, [authReady, userId, refreshCart, pulseCart]);
+  }, [authReady, userId, refreshCart, pulseCart, addGuestToCart]);
 
   const toggleFavorite = useCallback(async (product: ActionProduct) => {
-    if (!userId) {
-      rememberFavoriteIntent(product.id, product.name);
-      setAuthReason("favorite");
-      return;
-    }
     try {
-      const saved = await saveFavorite(product.id);
+      // Visitante: favorito na memória desta aba, levado para a conta ao entrar.
+      const saved = await saveFavorite(product.id, product);
       if (saved) confirmFavoriteSaved(product.name);
       else confirmFavoriteRemoved(product.name);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível atualizar seus favoritos.");
     }
-  }, [saveFavorite, userId]);
+  }, [saveFavorite]);
 
   const value = useMemo(() => ({ addToCart, toggleFavorite, requireAuth, pendingCartIds }),
     [addToCart, toggleFavorite, requireAuth, pendingCartIds]);
@@ -149,6 +156,15 @@ export function StorefrontActionsProvider({ children }: { children: ReactNode })
             <Truck size={17} />
             <span>O frete e o prazo de cada loja são calculados no carrinho, com o seu CEP.</span>
           </p>
+          {!userId && (
+            <p className="cart-drawer-note cart-drawer-guest">
+              <UserRound size={17} />
+              <span>
+                Você está sem login: o carrinho fica só nesta aba e some se a página for recarregada.{" "}
+                <Link href={accessHref(currentPath())} onClick={() => setDrawerOpen(false)}>Entre</Link> para guardar na sua conta.
+              </span>
+            </p>
+          )}
         </div>
         <footer className="an-drawer-footer">
           <Link className="an-btn an-btn--lg an-btn--block" href="/carrinho" onClick={() => setDrawerOpen(false)} data-autofocus>

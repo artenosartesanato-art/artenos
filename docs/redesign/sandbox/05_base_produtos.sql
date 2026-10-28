@@ -10,6 +10,11 @@ create table if not exists public.products (
 );
 alter table public.products enable row level security;
 create policy "Artisan reads own products" on public.products for select to authenticated using (auth.uid() = artisan_id);
+-- Inferido: a policy de insert de storefront_favorites (supabase/vitrine_cliente.sql)
+-- confere a peça com EXISTS em products; isso só funciona se quem compra
+-- consegue ler peças ativas de lojas públicas.
+create policy "Public reads active products" on public.products for select to anon, authenticated
+  using (active and public.is_public_artisan(artisan_id));
 create table if not exists public.cart_items (
   id uuid primary key default gen_random_uuid(),
   client_id uuid not null references public.profiles(id) on delete cascade,

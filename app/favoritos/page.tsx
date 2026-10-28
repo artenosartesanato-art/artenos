@@ -13,7 +13,7 @@ import "./favorites.css";
 type FavoriteProduct = MarketplaceProduct & { favorite_created_at: string; total_count: number };
 
 export default function FavoritesPage() {
-  const { authReady, userId, favoriteIds, favoritesReady } = useMarketplace();
+  const { authReady, userId, favoriteIds, favoritesReady, guestFavorites } = useMarketplace();
   const [products, setProducts] = useState<FavoriteProduct[]>([]);
   const [filter, setFilter] = useState("");
   const [loading, setLoading] = useState(true);
@@ -45,13 +45,15 @@ export default function FavoritesPage() {
   // Um favorito removido pelo coração sai da lista na hora (depois que os
   // favoritos da conta já foram lidos pelo provedor global).
   const isSaved = (id: string) => !favoritesReady || favoriteIds.has(id);
+  // Visitante: favoritos guardados só nesta aba.
+  const source = userId ? products : (guestFavorites as unknown as FavoriteProduct[]);
   const visible = useMemo(() => {
     const term = filter.trim().toLocaleLowerCase("pt-BR");
-    return products.filter((product) => isSaved(product.id) && (!term ||
+    return source.filter((product) => isSaved(product.id) && (!term ||
       [product.name, product.shop_name, product.category_name].some((value) => value?.toLocaleLowerCase("pt-BR").includes(term))));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [products, favoriteIds, favoritesReady, filter]);
-  const savedCount = products.filter((product) => isSaved(product.id)).length;
+  }, [source, favoriteIds, favoritesReady, filter]);
+  const savedCount = source.filter((product) => isSaved(product.id)).length;
 
   return (
     <div className="store-page favorites-page">
@@ -67,16 +69,6 @@ export default function FavoritesPage() {
 
         {!authReady || (userId && loading) ? (
           <ProductGridSkeleton count={4} className="favorites-grid" />
-        ) : !userId ? (
-          <section className="an-state">
-            <Heart size={34} />
-            <h2>Entre para ver seus favoritos</h2>
-            <p>Ao entrar, as peças marcadas com o coração ficam salvas na sua conta, em qualquer aparelho.</p>
-            <div className="an-state-actions">
-              <Link className="an-btn" href={accessHref("/favoritos")}>Entrar ou criar conta <ArrowRight size={16} /></Link>
-              <Link className="an-btn an-btn--secondary" href="/categorias">Explorar peças</Link>
-            </div>
-          </section>
         ) : error ? (
           <section className="an-state" role="alert">
             <PackageOpen size={34} />
@@ -97,6 +89,15 @@ export default function FavoritesPage() {
           </section>
         ) : (
           <>
+            {!userId && (
+              <div className="an-alert an-alert--info favorites-guest" role="note">
+                <Heart size={18} />
+                <span>
+                  <strong>Você está sem login.</strong> Estes favoritos ficam só nesta aba e somem se a página for recarregada.{" "}
+                  <Link href={accessHref("/favoritos")}>Entre</Link> para guardá-los na sua conta.
+                </span>
+              </div>
+            )}
             <div className="favorites-toolbar">
               <p aria-live="polite"><strong>{savedCount}</strong> {savedCount === 1 ? "peça salva" : "peças salvas"}</p>
               <label className="favorites-filter">
