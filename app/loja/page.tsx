@@ -88,7 +88,7 @@ function PublicStoreContent() {
             <span className="an-skeleton public-shop-cover-skeleton" />
             <span className="an-skeleton" style={{ height: 34, width: "40%", marginTop: 24 }} />
             <span className="an-skeleton" style={{ height: 16, width: "25%", marginTop: 12 }} />
-            <ProductGridSkeleton count={5} />
+            <ProductGridSkeleton count={4} />
           </div>
         ) : error || !store ? (
           <section className="store-container">

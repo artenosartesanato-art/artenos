@@ -77,6 +77,9 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
   const { favoriteIds, pendingFavoriteIds } = useMarketplace();
   const { addToCart, toggleFavorite, pendingCartIds } = useStorefrontActions();
   const [open, setOpen] = useState(false);
+  // O diálogo só entra na árvore depois da primeira abertura: uma grade com
+  // dezenas de cards não precisa de dezenas de diálogos ociosos.
+  const [everOpened, setEverOpened] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [zoomed, setZoomed] = useState(false);
   const [shipping, setShipping] = useState<ShippingDetails | null>(null);
@@ -112,6 +115,7 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
     setShippingLoading(true);
     setQuantity(1);
     setZoomed(false);
+    setEverOpened(true);
     setOpen(true);
   }
 
@@ -140,7 +144,7 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
         Conheça a peça
       </button>
     )}
-    <Dialog open={open} onClose={() => setOpen(false)} labelledBy={titleId} className="an-dialog--wide product-details-modal"
+    {everOpened && <Dialog open={open} onClose={() => setOpen(false)} labelledBy={titleId} className="an-dialog--wide product-details-modal"
       closeLabel="Fechar detalhes da peça">
       <div className={`product-details-image${zoomed ? " is-zoomed" : ""}`}>
         {product.image_url ? (
@@ -249,6 +253,6 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
           </Link>
         )}
       </div>
-    </Dialog>
+    </Dialog>}
   </>;
 }

@@ -710,6 +710,13 @@ img {
   transition-delay: var(--an-reveal-delay, 0ms);
 }
 
+@media print {
+  .an-reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
 @keyframes an-pop {
   0% { transform: scale(1); }
   40% { transform: scale(1.28); }

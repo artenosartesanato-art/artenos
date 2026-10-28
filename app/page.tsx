@@ -47,12 +47,12 @@ function ProductSection({ id, eyebrow, title, products, loading, href = "/catego
           <p className="store-eyebrow">{eyebrow}</p>
           <h2 id={headingId}>{title}</h2>
         </div>
-        <Link href={href} className="store-see-all">
+        <Link href={href} prefetch={false} className="store-see-all">
           {hrefLabel} <ArrowRight size={16} />
         </Link>
       </div>
       {loading ? (
-        <ProductGridSkeleton count={5} />
+        <ProductGridSkeleton count={4} />
       ) : products.length ? (
         <div className="store-products">
           {products.map((product, index) => (
@@ -91,9 +91,9 @@ export default function StorefrontPage() {
         supabase.from("storefront_collections").select("id,title,description,image_url").order("sort_order"),
         supabase.from("storefront_banners").select("id,title,subtitle,image_url,collection_id").order("sort_order"),
         supabase.rpc("list_storefront_shops", { p_limit: 8 }),
-        supabase.rpc("search_storefront_products", { p_section: "featured", p_limit: 10 }),
-        supabase.rpc("search_storefront_products", { p_section: "ready", p_limit: 10 }),
-        supabase.rpc("search_storefront_products", { p_section: "new", p_limit: 10 }),
+        supabase.rpc("search_storefront_products", { p_section: "featured", p_limit: 8 }),
+        supabase.rpc("search_storefront_products", { p_section: "ready", p_limit: 8 }),
+        supabase.rpc("search_storefront_products", { p_section: "new", p_limit: 8 }),
       ])
         .then((responses) => {
           if (!active) return;
@@ -197,7 +197,7 @@ export default function StorefrontPage() {
                 heroImages.map((url, index) => (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img key={url + index} src={url} alt="" className={`store-hero-photo photo-${index + 1}`}
-                    fetchPriority={index === 0 ? "high" : "auto"} loading="eager" width={600} height={750} />
+                    fetchPriority={index === 0 ? "high" : "low"} loading={index === 0 ? "eager" : "lazy"} width={600} height={750} />
                 ))
               ) : (
                 <div className="store-hero-art-fallback">
@@ -240,7 +240,7 @@ export default function StorefrontPage() {
                 </div>
                 <button type="button" className="store-see-all" onClick={() => setCollection(null)}>Fechar coleção</button>
               </div>
-              {collectionLoading ? <ProductGridSkeleton count={5} /> : collectionProducts.length ? (
+              {collectionLoading ? <ProductGridSkeleton count={4} /> : collectionProducts.length ? (
                 <div className="store-products">
                   {collectionProducts.map((product) => <MarketplaceProductCard key={product.id} product={product} />)}
                 </div>
@@ -263,7 +263,7 @@ export default function StorefrontPage() {
           ) : categories.length ? (
             <div className="store-categories">
               {categories.map((category) => (
-                <Link key={category.id} href={`/categorias?categoria=${encodeURIComponent(category.id)}`}>
+                <Link key={category.id} prefetch={false} href={`/categorias?categoria=${encodeURIComponent(category.id)}`}>
                   {category.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={category.image_url} alt="" loading="lazy" width={240} height={240} />
@@ -328,7 +328,7 @@ export default function StorefrontPage() {
           ) : shops.length ? (
             <div className="store-shops">
               {shops.map((shop) => (
-                <Link href={`/loja?id=${encodeURIComponent(shop.id)}`} key={shop.id}>
+                <Link prefetch={false} href={`/loja?id=${encodeURIComponent(shop.id)}`} key={shop.id}>
                   <span className="store-shop-symbol" aria-hidden="true">{initials(shop.store_name)}</span>
                   <small>{shop.specialty || "Artesanato autoral"}</small>
                   <h3>{shop.store_name}</h3>
@@ -351,7 +351,7 @@ export default function StorefrontPage() {
             <h2 id="como-titulo">Seu trabalho merece uma vitrine à altura.</h2>
             <p>Abra sua loja na Artenós: a equipe analisa cada cadastro e você publica peças prontas e opções sob encomenda.</p>
           </div>
-          <Link className="an-btn an-btn--lg" href="/acesso?aba=artesa">Quero vender na Artenós <ArrowRight size={18} /></Link>
+          <Link className="an-btn an-btn--lg" prefetch={false} href="/acesso?aba=artesa">Quero vender na Artenós <ArrowRight size={18} /></Link>
         </section>
 
         <ProductSection eyebrow="Sempre algo novo" title="Chegaram agora" products={latest} loading={loading}

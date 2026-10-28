@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
 import { confirmFavoriteSaved } from "@/components/marketplace-feedback";
@@ -296,9 +296,16 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
   }, []);
   const pulseCart = useCallback(() => setCartPulse((value) => value + 1), []);
 
-  return <MarketplaceContext.Provider value={{ authReady, userId, displayName, avatarUrl,
+  // Valor memoizado: sem isso, qualquer render do provedor re-renderizava
+  // todos os cards e cabeçalhos que consomem o contexto.
+  const value = useMemo(() => ({ authReady, userId, displayName, avatarUrl,
     sellerPanelAvailable, accountType, cartCount, cartSubtotalCents, cartPulse, cep, cepStatus, cepError, setGuestCep,
-    favoriteIds, favoritesReady, pendingFavoriteIds, refreshCart, pulseCart, refreshFavorites, toggleFavorite }}>
+    favoriteIds, favoritesReady, pendingFavoriteIds, refreshCart, pulseCart, refreshFavorites, toggleFavorite }),
+  [authReady, userId, displayName, avatarUrl, sellerPanelAvailable, accountType, cartCount, cartSubtotalCents, cartPulse,
+    cep, cepStatus, cepError, setGuestCep, favoriteIds, favoritesReady, pendingFavoriteIds, refreshCart, pulseCart,
+    refreshFavorites, toggleFavorite]);
+
+  return <MarketplaceContext.Provider value={value}>
     {children}
   </MarketplaceContext.Provider>;
 }

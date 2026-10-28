@@ -35,6 +35,9 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <head>
+        {process.env.NEXT_PUBLIC_SUPABASE_URL && (
+          <link rel="preconnect" href={new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).origin} crossOrigin="anonymous" />
+        )}
         <link rel="preload" href="/fonts/Figtree-Variable.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
         <link rel="preload" href="/fonts/CormorantGaramond-Variable.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
       </head>

@@ -76,7 +76,7 @@ export default function ShopsPage() {
         ) : visible.length ? (
           <section className="shops-grid" aria-label="Lojas">
             {visible.map((shop) => (
-              <Link href={`/loja?id=${encodeURIComponent(shop.id)}`} key={shop.id}>
+              <Link prefetch={false} href={`/loja?id=${encodeURIComponent(shop.id)}`} key={shop.id}>
                 <span className="shops-symbol" aria-hidden="true">{initials(shop.store_name)}</span>
                 <small>{shop.specialty || "Artesanato autoral"}</small>
                 <h2>{shop.store_name}</h2>

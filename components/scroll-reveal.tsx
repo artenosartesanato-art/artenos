@@ -46,25 +46,44 @@ export function ScrollReveal() {
       batchTimer = window.setTimeout(() => { batch = 0; }, 120);
     }, { threshold: 0.06, rootMargin: "0px 0px -6% 0px" });
 
-    function register(root: Element) {
-      const elements = root.matches(targets) ? [root, ...root.querySelectorAll(targets)] : root.querySelectorAll(targets);
-      const fold = window.innerHeight;
-      for (const element of elements) {
-        if (registered.has(element)) continue;
-        registered.add(element);
-        // O que já está visível nunca é escondido.
-        if (element.getBoundingClientRect().top < fold * 0.92) continue;
+    // Primeiro todas as leituras de posição, depois todas as escritas de
+    // classe: intercalar as duas forçava um layout por elemento.
+    function register(roots: Element[]) {
+      const fresh: Element[] = [];
+      for (const root of roots) {
+        const elements = root.matches(targets) ? [root, ...root.querySelectorAll(targets)] : root.querySelectorAll(targets);
+        for (const element of elements) {
+          if (registered.has(element)) continue;
+          registered.add(element);
+          fresh.push(element);
+        }
+      }
+      if (!fresh.length) return;
+      const fold = window.innerHeight * 0.92;
+      // O que já está visível nunca é escondido.
+      const below = fresh.filter((element) => element.getBoundingClientRect().top >= fold);
+      for (const element of below) {
         element.classList.add("an-reveal");
         observer.observe(element);
       }
     }
 
-    register(document.body);
+    register([document.body]);
+    let pending: Element[] = [];
+    let frame = 0;
     const mutations = new MutationObserver((records) => {
       for (const record of records) {
         for (const node of record.addedNodes) {
-          if (node instanceof Element) register(node);
+          if (node instanceof Element) pending.push(node);
         }
+      }
+      if (!frame && pending.length) {
+        frame = requestAnimationFrame(() => {
+          frame = 0;
+          const roots = pending.filter((node) => node.isConnected);
+          pending = [];
+          register(roots);
+        });
       }
     });
     mutations.observe(document.body, { childList: true, subtree: true });
@@ -78,6 +97,7 @@ export function ScrollReveal() {
     return () => {
       observer.disconnect();
       mutations.disconnect();
+      cancelAnimationFrame(frame);
       window.clearTimeout(batchTimer);
       preference.removeEventListener("change", stopMotion);
       document.querySelectorAll(".an-reveal").forEach((element) => element.classList.remove("an-reveal", "is-revealed"));

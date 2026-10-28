@@ -61,6 +61,7 @@ export function MarketplaceProductCard({ product, shopName, cartDisabled = false
               {product.image_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={product.image_url} alt="" loading={priority ? "eager" : "lazy"} decoding="async"
+                  fetchPriority={priority ? "high" : "auto"}
                   width={480} height={600} />
               ) : (
                 <span className="store-no-image">

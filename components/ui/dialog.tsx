@@ -95,10 +95,13 @@ export function Dialog({
       }, 16);
       return () => { window.clearTimeout(mount); window.clearTimeout(timer); cancelAnimationFrame(frame); };
     }
+    if (!mounted) return; // nunca aberto: nada a desmontar
     const hide = window.setTimeout(() => setVisible(false), 0);
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const unmount = window.setTimeout(() => setMounted(false), reduced ? 0 : EXIT_MS);
     return () => { window.clearTimeout(hide); window.clearTimeout(unmount); };
+    // `mounted` fica fora das dependências de propósito: o efeito reage só a `open`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   // Fundo inerte, rolagem bloqueada e foco inicial enquanto estiver montado.
