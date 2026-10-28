@@ -19,6 +19,9 @@ esta branch em build de produção na porta 3002; mesmo banco e mesmos dados.
 | `audit.cjs` após o enquadramento da foto e a correção dos diálogos no celular (390 e 1440 px) | — | **0** ocorrências axe, **0** overflow em 74 combinações; console só com o 404 esperado e o frete do sandbox |
 | `audit.cjs` após desempenho, visitante e sessão (390 e 1440 px) | — | **0** ocorrências axe, **0** overflow em 74 combinações; console só com o 404 esperado |
 | `audit.cjs` com movimento reduzido (todo conteúdo visível) | — | **0** ocorrências / 74 combinações (390 e 1440 px) |
+| `audit.cjs` após orçamento, chips, lojas na busca, filtro por UF, "Como funciona" e alinhamento do cadastro (390 e 1440 px, movimento reduzido) | — | **0** ocorrências axe, **0** overflow em 76 combinações; console só com o 404 esperado e o frete do sandbox (Edge Function ausente) |
+| Alinhamento do cadastro (cliente e vendedor, 1440 px): topo e altura de cada campo comparados por linha da grade | — | **0** linhas desalinhadas (CPF × Telefone, Senha × Confirme, CEP × UF…) |
+| Categorias da home no celular (390 px) | — | 9 blocos em grade 3×3, "Ver todas as categorias (15)" mostra os 15; sem rolagem lateral |
 | `tests/e2e/journey.cjs` (390 e 1440 px) | — | ok |
 | `tests/e2e/auth.cjs` | — | ok (inclui cadastro real no Supabase local) |
 | `tests/e2e/interacoes.cjs` | — | ok |
@@ -154,5 +157,10 @@ O que piorou e por quê:
   no sandbox local.
 - Imagens de produto do sandbox são ilustrações geradas localmente; os hosts
   de fotos externos estavam bloqueados no ambiente.
+- Fotos reais das categorias: não incluídas. As APIs de imagens livres
+  (Wikimedia Commons/Wikipédia) responderam 429 (limite de requisições)
+  para o IP deste ambiente e o Openverse não respondeu; nenhuma imagem foi
+  baixada contornando bloqueios. As categorias sem foto continuam com o
+  ícone.
 - Nenhuma compra real, e-mail real ou alteração em dados de produção foi
   feita.

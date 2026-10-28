@@ -4,7 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, LoaderCircle, PackageOpen, RefreshCw, SlidersHorizontal, X } from "@/components/icons";
 import { useHeaderSearchControl } from "@/components/header-search";
 import { Dialog } from "@/components/ui/dialog";
+import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
+import { BUDGETS } from "@/lib/budgets";
 import { MarketplaceProductCard, ProductGridSkeleton, type MarketplaceProduct } from "@/components/marketplace-product-card";
 import "@/app/storefront.css";
 import "@/app/categorias/categories.css";
@@ -23,6 +25,9 @@ type Filters = {
   sort: Sort;
 };
 export const PAGE_SIZE = 12;
+type ShopMatch = { id: string; store_name: string; specialty: string | null; city: string | null; state: string | null };
+const MOBILE_CHIPS = 6;
+const fold = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
 const SORTS: Record<Sort, string> = { newest: "Mais recentes", price_asc: "Menor preço", price_desc: "Maior preço" };
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 const emptyFilters: Filters = { query: "", categoryId: null, min: null, max: null, readyOnly: false, sort: "newest" };
@@ -159,6 +164,8 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
   const [attempt, setAttempt] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [panelKey, setPanelKey] = useState(0);
+  const [allChips, setAllChips] = useState(false);
+  const [shops, setShops] = useState<ShopMatch[] | null>(null);
   const productRequest = useRef(0);
   const resultsHeading = useRef<HTMLHeadingElement>(null);
   // A busca do cabeçalho único filtra esta página sem recarregar.
@@ -232,6 +239,22 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
       .finally(() => { if (request === productRequest.current) setLoading(false); });
   }, [filters, ready, attempt]);
 
+  // Busca também por lojas (nome, técnica ou cidade): lista pública, buscada uma vez.
+  useEffect(() => {
+    if (!filters.query || shops !== null) return;
+    let active = true;
+    void Promise.resolve(getSupabase().rpc("list_storefront_shops", { p_limit: 100 }))
+      .then(({ data }) => { if (active) setShops((data || []) as ShopMatch[]); })
+      .catch(() => { if (active) setShops([]); });
+    return () => { active = false; };
+  }, [filters.query, shops]);
+  const matchingShops = useMemo(() => {
+    if (!filters.query || !shops) return [];
+    const term = fold(filters.query);
+    return shops.filter((shop) => [shop.store_name, shop.specialty, shop.city, shop.state]
+      .some((value) => value && fold(value).includes(term))).slice(0, 6);
+  }, [filters.query, shops]);
+
   function update(patch: Partial<Filters>) {
     setFilters((current) => ({ ...current, ...patch }));
   }
@@ -291,16 +314,36 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
           <p>Peças publicadas por lojas aprovadas na Artenós. Use os filtros para encontrar pronta entrega, faixas de preço e técnicas.</p>
         </header>
 
-        <nav className="category-chips" aria-label="Categorias">
+        <nav className={`category-chips${allChips ? " is-expanded" : ""}`} aria-label="Categorias" id="chips-categorias">
           <button type="button" aria-pressed={!filters.categoryId} onClick={() => update({ categoryId: null })}>Todas</button>
-          {categories.map((category) => (
+          {categories.map((category, index) => (
             <button type="button" key={category.id} aria-pressed={filters.categoryId === category.id}
+              className={index >= MOBILE_CHIPS - 1 && filters.categoryId !== category.id ? "is-extra" : undefined}
               onClick={() => update({ categoryId: category.id })}>
               {category.name}
               <small aria-hidden="true">{category.product_count}</small>
             </button>
           ))}
+          {categories.length >= MOBILE_CHIPS && (
+            <button type="button" className="category-chips-more" aria-expanded={allChips} aria-controls="chips-categorias"
+              onClick={() => setAllChips((value) => !value)}>
+              {allChips ? "Menos categorias" : `+ ${categories.length - MOBILE_CHIPS + 1} categorias`}
+            </button>
+          )}
         </nav>
+
+        <div className="category-budgets" role="group" aria-label="Orçamento">
+          <span aria-hidden="true">Orçamento</span>
+          {BUDGETS.map((budget) => {
+            const active = filters.min === budget.min && filters.max === budget.max;
+            return (
+              <button type="button" key={budget.key} aria-pressed={active}
+                onClick={() => { setPanelKey((value) => value + 1); update(active ? { min: null, max: null } : { min: budget.min, max: budget.max }); }}>
+                {budget.label}
+              </button>
+            );
+          })}
+        </div>
 
         <div className="category-layout">
           <aside className="category-filters" aria-labelledby="filtros-titulo">
@@ -345,6 +388,22 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
                 ))}
                 <li><button type="button" className="category-active-clear" onClick={clearFilters}>Limpar tudo</button></li>
               </ul>
+            )}
+
+            {matchingShops.length > 0 && (
+              <section className="category-shop-matches" aria-labelledby="lojas-busca-titulo">
+                <h3 id="lojas-busca-titulo">Lojas com “{filters.query}”</h3>
+                <ul>
+                  {matchingShops.map((shop) => (
+                    <li key={shop.id}>
+                      <Link prefetch={false} href={`/loja?id=${encodeURIComponent(shop.id)}`}>
+                        <strong>{shop.store_name}</strong>
+                        <small>{[shop.specialty, [shop.city, shop.state].filter(Boolean).join(" · ")].filter(Boolean).join(" — ")}</small>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
             )}
 
             {error ? (

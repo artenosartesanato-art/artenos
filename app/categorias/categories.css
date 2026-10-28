@@ -15,13 +15,16 @@
   color: var(--an-text-muted);
   line-height: 1.6;
 }
+/* Chips quebram linha: nada de arrastar para os lados. */
 .category-chips {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  margin: 22px -4px 0;
-  padding: 4px 4px 12px;
-  overflow-x: auto;
-  scrollbar-width: thin;
+  margin: 22px 0 0;
+  padding: 4px 0 4px;
+}
+.category-chips-more {
+  display: none !important;
 }
 .category-chips button {
   display: inline-flex;
@@ -284,10 +287,6 @@
   .category-main {
     padding-top: 22px;
   }
-  .category-chips {
-    margin-inline: -16px;
-    padding-inline: 16px;
-  }
   .category-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
@@ -313,4 +312,93 @@
   .category-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.category-chips .category-chips-more {
+  border-style: dashed;
+  color: var(--an-argila-texto);
+}
+@media (max-width: 760px) {
+  .category-chips button {
+    min-height: 38px;
+    padding: 0 12px;
+  }
+  .category-chips:not(.is-expanded) .is-extra {
+    display: none;
+  }
+  .category-chips .category-chips-more {
+    display: inline-flex !important;
+  }
+}
+
+/* Atalhos de orçamento. */
+.category-budgets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-top: 10px;
+}
+.category-budgets > span {
+  margin-right: 4px;
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-xs);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.category-budgets button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px dashed var(--an-line-strong);
+  border-radius: var(--an-r-sm);
+  background: transparent;
+  color: var(--an-text);
+  font-size: var(--an-fs-sm);
+  font-weight: 650;
+  cursor: pointer;
+}
+.category-budgets button:hover {
+  border-color: var(--artenos-marrom);
+}
+.category-budgets button[aria-pressed="true"] {
+  border-style: solid;
+  border-color: var(--artenos-marrom);
+  background: var(--an-surface-warm);
+}
+
+/* Lojas que combinam com a busca. */
+.category-shop-matches {
+  margin: 4px 0 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--an-line);
+  border-radius: var(--an-r-md);
+  background: var(--an-surface);
+}
+.category-shop-matches h3 {
+  margin: 0 0 10px;
+  font-size: var(--an-fs-sm);
+}
+.category-shop-matches ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.category-shop-matches a {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px;
+  border-radius: var(--an-r-md);
+  background: var(--an-surface-warm);
+  color: var(--an-text);
+}
+.category-shop-matches a:hover {
+  outline: 1px solid var(--artenos-marrom);
+}
+.category-shop-matches small {
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-xs);
 }

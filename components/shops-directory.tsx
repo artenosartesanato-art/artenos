@@ -17,6 +17,7 @@ function initials(name: string) {
 export function ShopsDirectory({ initial }: { initial: Shop[] | null }) {
   const [shops, setShops] = useState<Shop[]>(initial ?? []);
   const [query, setQuery] = useState("");
+  const [uf, setUf] = useState("");
   const [loading, setLoading] = useState(!initial);
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
@@ -36,12 +37,22 @@ export function ShopsDirectory({ initial }: { initial: Shop[] | null }) {
     return () => { active = false; };
   }, [attempt, initial]);
 
+  // Estados que têm loja de verdade, com a contagem.
+  const states = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const shop of shops) {
+      const state = shop.state?.trim().toUpperCase();
+      if (state) counts.set(state, (counts.get(state) ?? 0) + 1);
+    }
+    return [...counts].sort(([a], [b]) => a.localeCompare(b));
+  }, [shops]);
+
   const visible = useMemo(() => {
     const term = query.trim().toLocaleLowerCase("pt-BR");
-    if (!term) return shops;
-    return shops.filter((shop) => [shop.store_name, shop.specialty, shop.city, shop.state, shop.story]
-      .some((value) => value?.toLocaleLowerCase("pt-BR").includes(term)));
-  }, [query, shops]);
+    return shops.filter((shop) => (!uf || shop.state?.trim().toUpperCase() === uf) && (!term ||
+      [shop.store_name, shop.specialty, shop.city, shop.state, shop.story]
+        .some((value) => value?.toLocaleLowerCase("pt-BR").includes(term))));
+  }, [query, shops, uf]);
 
   return (
     <div className="store-page shops-page">
@@ -51,12 +62,24 @@ export function ShopsDirectory({ initial }: { initial: Shop[] | null }) {
           <h1>Lojas e artesãs</h1>
           <p>Conheça as lojas aprovadas, suas técnicas e as histórias por trás de cada peça.</p>
         </header>
+        <div className="shops-filters">
         <label className="shops-search">
           <Search size={18} />
           <span className="an-visually-hidden">Filtrar lojas</span>
           <input className="an-input" type="search" value={query} onChange={(event) => setQuery(event.target.value)}
             placeholder="Filtrar por loja, técnica ou cidade" />
         </label>
+        {states.length > 1 && (
+          <label className="shops-state">
+            <MapPin size={16} />
+            <span className="an-visually-hidden">Estado</span>
+            <select className="an-input" value={uf} onChange={(event) => setUf(event.target.value)}>
+              <option value="">Todos os estados</option>
+              {states.map(([state, count]) => <option key={state} value={state}>{state} ({count})</option>)}
+            </select>
+          </label>
+        )}
+        </div>
         {!loading && !error && <p className="shops-count" aria-live="polite">{visible.length} {visible.length === 1 ? "loja" : "lojas"}</p>}
         {loading ? (
           <div className="shops-grid" aria-label="Carregando lojas" role="status">
@@ -92,7 +115,7 @@ export function ShopsDirectory({ initial }: { initial: Shop[] | null }) {
             <Store size={34} />
             <h2>Nenhuma loja encontrada</h2>
             <p>{shops.length ? "Tente outro nome, técnica ou cidade." : "As lojas aprovadas aparecerão aqui."}</p>
-            {query && <div className="an-state-actions"><button type="button" className="an-btn an-btn--secondary" onClick={() => setQuery("")}>Limpar filtro</button></div>}
+            {(query || uf) && <div className="an-state-actions"><button type="button" className="an-btn an-btn--secondary" onClick={() => { setQuery(""); setUf(""); }}>Limpar filtro</button></div>}
           </div>
         )}
       </main>

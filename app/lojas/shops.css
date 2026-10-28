@@ -12,12 +12,35 @@
   margin: 0;
   color: var(--an-text-muted);
 }
-.shops-search {
+.shops-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 26px 0 8px;
+}
+.shops-search,
+.shops-state {
   position: relative;
   display: flex;
   align-items: center;
+}
+.shops-search {
+  flex: 1 1 320px;
   max-width: 520px;
-  margin: 26px 0 8px;
+}
+.shops-state {
+  flex: 0 1 220px;
+}
+.shops-state svg {
+  position: absolute;
+  left: 15px;
+  color: var(--an-text-muted);
+  pointer-events: none;
+}
+.shops-state select {
+  min-height: 50px;
+  padding-left: 40px;
+  border-radius: var(--an-r-pill);
 }
 .shops-search svg {
   position: absolute;
