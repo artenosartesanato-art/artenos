@@ -25,6 +25,8 @@ export function CustomerFooter(_props: { userSignedIn?: boolean; authLoading?: b
           <Link href="/categorias">Categorias</Link>
           <Link href="/lojas">Lojas e artesãs</Link>
           <Link href="/sob-encomenda">Sob encomenda</Link>
+          <Link href="/como-funciona">Como funciona</Link>
+          {!sellerPanelAvailable && <Link href="/como-funciona#vender">Venda na Artenós</Link>}
         </div>
         <div>
           <h2>Sua conta</h2>
@@ -47,7 +49,13 @@ export function CustomerFooter(_props: { userSignedIn?: boolean; authLoading?: b
         </div>
       </div>
       <div className="store-container store-footer-bottom">
-        © {new Date().getFullYear()} Artenós. Feito com cuidado.
+        <span>© {new Date().getFullYear()} Artenós. Feito com cuidado.</span>
+        <span>
+          Desenvolvido por{" "}
+          <a href="https://cmkcogit.com.br" target="_blank" rel="noopener noreferrer">
+            CMK Cogit<span className="an-visually-hidden"> (abre em nova aba)</span>
+          </a>
+        </span>
       </div>
     </footer>
   );
