@@ -24,7 +24,7 @@ export function getSupabase() {
 
 const text = (value: unknown) => String(value ?? "").trim();
 const digits = (value: unknown) => text(value).replace(/\D/g, "");
-const validEmail = (value: string) =>
+export const validEmail = (value: string) =>
   value.length <= 254 &&
   /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/i.test(
     value,
@@ -112,7 +112,7 @@ export function validBrazilianPhone(value: unknown) {
     : /^[2-5]\d{7}$/.test(subscriber);
 }
 
-function validCpf(value: string) {
+export function validCpf(value: string) {
   if (value.length !== 11 || /^(\d)\1+$/.test(value)) return false;
   for (let digit = 9; digit < 11; digit++) {
     let sum = 0;
@@ -121,7 +121,7 @@ function validCpf(value: string) {
   }
   return true;
 }
-function validCnpj(value: string) {
+export function validCnpj(value: string) {
   if (value.length !== 14 || /^(\d)\1+$/.test(value)) return false;
   const calc = (length: number) => {
     const weights =
