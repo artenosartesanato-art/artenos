@@ -5,7 +5,7 @@ import {
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Bell, MessageCircle, Palette, ShoppingBag, Truck, X } from "@/components/icons";
+import { Bell, Heart, MessageCircle, Palette, ShoppingBag, Truck, X } from "@/components/icons";
 import { useMarketplace } from "@/components/marketplace-state";
 import { Dialog } from "@/components/ui/dialog";
 import { getSupabase } from "@/lib/supabase";
@@ -161,7 +161,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   return (
     <NotificationsContext.Provider value={value}>
       {children}
-      {available && <NotificationsPanel />}
+      <NotificationsPanel />
     </NotificationsContext.Provider>
   );
 }
@@ -171,6 +171,7 @@ const KIND_ICON: Record<NotificationKind, typeof Bell> = {
   pedido: Truck,
   venda: ShoppingBag,
   encomenda: Palette,
+  produto: Heart,
 };
 
 /** Aviso flutuante no mesmo desenho do painel (ícone, título, trecho e "Abrir"). */
@@ -197,10 +198,10 @@ function useNotificationSound() {
   return useSyncExternalStore(subscribeNotificationSoundPreference, notificationSoundEnabled, () => true);
 }
 
-/** Sininho do cabeçalho. Some enquanto o recurso não estiver ativo no banco. */
+/** Sininho do cabeçalho: sempre visível para quem entrou na conta. */
 export function NotificationBell() {
   const notifications = useNotifications();
-  if (!notifications?.available) return null;
+  if (!notifications) return null;
   const { unread, open, setOpen } = notifications;
   return (
     <button type="button" className="store-header-link store-bell" onClick={() => setOpen(!open)}
@@ -216,7 +217,7 @@ function NotificationsPanel() {
   const router = useRouter();
   const notifications = useNotifications()!;
   const soundOn = useNotificationSound();
-  const { items, unread, open, setOpen, markRead } = notifications;
+  const { items, unread, open, setOpen, markRead, available } = notifications;
 
   function follow(item: AppNotification) {
     if (!item.read_at) markRead([item.id]);
@@ -242,11 +243,17 @@ function NotificationsPanel() {
         </div>
       </div>
       <div className="an-drawer-body notif-body">
-        {items.length === 0 ? (
+        {!available ? (
+          <div className="notif-empty">
+            <Bell size={30} />
+            <strong>Notificações em breve</strong>
+            <p>Os avisos de mensagens, pedidos e peças salvas aparecem aqui assim que forem ativados na sua conta.</p>
+          </div>
+        ) : items.length === 0 ? (
           <div className="notif-empty">
             <Bell size={30} />
             <strong>Nenhuma notificação por aqui</strong>
-            <p>Avisamos quando chegar uma mensagem ou quando a loja atualizar seu pedido ou encomenda.</p>
+            <p>Avisamos quando chegar uma mensagem, quando a loja atualizar seu pedido ou encomenda, e quando uma peça salva baixar de preço, voltar ao estoque ou esgotar.</p>
           </div>
         ) : (
           <ul className="notif-list">

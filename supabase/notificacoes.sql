@@ -9,7 +9,9 @@
 --   * nova venda paga .......... a loja;
 --   * nova solicitação de encomenda ... a loja;
 --   * resposta/proposta da loja na encomenda ... o cliente;
---   * cliente cancelou a encomenda ... a loja.
+--   * cliente cancelou a encomenda ... a loja;
+--   * peça nos favoritos ou no carrinho baixou de preço, voltou ao estoque
+--     ou esgotou ... quem tem a peça salva (nunca a própria loja).
 -- Editar uma peça no catálogo NÃO gera notificação: os pedidos guardam uma
 -- cópia dos dados da compra, então a edição não muda nada para quem comprou.
 --
@@ -20,7 +22,7 @@ begin;
 create table if not exists public.notifications (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
-  kind text not null check (kind in ('mensagem', 'pedido', 'venda', 'encomenda')),
+  kind text not null,
   title text not null,
   body text not null default '',
   link text not null,
@@ -29,6 +31,11 @@ create table if not exists public.notifications (
   created_at timestamptz not null default now(),
   read_at timestamptz
 );
+
+-- Tipos aceitos (recriado para incluir 'produto' em bancos que já tinham a tabela).
+alter table public.notifications drop constraint if exists notifications_kind_check;
+alter table public.notifications add constraint notifications_kind_check
+  check (kind in ('mensagem', 'pedido', 'venda', 'encomenda', 'produto'));
 
 create index if not exists notifications_user_recent_idx
   on public.notifications (user_id, created_at desc);
@@ -228,6 +235,54 @@ begin
       for each row execute function public.notify_custom_order_change();
   end if;
 end $$;
+
+-- Peça salva (favoritos ou carrinho): preço menor, volta ao estoque ou
+-- esgota → quem tem a peça salva. Outras edições da peça não avisam ninguém.
+create or replace function public.notify_saved_product_change()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare
+  n jsonb := to_jsonb(new);
+  o jsonb := to_jsonb(old);
+  old_price numeric := nullif(o->>'price', '')::numeric;
+  new_price numeric := nullif(n->>'price', '')::numeric;
+  old_stock integer := nullif(o->>'stock', '')::integer;
+  new_stock integer := nullif(n->>'stock', '')::integer;
+  active boolean := coalesce((n->>'active')::boolean, true);
+  title text;
+  body text;
+  money text := 'FM999G999G990D00';
+  person record;
+begin
+  if not active then return new; end if;
+  if new_price is not null and old_price is not null and new_price < old_price then
+    title := 'Baixou o preço: ' || coalesce(n->>'name', 'peça salva');
+    body := 'De R$ ' || translate(to_char(old_price, money), ',.', '.,') || ' por R$ ' || translate(to_char(new_price, money), ',.', '.,');
+  elsif coalesce(old_stock, 1) = 0 and coalesce(new_stock, 1) > 0 then
+    title := 'Voltou ao estoque: ' || coalesce(n->>'name', 'peça salva');
+    body := 'A peça que você salvou está disponível de novo.';
+  elsif coalesce(old_stock, 1) > 0 and new_stock = 0 then
+    title := 'Esgotou: ' || coalesce(n->>'name', 'peça salva');
+    body := 'Uma peça que você salvou acabou de esgotar.';
+  else
+    return new;
+  end if;
+
+  for person in
+    select f.user_id, '/favoritos' as link from public.storefront_favorites f where f.product_id = new.id
+    union
+    select c.client_id, '/carrinho' from public.cart_items c where c.product_id = new.id
+  loop
+    if person.user_id is distinct from new.artisan_id then
+      perform public.push_notification(person.user_id, 'produto', title, body, person.link, new.id);
+    end if;
+  end loop;
+  return new;
+end;
+$$;
+revoke all on function public.notify_saved_product_change() from public, anon, authenticated;
+drop trigger if exists notify_saved_product_change on public.products;
+create trigger notify_saved_product_change after update on public.products
+  for each row execute function public.notify_saved_product_change();
 
 -- Tempo real: o sininho recebe as notificações sem recarregar a página.
 do $$
