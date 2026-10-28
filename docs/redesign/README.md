@@ -105,6 +105,12 @@ Branch: `FEAT/REDESIGN-UX-UI-ARTE-NOSSA` (base `main`).
 
 ## Ações necessárias no Supabase
 
+- Conta administrativa: `supabase/criar_admin.sql` cria (ou recupera)
+  `artenosartesanato@gmail.com` com e-mail confirmado e acesso de
+  proprietária em `admin_users`. Troque `TROQUE_PELA_SENHA` pela senha antes
+  de executar (o script recusa rodar sem isso); a senha não fica no
+  repositório.
+
 - (Opcional, recomendado) executar
   `supabase/migrations/20261028_vitrine_carrinho_contexto.sql` para mostrar a
   foto no carrinho e o link da loja no detalhe da peça. O front funciona sem
