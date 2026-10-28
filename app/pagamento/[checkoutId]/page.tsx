@@ -6,8 +6,6 @@ import Link from 'next/link';
 import { initMercadoPago, Payment } from '@mercadopago/sdk-react';
 // Ajuste o caminho se o seu arquivo não estiver em lib/supabase.ts
 import { getSupabase } from '../../../lib/supabase';
-import { StandaloneCustomerHeader } from '@/components/standalone-customer-header';
-import { CustomerFooter } from '@/components/customer-footer';
 import { notifyCartChanged } from '@/components/marketplace-state';
 import '../../storefront.css';
 import '../payment.css';
@@ -253,8 +251,7 @@ export default function PagamentoPage() {
 
   return (
     <div className="store-page payment-page">
-    <StandaloneCustomerHeader />
-    <main className="payment-main">
+    <main id="conteudo" tabIndex={-1} className="payment-main">
       <Link className="payment-back" href="/carrinho">← Voltar ao carrinho</Link>
       <p className="payment-eyebrow">Feito à mão, escolhido por você</p>
       <h1>Pagamento</h1>
@@ -347,7 +344,6 @@ export default function PagamentoPage() {
         </div>
       )}
     </main>
-    <CustomerFooter userSignedIn={!!email} />
     </div>
   );
 }

@@ -61,6 +61,10 @@ Branch: `FEAT/REDESIGN-UX-UI-ARTE-NOSSA` (base `main`).
    ```
 
    ```bash
+   BASE_URL=http://localhost:3000 node tests/e2e/mensagens.cjs
+   ```
+
+   ```bash
    node tests/e2e/audit.cjs http://localhost:3000 ./auditoria
    ```
 
@@ -77,8 +81,11 @@ Branch: `FEAT/REDESIGN-UX-UI-ARTE-NOSSA` (base `main`).
 5. Pedidos: barra de progresso e selos de status.
 6. Acesso: envie o login vazio, depois com senha errada; teste
    "Esqueci minha senha" e as setas nas abas.
-7. Painel da artesã: visão geral com números reais e o menu lateral.
-8. Ative "Reduzir movimento" no sistema e recarregue: nada deve animar.
+7. Painel da artesã: mesmo cabeçalho e rodapé da vitrine, menu lateral no
+   mesmo fundo do conteúdo; a foto no cabeçalho abre `/vendedor/perfil`.
+8. Mensagens: no card de uma peça, toque no balão; envie uma pergunta e
+   responda com a conta da artesã em outra janela.
+9. Ative "Reduzir movimento" no sistema e recarregue: nada deve animar.
 
 ## Ações necessárias no Supabase
 
@@ -88,3 +95,11 @@ Branch: `FEAT/REDESIGN-UX-UI-ARTE-NOSSA` (base `main`).
   ela.
 - Incluir `https://SEU-DOMINIO/redefinir-senha` nas Redirect URLs do Auth
   para a recuperação de senha.
+- Para as conversas por peça: executar `supabase/conversas_produtos_topicos.sql`,
+  `supabase/contexto_conversas_produtos.sql` e
+  `supabase/permitir_conversas_por_produto.sql` (a regra
+  `conversations_context_check` de produção só aceitava conversa de pedido ou
+  encomenda e bloqueava a conversa sobre a peça), e confirmar que a
+  tabela `messages` está na publicação `supabase_realtime` (feito em
+  `supabase/mensagens.sql`). Sem isso, o ícone de mensagem abre a página,
+  mas a conversa não é criada.

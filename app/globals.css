@@ -877,19 +877,23 @@ img {
 }
 
 /* 8. Acesso e cadastro ----------------------------------------------------- */
-.site-shell {
-  min-height: calc(100dvh - 140px);
+/* O painel da marca ocupa exatamente do fim do cabeçalho (altura real em
+   --an-header-h, publicada pelo CustomerHeader) até o fim da tela, em
+   qualquer zoom; o formulário rola ao lado. */
+.access-shell {
+  min-height: calc(100vh - var(--an-header-h, 126px));
+  min-height: calc(100dvh - var(--an-header-h, 126px));
   display: grid;
   grid-template-columns: minmax(320px, 40%) 1fr;
 }
 .brand-panel {
   position: sticky;
-  top: 0;
+  top: var(--an-header-h, 126px);
   align-self: start;
-  height: calc(100dvh - 140px);
-  min-height: 540px;
+  height: calc(100vh - var(--an-header-h, 126px));
+  height: calc(100dvh - var(--an-header-h, 126px));
   overflow: hidden;
-  padding: 44px clamp(32px, 5vw, 72px);
+  padding: clamp(28px, 6vh, 64px) clamp(32px, 5vw, 72px);
   color: var(--artenos-perola);
   background:
     radial-gradient(circle at 85% 85%, rgb(178 107 79 / 0.35), transparent 40%),
@@ -912,15 +916,6 @@ img {
     0 0 0 46px rgb(255 255 255 / 0.035),
     0 0 0 92px rgb(255 255 255 / 0.024);
   z-index: -1;
-}
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: min(260px, 80%);
-}
-.brand .brand-wordmark {
-  width: min(260px, 100%);
 }
 .brand-copy {
   margin: auto 0;
@@ -1384,14 +1379,32 @@ img {
   color: var(--an-text);
   font-size: 1rem;
 }
+/* Telas baixas (notebook com zoom, janela reduzida): texto mais compacto
+   para o painel caber sem cortar. */
+@media (min-width: 901px) and (max-height: 720px) {
+  .brand-copy .brand-title {
+    font-size: clamp(2rem, 6.2vh, 3.2rem);
+  }
+  .brand-copy p:not(.brand-title) {
+    font-size: 0.98rem;
+    line-height: 1.55;
+  }
+}
+@media (min-width: 901px) and (max-height: 560px) {
+  .trust-list,
+  .brand-copy p:not(.brand-title) {
+    display: none;
+  }
+}
 @media (max-width: 900px) {
-  .site-shell {
+  .access-shell {
     display: block;
   }
   /* No celular o formulário vem primeiro: a apresentação da marca fica
      compacta para não empurrar o login para baixo da dobra. */
   .brand-panel {
     position: relative;
+    top: auto;
     height: auto;
     min-height: 0;
     padding: 22px 20px 24px;
@@ -1401,9 +1414,6 @@ img {
     height: 220px;
     right: -90px;
     bottom: -60px;
-  }
-  .brand {
-    display: none;
   }
   .brand-copy {
     margin: 0;
@@ -1454,7 +1464,7 @@ img {
   margin: 0;
   font: 500 var(--an-fs-3xl) / var(--an-lh-tight) var(--font-display);
 }
-.access-page .site-shell {
+.access-page .access-shell {
   background: var(--an-bg);
 }
 .an-state--page {

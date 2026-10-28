@@ -115,6 +115,18 @@ Prioridade: **P0** bloqueia uso · **P1** consistência/funcionamento · **P2** 
 | 27 | Detalhe da peça | [C] buscas não devolvem a loja (`artisan_id`) | Sem link para a loja a partir da peça | P2 | Migração opcional `shop_id`; o front só mostra o link quando existe | sandbox com migração |
 | 28 | Página de produto | [C] não existe URL própria por peça | Não dá para compartilhar uma peça | P2 | **Proposta de nova etapa** (exige RPC por id) | — |
 
+### 3.1 Segunda rodada (retorno da revisão)
+
+| # | Tela | Evidência | Impacto | Prioridade | Correção | Validação |
+| --- | --- | --- | --- | --- | --- | --- |
+| 29 | Todas | [N] cada página montava (ou omitia) o próprio cabeçalho e rodapé; painel da loja, administração e análise tinham cabeçalhos próprios; termos, privacidade, acesso e redefinir senha sem rodapé | Formato e espaçamento diferentes entre telas | P1 | `SiteChrome` no layout raiz monta um único `CustomerHeader` e `CustomerFooter` para todas as rotas | medição das caixas do cabeçalho e rodapé em 21 rotas: posições idênticas |
+| 30 | Perfil da artesã | [N] a foto do cabeçalho levava a `/perfil`, fora do painel | Duas telas de perfil para a mesma pessoa | P1 | Cabeçalho, CEP e `/perfil` levam a artesã aprovada para `/vendedor/perfil` | medição: `/perfil` → `/vendedor/perfil` |
+| 31 | Painel da loja | [N] menu lateral e conteúdo com fundos diferentes | Separação marcada sem função | P2 | Mesmo fundo do site, divisória fina, mesma largura do cabeçalho; menu fixo rolável | screenshot 1440/390 |
+| 32 | Acesso e cadastro | [C][N] painel da marca com `top: 0` e altura fixa `100dvh - 140px` sob um cabeçalho fixo de 126 px | Faixa vazia abaixo do painel, variando com zoom | P1 | Painel preso ao fim do cabeçalho (`--an-header-h` medido) até o fim da tela; texto compacto em telas baixas; logotipo duplicado removido | medição em 1366×768, 1440×900, 1920×1080, 1280×560 |
+| 33 | Acesso e cadastro | [N] campos sem exemplo (nome, loja, cidade, senhas, história); redefinir senha com um único "olho" para os dois campos | Preenchimento menos guiado | P2 | Placeholders em todos os campos; "mostrar senha" em cada campo de senha | auditoria + e2e `auth` |
+| 34 | Mensagens | [N] conversa sobre a peça só existia na página de mensagens | Cliente não tinha como perguntar a partir da peça | P1 | Ícone de balão no card e botão no detalhe ampliado (ocultos nas peças da própria loja) | e2e `mensagens` |
+| 35 | Mensagens | [N] envio sem retorno visual; histórico rolava a página inteira | Dúvida se a mensagem saiu; cabeçalho cobria a conversa | P2 | Botão "Enviando…", texto preservado em caso de falha, rolagem só no histórico | e2e `mensagens` |
+
 ## 4. Fora do escopo desta entrega
 
 Mudanças de banco além da migração opcional, endereços múltiplos, avaliações,

@@ -14,8 +14,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
-import { CustomerHeader } from "@/components/customer-header";
-import { CustomerFooter } from "@/components/customer-footer";
 import { getSupabase } from "@/lib/supabase";
 import { notifyProfileChanged } from "@/components/marketplace-state";
 import "../storefront.css";
@@ -180,6 +178,12 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
         if (!active || request !== requestCounter.current) return;
         if (error || !data) throw error || new Error("Perfil não encontrado.");
         const loaded = data as Profile;
+        // Artesã aprovada edita o perfil dentro do painel da loja (mesmo
+        // conteúdo, com o menu da loja ao lado).
+        if (!sellerMode && loaded.account_type === "artisan" && loaded.approval_status === "active") {
+          router.replace(`/vendedor/perfil${window.location.search}${window.location.hash}`);
+          return;
+        }
         setProfile(loaded);
         setNextEmail(current.email || loaded.email);
         setNextPhone(loaded.phone || "");
@@ -236,7 +240,7 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
         }
       });
     }
-  }, []);
+  }, [router, sellerMode]);
 
   async function uploadAvatar(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -451,10 +455,11 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
         ? "Em análise"
         : "Análise assistida";
 
+  // No painel da loja o SellerShell já fornece o <main>.
+  const Main = sellerMode ? "div" : "main";
   return (
     <div className={sellerMode ? "profile-page profile-page-seller" : "store-page profile-page"}>
-      {!sellerMode && <CustomerHeader />}
-      <main className="store-container profile-main">
+      <Main id={sellerMode ? undefined : "conteudo"} tabIndex={sellerMode ? undefined : -1} className="store-container profile-main">
         <div className="profile-heading">
           <p className="store-eyebrow">Sua conta Artenós</p>
           <h1>Meu perfil</h1>
@@ -728,8 +733,7 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
             </>
           )
         )}
-      </main>
-      {!sellerMode && <CustomerFooter userSignedIn={!!user} authLoading={!authReady} />}
+      </Main>
     </div>
   );
 }

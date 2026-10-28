@@ -2,7 +2,6 @@
 
 import {
   Calculator,
-  ChevronDown,
   HandCoins,
   Heart,
   LayoutDashboard,
@@ -12,7 +11,6 @@ import {
   MapPin,
   Menu,
   PackageCheck,
-  Search,
   ShoppingBag,
   Sparkles,
   Store,
@@ -20,14 +18,12 @@ import {
   UserRound,
 } from "@/components/icons";
 import Link from "next/link";
-import { BrandLogo } from "@/components/brand-logo";
 import { usePathname, useRouter } from "next/navigation";
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { getSupabase } from "@/lib/supabase";
 import { useMarketplace } from "@/components/marketplace-state";
 import { Dialog } from "@/components/ui/dialog";
-import { SoundToggle } from "@/components/sound-toggle";
 
 export type SellerProfile = {
   id: string;
@@ -143,29 +139,7 @@ export function SellerShell({ children }: { children: React.ReactNode }) {
     "loading",
   );
   const [menuOpen, setMenuOpen] = useState(false);
-  const [accountOpen, setAccountOpen] = useState(false);
-  const [search, setSearch] = useState("");
   const [showApprovalWelcome, setShowApprovalWelcome] = useState(false);
-  const accountRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!accountOpen) return;
-    function onPointer(event: PointerEvent) {
-      if (!accountRef.current?.contains(event.target as Node)) setAccountOpen(false);
-    }
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setAccountOpen(false);
-        accountRef.current?.querySelector<HTMLButtonElement>(".seller-account-button")?.focus();
-      }
-    }
-    document.addEventListener("pointerdown", onPointer);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("pointerdown", onPointer);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [accountOpen]);
 
   useEffect(() => {
     let active = true;
@@ -224,23 +198,12 @@ export function SellerShell({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   useEffect(() => {
-    queueMicrotask(() => {
-      setMenuOpen(false);
-      setAccountOpen(false);
-    });
+    queueMicrotask(() => setMenuOpen(false));
   }, [pathname]);
 
   const avatar = avatarUrl
     ? <img className="seller-avatar" src={avatarUrl} alt="" />
     : <span className="seller-avatar"><UserRound size={20} /></span>;
-
-  function submitSearch(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const query = search.trim().slice(0, 100);
-    router.push(
-      query ? `/categorias?busca=${encodeURIComponent(query)}` : "/categorias",
-    );
-  }
 
   async function signOut() {
     const { error } = await getSupabase().auth.signOut();
@@ -288,6 +251,10 @@ export function SellerShell({ children }: { children: React.ReactNode }) {
 
   const navigation = (
     <>
+      <div className="seller-sidebar-store">
+        <strong>{profile.store_name || "Minha loja"}</strong>
+        <small><MapPin size={14} /> CEP {formatCep(profile.cep)}</small>
+      </div>
       <nav aria-label="Gestão da loja">
         <p>Gestão da loja</p>
         {managementLinks.map((item) => (
@@ -307,88 +274,28 @@ export function SellerShell({ children }: { children: React.ReactNode }) {
           <small>{profile.specialty || "Artesanato autoral"}</small>
         </div>
       </div>
+      <button type="button" className="seller-nav-link seller-signout" onClick={signOut}>
+        <LogOut size={18} />
+        <span>Sair da conta</span>
+      </button>
     </>
   );
 
   return (
     <SellerContext.Provider value={{ profile, updateProfile }}>
-      <a className="an-skip-link" href="#conteudo">Pular para o conteúdo</a>
       <div className="seller-shell">
-        <header className="seller-header">
-          <div className="seller-header-main seller-container">
-            <Link
-              href="/vendedor"
-              className="seller-logo"
-              aria-label="Artenós, painel da loja"
-            >
-              <BrandLogo priority />
-            </Link>
-            <form
-              className="seller-search"
-              role="search"
-              onSubmit={submitSearch}
-            >
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Busque peças para comprar"
-                aria-label="Pesquisar na Artenós"
-                maxLength={100}
-              />
-              <button type="submit" aria-label="Pesquisar">
-                <Search size={20} />
-              </button>
-            </form>
-            <div className="seller-account-wrap" ref={accountRef}>
-              <button
-                className="seller-account-button"
-                type="button"
-                onClick={() => setAccountOpen((value) => !value)}
-                aria-expanded={accountOpen}
-                aria-controls="menu-conta-loja"
-                aria-label={`Conta de ${profile.full_name}`}
-              >
-                {avatar}
-                <span>
-                  <small>{profile.store_name || "Minha loja"}</small>
-                  <strong>{profile.full_name}</strong>
-                </span>
-                <ChevronDown size={15} />
-              </button>
-              {accountOpen && (
-                <div className="seller-account-menu" id="menu-conta-loja">
-                  <Link href="/vendedor/perfil">
-                    <UserRound size={17} /> Meu perfil
-                  </Link>
-                  <Link href="/vendedor/minha-loja">
-                    <Store size={17} /> Configurar a loja
-                  </Link>
-                  <button type="button" onClick={signOut}>
-                    <LogOut size={17} /> Sair
-                  </button>
-                </div>
-              )}
-            </div>
-            <button
-              className="seller-menu-button"
-              type="button"
-              onClick={() => setMenuOpen(true)}
-              aria-label="Abrir menu da loja"
-              aria-haspopup="dialog"
-            >
-              <Menu size={23} />
-            </button>
-          </div>
-          <div className="seller-location-row seller-container">
-            <MapPin size={16} />
-            <span>
-              Loja vinculada ao CEP <strong>{formatCep(profile.cep)}</strong>
-            </span>
-            <Link className="seller-market-link" href="/" aria-label="Ver vitrine Artenós">
-              <Sparkles size={17} /> <span>Ver vitrine</span>
-            </Link>
-          </div>
-        </header>
+        <div className="seller-mobile-bar seller-container">
+          <button
+            className="seller-menu-button"
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            aria-haspopup="dialog"
+          >
+            <Menu size={20} />
+            <span>Menu da loja</span>
+          </button>
+          <span className="seller-mobile-store">{profile.store_name || "Minha loja"}</span>
+        </div>
 
         <div className="seller-body seller-container">
           <aside className="seller-sidebar" aria-label="Menu da loja">
@@ -398,29 +305,10 @@ export function SellerShell({ children }: { children: React.ReactNode }) {
             className="seller-menu-drawer" closeLabel="Fechar menu">
             <div className="an-drawer-body seller-sidebar is-drawer">
               {navigation}
-              <SoundToggle className="seller-menu-sound" />
             </div>
           </Dialog>
           <main id="conteudo" tabIndex={-1} className="seller-content">{children}</main>
         </div>
-
-        <footer className="seller-footer">
-          <div className="seller-container">
-            <div>
-              <strong>Artenós para artesãs</strong>
-              <span>
-                Gestão da sua loja e acesso ao marketplace em um só lugar.
-              </span>
-            </div>
-            <nav aria-label="Links do rodapé">
-              <Link href="/termos">Termos de Uso</Link>
-              <Link href="/privacidade">Privacidade</Link>
-              <Link href="/vendedor/mensagens">Mensagens</Link>
-              <Link href="/vendedor/perfil">Perfil</Link>
-            </nav>
-            <small>© {new Date().getFullYear()} Artenós.</small>
-          </div>
-        </footer>
       </div>
       <Dialog open={showApprovalWelcome} onClose={() => setShowApprovalWelcome(false)} labelledBy="seller-approval-title"
         className="seller-approval-dialog" closeButton={false}>

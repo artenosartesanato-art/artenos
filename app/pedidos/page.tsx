@@ -16,8 +16,6 @@ import {
   Truck,
 } from "@/components/icons";
 import Link from "next/link";
-import { CustomerFooter } from "@/components/customer-footer";
-import { CustomerHeader } from "@/components/customer-header";
 import { getSupabase } from "@/lib/supabase";
 import { accessHref } from "@/lib/navigation";
 import { useMarketplace } from "@/components/marketplace-state";
@@ -184,7 +182,6 @@ export default function OrdersPage() {
 
   return (
     <div className="store-page orders-page">
-      <CustomerHeader />
       <main id="conteudo" tabIndex={-1} className="store-container orders-main">
         <header className="orders-intro">
           <p className="store-eyebrow">Acompanhamento</p>
@@ -266,7 +263,6 @@ export default function OrdersPage() {
           </>
         )}
       </main>
-      <CustomerFooter />
     </div>
   );
 }

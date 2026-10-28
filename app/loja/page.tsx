@@ -4,8 +4,6 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, Clock3, MapPin, PackageOpen, RefreshCw, Sparkles, Store } from "@/components/icons";
-import { CustomerHeader } from "@/components/customer-header";
-import { CustomerFooter } from "@/components/customer-footer";
 import { getSupabase } from "@/lib/supabase";
 import { MarketplaceProductCard, ProductGridSkeleton, type MarketplaceProduct } from "@/components/marketplace-product-card";
 import "../storefront.css";
@@ -81,7 +79,6 @@ function PublicStoreContent() {
 
   return (
     <div className="store-page public-shop-page">
-      <CustomerHeader />
       <main id="conteudo" tabIndex={-1}>
         {loading ? (
           <div className="store-container public-shop-loading" role="status" aria-label="Carregando loja">
@@ -183,7 +180,6 @@ function PublicStoreContent() {
           </>
         )}
       </main>
-      <CustomerFooter />
     </div>
   );
 }

@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { BrandLogo } from "@/components/brand-logo";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
@@ -521,10 +520,7 @@ export default function AdministrationPage() {
 
   if (screen !== "ready") {
     return (
-      <main className="admin-gate">
-        <Link className="admin-brand" href="/">
-          <BrandLogo priority />
-        </Link>
+      <main id="conteudo" tabIndex={-1} className="admin-gate">
         {screen === "loading" && (
           <div className="admin-gate-card">
             <Loader2 className="admin-spin" size={30} />
@@ -575,10 +571,7 @@ export default function AdministrationPage() {
 
   return (
     <div className="admin-page">
-      <header className="admin-header">
-        <Link className="admin-brand" href="/">
-          <BrandLogo priority />
-        </Link>
+      <div className="admin-header">
         <div className="admin-session">
           <div>
             <span>{adminRole === "owner" ? "Proprietária" : "Revisora"}</span>
@@ -589,9 +582,9 @@ export default function AdministrationPage() {
             <LogOut size={18} />
           </button>
         </div>
-      </header>
+      </div>
 
-      <main className="admin-main">
+      <main id="conteudo" tabIndex={-1} className="admin-main">
         <section className="admin-title-row">
           <div>
             <p>Gestão e segurança</p>

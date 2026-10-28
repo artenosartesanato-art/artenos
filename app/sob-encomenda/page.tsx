@@ -13,8 +13,6 @@ import {
 import Link from "next/link";
 import type { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
-import { CustomerFooter } from "@/components/customer-footer";
-import { CustomerHeader } from "@/components/customer-header";
 import { Dialog } from "@/components/ui/dialog";
 import { useStorefrontActions } from "@/components/storefront-actions";
 import { getSupabase } from "@/lib/supabase";
@@ -320,7 +318,6 @@ export default function CustomOrdersPage() {
   );
   return (
     <div className="store-page custom-page">
-      <CustomerHeader />
       <main id="conteudo" tabIndex={-1}>
         <section className="custom-hero">
           <div className="store-container custom-hero-inner">
@@ -518,7 +515,6 @@ export default function CustomOrdersPage() {
           )}
         </section>
       </main>
-      <CustomerFooter />
 
       <Dialog open={selectedService !== null} onClose={() => setSelectedService(null)} labelledBy="orcamento-titulo"
         className="custom-request-dialog" closeLabel="Fechar solicitação">

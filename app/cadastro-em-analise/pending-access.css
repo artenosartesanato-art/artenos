@@ -1,5 +1,4 @@
 .pending-page {
-  min-height: 100vh;
   color: var(--artenos-marrom);
   background:
     radial-gradient(
@@ -10,15 +9,13 @@
     linear-gradient(180deg, var(--artenos-perola) 0%, var(--artenos-perola) 100%);
 }
 
+/* Barra da conta abaixo do cabeçalho único. */
 .pending-header {
-  min-height: 78px;
-  padding: 0 5vw;
-  border-bottom: 1px solid var(--artenos-pessego);
-  background: rgba(255, 253, 249, 0.92);
-  backdrop-filter: blur(14px);
+  width: min(1240px, calc(100% - 48px));
+  margin: 18px auto 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 24px;
 }
 
@@ -72,7 +69,7 @@
 }
 
 .pending-main {
-  width: min(1120px, calc(100% - 40px));
+  width: min(1240px, calc(100% - 48px));
   margin: 0 auto;
   padding: 76px 0 90px;
 }

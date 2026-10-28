@@ -1,4 +1,4 @@
-.payment-page { background: var(--artenos-perola); color: var(--artenos-marrom); min-height: 100vh; }
+.payment-page { background: var(--artenos-perola); color: var(--artenos-marrom); }
 .payment-main { width: min(100% - 40px, 960px); margin: 0 auto; padding: 36px 0 80px; }
 .payment-back { display: inline-block; margin-bottom: 32px; color: var(--artenos-musgo); text-decoration: none; font-weight: 600; }
 .payment-eyebrow { color: var(--artenos-musgo); text-transform: uppercase; letter-spacing: .16em; font-size: .75rem; font-weight: 700; }

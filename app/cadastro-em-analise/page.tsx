@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { BrandLogo } from "@/components/brand-logo";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
@@ -217,14 +216,7 @@ export default function PendingArtisanAccessPage() {
 
   return (
     <div className="pending-page">
-      <header className="pending-header">
-        <Link
-          className="pending-brand"
-          href="/"
-          aria-label="Página inicial da Artenós"
-        >
-          <BrandLogo priority />
-        </Link>
+      <div className="pending-header">
         <div className="pending-header-actions">
           <Link href="/perfil">
             {avatarUrl ? <img className="pending-header-avatar" src={avatarUrl} alt="" /> : <UserRound size={17} />}
@@ -234,9 +226,9 @@ export default function PendingArtisanAccessPage() {
             <LogOut size={17} /> Sair
           </button>
         </div>
-      </header>
+      </div>
 
-      <main className="pending-main">
+      <main id="conteudo" tabIndex={-1} className="pending-main">
         {pageState === "loading" && (
           <section className="pending-feedback" aria-live="polite">
             <RefreshCw className="pending-spin" size={28} />

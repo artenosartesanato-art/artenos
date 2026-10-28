@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Heart, PackageOpen, RefreshCw, Search } from "@/components/icons";
-import { CustomerHeader } from "@/components/customer-header";
-import { CustomerFooter } from "@/components/customer-footer";
 import { useMarketplace } from "@/components/marketplace-state";
 import { getSupabase } from "@/lib/supabase";
 import { accessHref } from "@/lib/navigation";
@@ -57,7 +55,6 @@ export default function FavoritesPage() {
 
   return (
     <div className="store-page favorites-page">
-      <CustomerHeader />
       <main id="conteudo" tabIndex={-1} className="store-container favorites-main">
         <header className="favorites-intro">
           <div>
@@ -125,7 +122,6 @@ export default function FavoritesPage() {
           </>
         )}
       </main>
-      <CustomerFooter />
     </div>
   );
 }
