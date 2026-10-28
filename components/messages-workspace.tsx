@@ -177,7 +177,15 @@ export function MessagesWorkspace({
         );
         clearProductInquiry();
         if (!active) return;
-        if (error) productError = error.message;
+        if (error) {
+          // Só repassa os avisos escritos para quem usa (raise exception da
+          // função); erros técnicos do banco viram uma mensagem neutra.
+          const known = ["Faça login", "Produto indisponível", "própria loja", "Não foi possível abrir"];
+          productError = known.some((text) => error.message.includes(text))
+            ? error.message
+            : "Não conseguimos abrir esta conversa agora. Tente novamente em instantes.";
+          if (productError !== error.message) console.error("start_product_conversation:", error.message);
+        }
         else requestedConversation = conversationId as string;
       }
       const list = await refreshAll(data.session.user);
