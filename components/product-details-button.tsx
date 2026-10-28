@@ -22,6 +22,7 @@ import { getSupabase } from "@/lib/supabase";
 import { Dialog } from "@/components/ui/dialog";
 import { useMarketplace } from "@/components/marketplace-state";
 import { useStorefrontActions } from "@/components/storefront-actions";
+import { ProductInquiryLink } from "@/components/product-inquiry-link";
 
 type ProductDetails = {
   id: string;
@@ -74,7 +75,7 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
   cartDisabled?: boolean;
 }) {
   const titleId = useId();
-  const { favoriteIds, pendingFavoriteIds } = useMarketplace();
+  const { favoriteIds, pendingFavoriteIds, userId } = useMarketplace();
   const { addToCart, toggleFavorite, pendingCartIds } = useStorefrontActions();
   const [open, setOpen] = useState(false);
   // O diálogo só entra na árvore depois da primeira abertura: uma grade com
@@ -206,6 +207,9 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
             <Heart size={19} fill={saved ? "currentColor" : "none"} />
           </button>
         </div>
+        {!(userId && product.shop_id === userId) && (
+          <ProductInquiryLink productId={product.id} productName={product.name} />
+        )}
         {product.stock != null && product.stock > 0 && quantity >= maxQuantity && (
           <p className="product-details-limit" role="status">Você selecionou todas as unidades disponíveis.</p>
         )}

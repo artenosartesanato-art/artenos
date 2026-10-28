@@ -297,15 +297,15 @@ end; $$;
 grant execute on function public.respond_custom_order_request(uuid,text,numeric,text,date) to authenticated;
 
 alter table public.conversations alter column order_id drop not null;
-alter table public.conversations add column if not exists custom_request_id uuid unique references public.custom_order_requests(id) on delete cascade;
+alter table public.conversations add column if not exists custom_order_request_id uuid unique references public.custom_order_requests(id) on delete cascade;
 create or replace function public.open_custom_order_conversation(p_request_id uuid)
 returns uuid language plpgsql security definer set search_path = '' as $$
 declare r public.custom_order_requests; v_id uuid;
 begin
   select * into r from public.custom_order_requests where id = p_request_id and auth.uid() in (client_id, artisan_id);
   if not found then raise exception 'Solicitação não encontrada'; end if;
-  insert into public.conversations(client_id, artisan_id, custom_request_id) values (r.client_id, r.artisan_id, r.id)
-  on conflict (custom_request_id) do update set last_message_at = public.conversations.last_message_at returning id into v_id;
+  insert into public.conversations(client_id, artisan_id, custom_order_request_id) values (r.client_id, r.artisan_id, r.id)
+  on conflict (custom_order_request_id) do update set last_message_at = public.conversations.last_message_at returning id into v_id;
   return v_id;
 end; $$;
 grant execute on function public.open_custom_order_conversation(uuid) to authenticated;

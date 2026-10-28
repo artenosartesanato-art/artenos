@@ -12,4 +12,9 @@ while read -r file; do
   psql "$DB_URL" -v ON_ERROR_STOP=1 -q -f "$file"
 done < ordem.txt
 psql "$DB_URL" -v ON_ERROR_STOP=1 -q -f 90_rpcs_ausentes.sql
+# Conversas por produto dependem de conversations.custom_order_request_id (criada acima).
+for file in ../../../supabase/conversas_produtos_topicos.sql ../../../supabase/contexto_conversas_produtos.sql; do
+  echo "→ $file"
+  psql "$DB_URL" -v ON_ERROR_STOP=1 -q -f "$file"
+done
 echo "Pronto. Gere as imagens (python3 gen_images.py img) e rode o seed (SRK=<service_role local> python3 seed.py)."

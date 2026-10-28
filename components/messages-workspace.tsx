@@ -70,7 +70,7 @@ export function MessagesWorkspace({
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [signInHref, setSignInHref] = useState(() => accessHref(sellerMode ? "/vendedor/mensagens" : "/mensagens"));
   const [sending, setSending] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const threadRef = useRef<HTMLDivElement>(null);
   const suggestionCloseRef = useRef<HTMLButtonElement>(null);
   const productEntryRef = useRef<string | null>(null);
 
@@ -269,7 +269,10 @@ export function MessagesWorkspace({
   }, [current, addMessage]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Rola só o histórico: scrollIntoView também rolava a página e deixava o
+    // cabeçalho fixo por cima da conversa.
+    const thread = threadRef.current;
+    if (thread) thread.scrollTo({ top: thread.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
   useEffect(() => {
@@ -534,6 +537,7 @@ export function MessagesWorkspace({
                     </select>
                   </div>
                   <div
+                    ref={threadRef}
                     className="messages-thread"
                     role="log"
                     aria-label="Histórico da conversa"
@@ -580,7 +584,6 @@ export function MessagesWorkspace({
                         </div>
                       </div>
                     ))}
-                    <div ref={messagesEndRef} />
                   </div>
                   <form className="messages-compose" onSubmit={sendMessage}>
                     {replyTo && (

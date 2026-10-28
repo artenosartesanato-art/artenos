@@ -733,6 +733,52 @@
   font-weight: 750;
   letter-spacing: -0.02em;
 }
+.store-product-actions {
+  display: flex;
+  gap: 8px;
+}
+.store-product-actions .store-product-add {
+  flex: 1;
+  min-width: 0;
+}
+.store-product-message {
+  display: grid;
+  flex: 0 0 44px;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--an-line-strong);
+  border-radius: var(--an-r-md);
+  background: var(--an-surface);
+  color: var(--an-musgo-escuro);
+  transition: background-color var(--an-dur-fast) ease, border-color var(--an-dur-fast) ease,
+    transform var(--an-dur-instant) var(--an-ease-out);
+}
+.store-product-message:hover {
+  border-color: var(--artenos-musgo);
+  background: var(--an-sucesso-fundo);
+}
+.store-product-message:active {
+  transform: scale(0.94);
+}
+.product-details-message {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin-top: 10px;
+  padding: 0 16px;
+  border: 1px solid var(--an-line-strong);
+  border-radius: var(--an-r-md);
+  background: var(--an-surface);
+  color: var(--an-musgo-escuro);
+  font-size: var(--an-fs-sm);
+  font-weight: 750;
+}
+.product-details-message:hover {
+  border-color: var(--artenos-musgo);
+  background: var(--an-sucesso-fundo);
+}
 .store-product-add {
   display: inline-flex;
   align-items: center;

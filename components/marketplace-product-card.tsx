@@ -4,6 +4,7 @@ import { Heart, LoaderCircle, ShoppingBag, Sparkles } from "@/components/icons";
 import { ProductDetailsButton } from "@/components/product-details-button";
 import { useMarketplace } from "@/components/marketplace-state";
 import { useStorefrontActions } from "@/components/storefront-actions";
+import { ProductInquiryLink } from "@/components/product-inquiry-link";
 
 export type MarketplaceProduct = {
   id: string;
@@ -41,7 +42,7 @@ export function MarketplaceProductCard({ product, shopName, cartDisabled = false
   onFavorite?: () => void;
   onCart?: () => Promise<void>;
 }) {
-  const { favoriteIds, pendingFavoriteIds } = useMarketplace();
+  const { favoriteIds, pendingFavoriteIds, userId } = useMarketplace();
   const { addToCart, toggleFavorite, pendingCartIds } = useStorefrontActions();
   const displayShop = shopName ?? product.shop_name;
   const fullProduct = { ...product, shop_name: displayShop };
@@ -50,6 +51,8 @@ export function MarketplaceProductCard({ product, shopName, cartDisabled = false
   const adding = pendingCartIds.has(product.id);
   const unavailable = product.stock === 0 || cartDisabled;
   const availability = availabilityOf(product, cartDisabled);
+  // Só se pergunta sobre peças de outras lojas.
+  const ownProduct = Boolean(userId && product.shop_id && product.shop_id === userId);
 
   return (
     <ProductDetailsButton product={fullProduct} cartDisabled={cartDisabled}>
@@ -88,12 +91,15 @@ export function MarketplaceProductCard({ product, shopName, cartDisabled = false
               </button>
             </h3>
             <p className="store-product-price">{money.format(Number(product.price))}</p>
-            <button type="button" className="store-product-add" disabled={unavailable || adding}
-              aria-busy={adding} onClick={() => void addToCart(fullProduct)}
-              aria-label={unavailable ? `${product.name} indisponível` : `Adicionar ${product.name} ao carrinho`}>
-              {adding ? <LoaderCircle size={17} className="spin" /> : <ShoppingBag size={17} />}
-              <span>{unavailable ? "Indisponível" : adding ? "Adicionando…" : "Adicionar"}</span>
-            </button>
+            <div className="store-product-actions">
+              <button type="button" className="store-product-add" disabled={unavailable || adding}
+                aria-busy={adding} onClick={() => void addToCart(fullProduct)}
+                aria-label={unavailable ? `${product.name} indisponível` : `Adicionar ${product.name} ao carrinho`}>
+                {adding ? <LoaderCircle size={17} className="spin" /> : <ShoppingBag size={17} />}
+                <span>{unavailable ? "Indisponível" : adding ? "Adicionando…" : "Adicionar"}</span>
+              </button>
+              {!ownProduct && <ProductInquiryLink productId={product.id} productName={product.name} compact />}
+            </div>
           </div>
         </article>
       )}
