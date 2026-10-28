@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
 import { Heart, LoaderCircle, ShoppingBag, Sparkles } from "@/components/icons";
 import { ProductDetailsButton } from "@/components/product-details-button";
+import { useMarketplace } from "@/components/marketplace-state";
+import { useStorefrontActions } from "@/components/storefront-actions";
 
 export type MarketplaceProduct = {
   id: string;
@@ -14,81 +15,111 @@ export type MarketplaceProduct = {
   ready_to_ship?: boolean;
   category_name?: string | null;
   shop_name?: string | null;
+  /** Presente quando a função do banco devolve a loja (migração opcional). */
+  shop_id?: string | null;
 };
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
-export function MarketplaceProductCard({ product, shopName, saved, favoritePending = false,
-  cartPending = false, cartDisabled = false, onFavorite, onCart }: {
+export function availabilityOf(product: Pick<MarketplaceProduct, "stock" | "ready_to_ship">, paused = false) {
+  if (paused) return { label: "Loja em pausa", tone: "muted" as const };
+  if (product.stock === 0) return { label: "Esgotado", tone: "muted" as const };
+  if (product.ready_to_ship) return { label: "Pronta entrega", tone: "moss" as const };
+  return { label: "Feito sob encomenda", tone: "warm" as const };
+}
+
+export function MarketplaceProductCard({ product, shopName, cartDisabled = false, priority = false }: {
   product: MarketplaceProduct;
   shopName?: string | null;
-  saved: boolean;
+  /** Ex.: loja em pausa. */
+  cartDisabled?: boolean;
+  priority?: boolean;
+  /** Mantidos por compatibilidade; o estado vem dos provedores. */
+  saved?: boolean;
   favoritePending?: boolean;
   cartPending?: boolean;
-  cartDisabled?: boolean;
-  onFavorite: () => void;
-  onCart: () => Promise<void>;
+  onFavorite?: () => void;
+  onCart?: () => Promise<void>;
 }) {
-  const cartLock = useRef(false);
-  const [adding, setAdding] = useState(false);
+  const { favoriteIds, pendingFavoriteIds } = useMarketplace();
+  const { addToCart, toggleFavorite, pendingCartIds } = useStorefrontActions();
   const displayShop = shopName ?? product.shop_name;
+  const fullProduct = { ...product, shop_name: displayShop };
+  const saved = favoriteIds.has(product.id);
+  const favoritePending = pendingFavoriteIds.has(product.id);
+  const adding = pendingCartIds.has(product.id);
   const unavailable = product.stock === 0 || cartDisabled;
-
-  async function addToCart() {
-    if (cartLock.current || unavailable || cartPending) return;
-    cartLock.current = true;
-    setAdding(true);
-    try {
-      await onCart();
-    } finally {
-      cartLock.current = false;
-      setAdding(false);
-    }
-  }
+  const availability = availabilityOf(product, cartDisabled);
 
   return (
-    <ProductDetailsButton product={{ ...product, shop_name: displayShop }}>
+    <ProductDetailsButton product={fullProduct} cartDisabled={cartDisabled}>
       {(openDetails) => (
         <article className="store-product">
           <div className="store-product-image">
-            <button type="button" className="store-product-image-trigger"
-              onClick={openDetails} aria-label={`Ver detalhes de ${product.name}`}>
+            <button type="button" className="store-product-image-trigger" onClick={openDetails}
+              aria-label={`Ver detalhes de ${product.name}`}>
               {product.image_url ? (
-                <img src={product.image_url} alt="" loading="lazy" />
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={product.image_url} alt="" loading={priority ? "eager" : "lazy"} decoding="async"
+                  width={480} height={600} />
               ) : (
                 <span className="store-no-image">
                   <Sparkles size={26} />
-                  <span>Imagem ainda não cadastrada</span>
+                  <span>Foto em breve</span>
                 </span>
               )}
             </button>
+            <span className={`an-badge store-product-badge${availability.tone === "warm" ? " an-badge--warm" : availability.tone === "muted" ? " an-badge--muted" : ""}`}>
+              {availability.label}
+            </span>
             <button type="button" className={saved ? "store-heart is-saved" : "store-heart"}
-              disabled={favoritePending} onClick={onFavorite}
-              aria-label={saved ? `Remover ${product.name} dos favoritos` : `Favoritar ${product.name}`}>
-              <Heart size={19} fill={saved ? "currentColor" : "none"} />
+              disabled={favoritePending} onClick={() => void toggleFavorite(fullProduct)}
+              aria-pressed={saved}
+              aria-label={saved ? `Remover ${product.name} dos favoritos` : `Salvar ${product.name} nos favoritos`}>
+              <Heart size={18} fill={saved ? "currentColor" : "none"} />
             </button>
           </div>
           <div className="store-product-body">
-            <h3><button type="button" className="store-product-title" onClick={openDetails}>
-              {product.name}
-            </button></h3>
-            <p className="store-product-price">{money.format(Number(product.price))}</p>
             {displayShop && <p className="store-product-shop">{displayShop}</p>}
-            <span className="store-product-availability">
-              {product.stock === 0 ? "Indisponível" : product.ready_to_ship ? "Pronta entrega" : "Sob encomenda"}
-            </span>
-            <div className="store-product-bottom">
-              <button className="store-product-details-trigger" type="button" onClick={openDetails}>
-                Conheça a peça
+            <h3>
+              <button type="button" className="store-product-title" onClick={openDetails}>
+                {product.name}
               </button>
-              <button type="button" className="store-product-add" disabled={unavailable || cartPending || adding}
-                onClick={() => { void addToCart(); }} aria-label={`Adicionar ${product.name} ao carrinho`}>
-                {cartPending || adding ? <LoaderCircle size={18} className="spin" /> : <ShoppingBag size={18} />}
-              </button>
-            </div>
+            </h3>
+            <p className="store-product-price">{money.format(Number(product.price))}</p>
+            <button type="button" className="store-product-add" disabled={unavailable || adding}
+              aria-busy={adding} onClick={() => void addToCart(fullProduct)}
+              aria-label={unavailable ? `${product.name} indisponível` : `Adicionar ${product.name} ao carrinho`}>
+              {adding ? <LoaderCircle size={17} className="spin" /> : <ShoppingBag size={17} />}
+              <span>{unavailable ? "Indisponível" : adding ? "Adicionando…" : "Adicionar"}</span>
+            </button>
           </div>
         </article>
       )}
     </ProductDetailsButton>
+  );
+}
+
+/** Estrutura de carregamento com as mesmas proporções do card real. */
+export function ProductCardSkeleton() {
+  return (
+    <div className="store-product is-skeleton" aria-hidden="true">
+      <div className="store-product-image an-skeleton" />
+      <div className="store-product-body">
+        <span className="an-skeleton" style={{ height: 10, width: "45%" }} />
+        <span className="an-skeleton" style={{ height: 14, width: "90%", marginTop: 10 }} />
+        <span className="an-skeleton" style={{ height: 14, width: "60%", marginTop: 6 }} />
+        <span className="an-skeleton" style={{ height: 20, width: "40%", marginTop: 14 }} />
+        <span className="an-skeleton" style={{ height: 40, width: "100%", marginTop: 14, borderRadius: 12 }} />
+      </div>
+    </div>
+  );
+}
+
+export function ProductGridSkeleton({ count = 8, className = "store-products" }: { count?: number; className?: string }) {
+  return (
+    <div className={className} role="status" aria-label="Carregando peças">
+      {Array.from({ length: count }, (_, index) => <ProductCardSkeleton key={index} />)}
+    </div>
   );
 }

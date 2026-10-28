@@ -1,24 +1,13 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ArrowRight,
-  LoaderCircle,
-  MapPin,
-  PackageOpen,
-  Sparkles,
-  Store,
-} from "@/components/icons";
-import { useRouter, useSearchParams } from "next/navigation";
-import type { User } from "@supabase/supabase-js";
-import { toast } from "sonner";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { ArrowRight, Clock3, MapPin, PackageOpen, RefreshCw, Sparkles, Store } from "@/components/icons";
 import { CustomerHeader } from "@/components/customer-header";
 import { CustomerFooter } from "@/components/customer-footer";
 import { getSupabase } from "@/lib/supabase";
-import { addProductToCart } from "@/lib/cart";
-import { MarketplaceProductCard } from "@/components/marketplace-product-card";
-import { rememberFavoriteIntent, useMarketplace } from "@/components/marketplace-state";
-import { confirmAddedToCart, confirmFavoriteRemoved, confirmFavoriteSaved } from "@/components/marketplace-feedback";
+import { MarketplaceProductCard, ProductGridSkeleton, type MarketplaceProduct } from "@/components/marketplace-product-card";
 import "../storefront.css";
 import "./public-store.css";
 
@@ -37,385 +26,171 @@ type PublicStore = {
   published_products: number;
 };
 
-type Product = {
-  id: string;
-  name: string;
-  description: string | null;
-  price: number;
-  image_url: string | null;
-  stock: number | null;
-  ready_to_ship: boolean;
-  category_name: string | null;
-};
-
-type CepStatus = "loading" | "guest" | "account" | "error";
-
 const STORE_BUCKET = "artenos-store-assets";
 
+function initials(name: string) {
+  return name.split(/\s+/).filter((word) => word.length > 2).slice(0, 2).map((word) => word[0]?.toUpperCase()).join("") || "A";
+}
+
 function PublicStoreContent() {
-  const { favoriteIds, pendingFavoriteIds, toggleFavorite: saveFavorite } = useMarketplace();
-  const cartPending = useRef(new Set<string>());
-  const accountRequest = useRef(0);
-  const [busyCart, setBusyCart] = useState<ReadonlySet<string>>(new Set());
-  const router = useRouter();
   const searchParams = useSearchParams();
   const artisanId = searchParams.get("id") || "";
   const [store, setStore] = useState<PublicStore | null>(null);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [user, setUser] = useState<User | null>(null);
+  const [products, setProducts] = useState<MarketplaceProduct[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [searchInput, setSearchInput] = useState("");
-  const [cep, setCep] = useState("");
-  const [cepStatus, setCepStatus] = useState<CepStatus>("loading");
-  const [cepError, setCepError] = useState("");
-  const [cepOpen, setCepOpen] = useState(false);
-  const [cepInput, setCepInput] = useState("");
+  const [error, setError] = useState<"" | "missing" | "failed">("");
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let active = true;
+    if (!/^[0-9a-f-]{36}$/i.test(artisanId)) {
+      queueMicrotask(() => { if (active) { setError("missing"); setLoading(false); } });
+      return () => { active = false; };
+    }
+    queueMicrotask(() => { if (active) { setLoading(true); setError(""); } });
     const supabase = getSupabase();
-
-    async function loadAccount(current: User | null) {
-      const request = ++accountRequest.current;
-      if (!active) return;
-      setUser(current);
-      setCep("");
-      setCepStatus("loading");
-      if (!current) {
-        setCep(localStorage.getItem("artenos_guest_cep") || "");
-        setCepStatus("guest");
-        return;
-      }
-      const profileResponse = await supabase.from("profiles").select("cep").eq("id", current.id).single();
-      if (!active || request !== accountRequest.current) return;
-      const registeredCep = profileResponse.data?.cep?.replace(/\D/g, "") || "";
-      if (profileResponse.error || registeredCep.length !== 8) {
-        setCepStatus("error");
-        setCepError("Não foi possível consultar o CEP do seu cadastro.");
-      } else {
-        setCep(registeredCep);
-        setCepStatus("account");
-      }
-    }
-
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (
-          [
-            "INITIAL_SESSION",
-            "SIGNED_IN",
-            "SIGNED_OUT",
-            "USER_UPDATED",
-          ].includes(event)
-        ) {
-          window.setTimeout(() => {
-            void loadAccount(session?.user || null);
-          }, 0);
-        }
-      },
-    );
-
-    if (!artisanId) {
-      queueMicrotask(() => {
-        if (active) {
-          setError("Esta loja não está disponível.");
-          setLoading(false);
-        }
-      });
-      return () => {
-        active = false;
-        listener.subscription.unsubscribe();
-      };
-    }
-
     void Promise.all([
       supabase.rpc("get_public_artisan_store", { p_artisan_id: artisanId }),
-      supabase.rpc("list_public_artisan_products", {
-        p_artisan_id: artisanId,
-        p_limit: 48,
-        p_offset: 0,
-      }),
+      supabase.rpc("list_public_artisan_products", { p_artisan_id: artisanId, p_limit: 48, p_offset: 0 }),
     ])
       .then(([storeResponse, productResponse]) => {
         if (!active) return;
-        if (storeResponse.error || productResponse.error)
-          throw storeResponse.error || productResponse.error;
-        const currentStore = (
-          Array.isArray(storeResponse.data)
-            ? storeResponse.data[0]
-            : storeResponse.data
-        ) as PublicStore | undefined;
-        if (!currentStore) {
-          setError("Esta loja não está disponível.");
+        if (storeResponse.error || productResponse.error) throw storeResponse.error || productResponse.error;
+        const current = (Array.isArray(storeResponse.data) ? storeResponse.data[0] : storeResponse.data) as PublicStore | undefined;
+        if (!current) {
+          setError("missing");
           return;
         }
-        setStore(currentStore);
-        setProducts((productResponse.data || []) as Product[]);
+        setStore(current);
+        setProducts((productResponse.data || []) as MarketplaceProduct[]);
       })
-      .catch(() => {
-        if (active)
-          setError(
-            "Não foi possível carregar esta loja. Confirme que o script supabase/minha_loja.sql foi executado.",
-          );
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+      .catch(() => { if (active) setError("failed"); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [artisanId, attempt]);
 
-    return () => {
-      active = false;
-      listener.subscription.unsubscribe();
-    };
-  }, [artisanId]);
+  const coverUrl = useMemo(() => store?.cover_path
+    ? getSupabase().storage.from(STORE_BUCKET).getPublicUrl(store.cover_path).data.publicUrl
+    : "", [store]);
 
-  const coverUrl = useMemo(
-    () =>
-      store?.cover_path
-        ? getSupabase()
-            .storage.from(STORE_BUCKET)
-            .getPublicUrl(store.cover_path).data.publicUrl
-        : "",
-    [store],
-  );
+  useEffect(() => {
+    if (store) document.title = `${store.store_name} | Artenós`;
+  }, [store]);
 
-  function submitSearch(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const query = searchInput.trim().slice(0, 100);
-    router.push(
-      query ? `/categorias?busca=${encodeURIComponent(query)}` : "/categorias",
-    );
-  }
-
-  async function saveCep(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (user) return;
-    const digits = cepInput.replace(/\D/g, "");
-    if (digits.length !== 8) return toast.error("Digite um CEP com 8 números.");
-    try {
-      const response = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
-      const address = await response.json();
-      if (!response.ok || address.erro) throw new Error();
-      localStorage.setItem("artenos_guest_cep", digits);
-      setCep(digits);
-      setCepOpen(false);
-      toast.success(`CEP de ${address.localidade}/${address.uf} selecionado.`);
-    } catch {
-      toast.error("CEP não encontrado. Confira e tente novamente.");
-    }
-  }
-
-  async function toggleFavorite(product: Product) {
-    if (!user) {
-      rememberFavoriteIntent(product.id, product.name);
-      router.push("/acesso");
-      return;
-    }
-    try {
-      const saved = await saveFavorite(product.id);
-      if (saved) confirmFavoriteSaved(product.name);
-      else confirmFavoriteRemoved(product.name);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível atualizar seus favoritos.");
-    }
-  }
-
-  async function addToCart(product: Product) {
-    if (!user) {
-      router.push("/acesso");
-      return;
-    }
-    if (cartPending.current.has(product.id)) return;
-    cartPending.current.add(product.id);
-    setBusyCart(new Set(cartPending.current));
-    try {
-      await addProductToCart(product.id);
-      confirmAddedToCart(product.name);
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Não foi possível adicionar este produto ao carrinho.",
-      );
-    } finally {
-      cartPending.current.delete(product.id);
-      setBusyCart(new Set(cartPending.current));
-    }
-  }
+  const location = store ? [store.city, store.state].filter(Boolean).join(" · ") : "";
 
   return (
     <div className="store-page public-shop-page">
-      <CustomerHeader
-        userSignedIn={!!user}
-        cep={cep}
-        cepStatus={cepStatus}
-        cepError={cepError}
-        cepOpen={cepOpen}
-        cepInput={cepInput}
-        searchInput={searchInput}
-        onSearchInput={setSearchInput}
-        onSearch={submitSearch}
-        onToggleCep={() => setCepOpen((value) => !value)}
-        onCepInput={setCepInput}
-        onSaveCep={saveCep}
-      />
-      <main>
+      <CustomerHeader />
+      <main id="conteudo" tabIndex={-1}>
         {loading ? (
-          <section className="public-shop-state">
-            <LoaderCircle className="public-shop-spin" size={30} />
-            <strong>Carregando loja...</strong>
-          </section>
+          <div className="store-container public-shop-loading" role="status" aria-label="Carregando loja">
+            <span className="an-skeleton public-shop-cover-skeleton" />
+            <span className="an-skeleton" style={{ height: 34, width: "40%", marginTop: 24 }} />
+            <span className="an-skeleton" style={{ height: 16, width: "25%", marginTop: 12 }} />
+            <ProductGridSkeleton count={5} />
+          </div>
         ) : error || !store ? (
-          <section className="public-shop-state">
-            <Store size={34} />
-            <h1>Loja indisponível</h1>
-            <p>{error}</p>
-            <button type="button" onClick={() => router.push("/")}>
-              Voltar para a vitrine
-            </button>
+          <section className="store-container">
+            <div className="an-state" role={error === "failed" ? "alert" : undefined}>
+              <Store size={34} />
+              <h1>{error === "failed" ? "Não foi possível abrir esta loja" : "Loja não encontrada"}</h1>
+              <p>{error === "failed"
+                ? "Confira sua conexão e tente novamente."
+                : "O endereço pode estar incompleto ou a loja não está mais disponível na Artenós."}</p>
+              <div className="an-state-actions">
+                {error === "failed" && (
+                  <button type="button" className="an-btn" onClick={() => setAttempt((value) => value + 1)}>
+                    <RefreshCw size={15} /> Tentar novamente
+                  </button>
+                )}
+                <Link className={`an-btn${error === "failed" ? " an-btn--secondary" : ""}`} href="/lojas">Ver todas as lojas</Link>
+              </div>
+            </div>
           </section>
         ) : (
           <>
-            <section className="public-shop-hero">
-              <div
-                className="public-shop-cover"
-                style={
-                  coverUrl ? { backgroundImage: `url(${coverUrl})` } : undefined
-                }
-              >
-                {!coverUrl && <Sparkles size={42} />}
-                {store.vacation_mode && <span>Loja em pausa</span>}
+            <section className="public-shop-hero store-container" aria-labelledby="loja-titulo">
+              <div className="public-shop-cover">
+                {coverUrl
+                  // eslint-disable-next-line @next/next/no-img-element
+                  ? <img src={coverUrl} alt="" width={1600} height={600} fetchPriority="high" />
+                  : <Sparkles size={40} aria-hidden="true" />}
+                {store.vacation_mode && <span className="an-badge an-badge--warm public-shop-pause">Loja em pausa: compras temporariamente desativadas</span>}
               </div>
-              <div className="store-container public-shop-profile">
-                <span className="public-shop-symbol">
-                  <Store size={27} />
-                </span>
-                <div>
-                  <p className="store-eyebrow">LOJA ARTESÃ APROVADA</p>
-                  <h1>{store.store_name}</h1>
-                  <p className="public-shop-specialty">
-                    {store.specialty || "Artesanato autoral"}
-                  </p>
-                  <span>
-                    <MapPin size={15} />{" "}
-                    {[store.city, store.state].filter(Boolean).join(" · ")}
-                  </span>
+              <div className="public-shop-profile">
+                <span className="public-shop-symbol" aria-hidden="true">{initials(store.store_name)}</span>
+                <div className="public-shop-identity">
+                  <p className="store-eyebrow">{store.specialty || "Artesanato autoral"}</p>
+                  <h1 id="loja-titulo">{store.store_name}</h1>
+                  {location && <p className="public-shop-location"><MapPin size={15} /> {location}</p>}
                 </div>
-                <dl>
-                  <div>
-                    <dt>Peças publicadas</dt>
-                    <dd>{store.published_products}</dd>
-                  </div>
-                  <div>
-                    <dt>Prazo médio</dt>
-                    <dd>Até {store.production_time_days} dias</dd>
-                  </div>
-                  <div>
-                    <dt>Sob encomenda</dt>
-                    <dd>
-                      {store.vacation_mode
-                        ? "Pausado"
-                        : store.accepts_custom_orders
-                          ? "Disponível"
-                          : "Indisponível"}
-                    </dd>
-                  </div>
+                <dl className="public-shop-stats">
+                  <div><dt>Peças publicadas</dt><dd>{store.published_products}</dd></div>
+                  <div><dt>Produção média</dt><dd>até {store.production_time_days} {store.production_time_days === 1 ? "dia" : "dias"}</dd></div>
+                  <div><dt>Encomendas</dt><dd>{store.vacation_mode ? "Pausadas" : store.accepts_custom_orders ? "Aceita" : "Não aceita"}</dd></div>
                 </dl>
               </div>
             </section>
 
-            <section className="store-container public-shop-about">
-              {store.announcement && (
-                <blockquote>{store.announcement}</blockquote>
-              )}
+            <section className="store-container public-shop-about" aria-labelledby="historia-titulo">
               <div>
-                <div>
-                  <p className="store-eyebrow">POR TRÁS DA LOJA</p>
-                  <h2>Uma história feita à mão</h2>
-                </div>
-                <p>
-                  {store.story ||
-                    "A história desta loja ainda não foi publicada."}
-                </p>
+                <p className="store-eyebrow">Por trás da loja</p>
+                <h2 id="historia-titulo">A história de quem faz</h2>
+              </div>
+              <div>
+                {store.announcement && (
+                  <p className="public-shop-announcement"><Clock3 size={16} /> <span>{store.announcement}</span></p>
+                )}
+                <p className="public-shop-story">{store.story || "A loja ainda não publicou a sua história."}</p>
               </div>
             </section>
 
-            <section className="store-container public-shop-products">
-              <div className="public-shop-section-heading">
+            <section className="store-container public-shop-products" aria-labelledby="pecas-titulo">
+              <div className="store-section-heading">
                 <div>
-                  <p className="store-eyebrow">VITRINE DA LOJA</p>
-                  <h2>Peças publicadas</h2>
+                  <p className="store-eyebrow">Vitrine da loja</p>
+                  <h2 id="pecas-titulo">Peças publicadas</h2>
                 </div>
-                <span>
-                  {products.length} {products.length === 1 ? "peça" : "peças"}
-                </span>
+                <span className="public-shop-count">{products.length} {products.length === 1 ? "peça" : "peças"}</span>
               </div>
               {products.length ? (
                 <div className="store-products">
-                  {products.map((product) => (
-                    <MarketplaceProductCard key={product.id} product={product}
-                      shopName={store.store_name}
-                      saved={favoriteIds.has(product.id)}
-                      favoritePending={pendingFavoriteIds.has(product.id)}
-                      cartPending={busyCart.has(product.id)}
-                      cartDisabled={store.vacation_mode}
-                      onFavorite={() => { void toggleFavorite(product); }}
-                      onCart={() => addToCart(product)} />
+                  {products.map((product, index) => (
+                    <MarketplaceProductCard key={product.id} product={{ ...product, shop_id: store.artisan_id }}
+                      shopName={store.store_name} cartDisabled={store.vacation_mode} priority={index < 2} />
                   ))}
                 </div>
               ) : (
-                <div className="public-shop-empty">
-                  <PackageOpen size={38} />
+                <div className="an-state">
+                  <PackageOpen size={34} />
                   <h3>Nenhuma peça publicada ainda</h3>
-                  <p>
-                    Os produtos aparecerão aqui quando a artesã publicá-los no
-                    catálogo.
-                  </p>
+                  <p>As peças aparecerão aqui quando a loja publicá-las no catálogo.</p>
                 </div>
               )}
             </section>
 
             {store.accepts_custom_orders && !store.vacation_mode && (
-              <section className="store-container public-shop-custom">
+              <section className="store-container public-shop-custom" aria-labelledby="encomenda-titulo">
                 <div>
-                  <Sparkles size={29} />
-                  <div>
-                    <h2>Gostou do estilo desta loja?</h2>
-                    <p>
-                      Veja as opções personalizadas publicadas pelas artesãs na
-                      área Sob encomenda.
-                    </p>
-                  </div>
+                  <p className="store-eyebrow">Sob encomenda</p>
+                  <h2 id="encomenda-titulo">Quer algo feito do seu jeito?</h2>
+                  <p>Esta loja aceita encomendas. Veja as opções personalizadas publicadas na área Sob encomenda.</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => router.push("/sob-encomenda")}
-                >
-                  Explorar encomendas <ArrowRight size={17} />
-                </button>
+                <Link className="an-btn an-btn--lg" href="/sob-encomenda">Ver opções sob encomenda <ArrowRight size={17} /></Link>
               </section>
             )}
           </>
         )}
       </main>
-      <CustomerFooter
-        userSignedIn={!!user}
-        authLoading={cepStatus === "loading"}
-      />
+      <CustomerFooter />
     </div>
   );
 }
 
 export default function PublicStorePage() {
   return (
-    <Suspense
-      fallback={
-        <main className="public-shop-state">
-          <LoaderCircle className="public-shop-spin" size={30} />
-          <strong>Carregando loja...</strong>
-        </main>
-      }
-    >
+    <Suspense fallback={<div className="store-page" />}>
       <PublicStoreContent />
     </Suspense>
   );

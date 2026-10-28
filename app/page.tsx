@@ -1,134 +1,72 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowRight, Heart, Sparkles, X } from "@/components/icons";
-import { toast } from "sonner";
-import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import {
+  ArrowRight,
+  MessageCircle,
+  RefreshCw,
+  CircleDollarSign,
+  ShieldCheck,
+  Sparkles,
+  Truck,
+} from "@/components/icons";
 import { getSupabase } from "@/lib/supabase";
-import { addProductToCart } from "@/lib/cart";
 import { CustomerHeader } from "@/components/customer-header";
 import { CustomerFooter } from "@/components/customer-footer";
-import { MarketplaceProductCard } from "@/components/marketplace-product-card";
-import { rememberFavoriteIntent, useMarketplace } from "@/components/marketplace-state";
-import { confirmAddedToCart, confirmFavoriteRemoved, confirmFavoriteSaved } from "@/components/marketplace-feedback";
+import { MarketplaceProductCard, ProductGridSkeleton, type MarketplaceProduct } from "@/components/marketplace-product-card";
 import "./storefront.css";
 
-type Category = {
-  id: string;
-  name: string;
-  slug: string;
-  image_url: string | null;
-};
-type Collection = {
-  id: string;
-  title: string;
-  description: string | null;
-  image_url: string | null;
-};
-type Banner = {
-  id: string;
-  title: string;
-  subtitle: string | null;
-  image_url: string;
-  collection_id: string | null;
-};
-type Product = {
-  id: string;
-  name: string;
-  description: string | null;
-  price: number;
-  image_url: string | null;
-  stock: number | null;
-  ready_to_ship: boolean;
-  featured: boolean;
-  category_name: string | null;
-  shop_name: string | null;
-};
-type Shop = {
-  id: string;
-  store_name: string;
-  specialty: string | null;
-  story: string | null;
-  city: string | null;
-  state: string | null;
-};
-type Filter = {
-  query: string;
-  categoryId: string | null;
-  collectionId: string | null;
-  label: string;
-};
-type CepStatus = "loading" | "guest" | "account" | "error";
-const emptyFilter: Filter = {
-  query: "",
-  categoryId: null,
-  collectionId: null,
-  label: "",
-};
+type Category = { id: string; name: string; slug: string; image_url: string | null };
+type Collection = { id: string; title: string; description: string | null; image_url: string | null };
+type Banner = { id: string; title: string; subtitle: string | null; image_url: string; collection_id: string | null };
+type Product = MarketplaceProduct & { featured?: boolean };
+type Shop = { id: string; store_name: string; specialty: string | null; story: string | null; city: string | null; state: string | null };
+type CollectionFilter = { id: string; title: string };
 
-function ProductSection({
-  id,
-  eyebrow,
-  title,
-  products,
-  saved,
-  pendingFavorites,
-  onFavorite,
-  onCart,
-  loading,
-}: {
+function initials(name: string) {
+  return name.split(/\s+/).filter((word) => word.length > 2 || /^[A-ZÀ-Ú]/.test(word)).slice(0, 2)
+    .map((word) => word[0]?.toUpperCase()).join("") || "A";
+}
+
+function ProductSection({ id, eyebrow, title, products, loading, href = "/categorias", hrefLabel = "Ver todas as peças", empty }: {
   id?: string;
   eyebrow: string;
   title: string;
   products: Product[];
-  saved: ReadonlySet<string>;
-  pendingFavorites: ReadonlySet<string>;
-  onFavorite: (p: Product) => void;
-  onCart: (p: Product) => Promise<void>;
   loading: boolean;
+  href?: string;
+  hrefLabel?: string;
+  empty: string;
 }) {
+  const headingId = `${id ?? title.replace(/\W+/g, "-").toLowerCase()}-titulo`;
   return (
-    <section id={id} className="store-section store-container">
+    <section id={id} className="store-section store-container" aria-labelledby={headingId}>
       <div className="store-section-heading">
         <div>
           <p className="store-eyebrow">{eyebrow}</p>
-          <h2>{title}</h2>
+          <h2 id={headingId}>{title}</h2>
         </div>
-        <Link href="/categorias" className="store-see-all">
-          Ver todos <ArrowRight size={16} />
+        <Link href={href} className="store-see-all">
+          {hrefLabel} <ArrowRight size={16} />
         </Link>
       </div>
       {loading ? (
-        <p className="store-empty">Carregando peças...</p>
+        <ProductGridSkeleton count={5} />
       ) : products.length ? (
         <div className="store-products">
-          {products.map((product) => (
-            <MarketplaceProductCard
-              key={product.id}
-              product={product}
-              saved={saved.has(product.id)}
-              favoritePending={pendingFavorites.has(product.id)}
-              onFavorite={() => onFavorite(product)}
-              onCart={() => onCart(product)}
-            />
+          {products.map((product, index) => (
+            <MarketplaceProductCard key={product.id} product={product} priority={index < 2} />
           ))}
         </div>
       ) : (
-        <p className="store-empty">
-          Ainda não há peças publicadas nesta seleção. <Link href="/categorias">Ver todas as categorias</Link>
-        </p>
+        <p className="store-empty">{empty} <Link href="/categorias">Ver todas as categorias</Link></p>
       )}
     </section>
   );
 }
 
 export default function StorefrontPage() {
-  const router = useRouter();
-  const { favoriteIds, pendingFavoriteIds, toggleFavorite: saveFavorite } = useMarketplace();
-  const [searchInput, setSearchInput] = useState("");
-  const [filter, setFilter] = useState<Filter>(emptyFilter);
   const [categories, setCategories] = useState<Category[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
@@ -136,118 +74,26 @@ export default function StorefrontPage() {
   const [featured, setFeatured] = useState<Product[]>([]);
   const [ready, setReady] = useState<Product[]>([]);
   const [latest, setLatest] = useState<Product[]>([]);
-  const [results, setResults] = useState<Product[]>([]);
-  const [user, setUser] = useState<User | null>(null);
-  const [cep, setCep] = useState("");
-  const [cepStatus, setCepStatus] = useState<CepStatus>("loading");
-  const [cepError, setCepError] = useState("");
-  const [cepOpen, setCepOpen] = useState(false);
-  const [cepInput, setCepInput] = useState("");
-  const [authPrompt, setAuthPrompt] = useState(false);
+  const [collection, setCollection] = useState<CollectionFilter | null>(null);
+  const [collectionProducts, setCollectionProducts] = useState<Product[]>([]);
+  const [collectionLoading, setCollectionLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const profileRequest = useRef(0);
-  const cartPending = useRef(new Set<string>());
-
-  const loadUserData = useCallback(async (current: User | null) => {
-    const request = ++profileRequest.current;
-    setUser(current);
-    setCepOpen(false);
-    if (!current) {
-      setCep(localStorage.getItem("artenos_guest_cep") || "");
-      setCepStatus("guest");
-      setCepError("");
-      return;
-    }
-    setCep("");
-    setCepStatus("loading");
-    setCepError("");
-    try {
-      const supabase = getSupabase();
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("cep")
-        .eq("id", current.id)
-        .single();
-      if (request !== profileRequest.current) return;
-      const registeredCep = profile?.cep?.replace(/\D/g, "") || "";
-      if (profileError) {
-        console.error("Falha ao ler CEP em profiles", {
-          code: profileError.code,
-          message: profileError.message,
-        });
-        setCepError(
-          profileError.code === "42501"
-            ? "Sem permissão para consultar o CEP do seu cadastro."
-            : profileError.code === "PGRST116"
-              ? "Seu perfil não foi encontrado. Verifique seu cadastro."
-              : "Não foi possível consultar seu CEP no momento.",
-        );
-        setCepStatus("error");
-      } else if (registeredCep.length !== 8) {
-        setCepError("O CEP salvo no seu cadastro está incompleto ou inválido.");
-        setCepStatus("error");
-      } else {
-        setCep(registeredCep);
-        setCepStatus("account");
-      }
-    } catch {
-      if (request === profileRequest.current) {
-        setCepError(
-          "Não foi possível conectar ao seu perfil. Confira a internet e tente novamente.",
-        );
-        setCepStatus("error");
-      }
-    }
-  }, []);
+  const [attempt, setAttempt] = useState(0);
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let active = true;
-    const requestCounter = profileRequest;
     try {
       const supabase = getSupabase();
-      const { data: listener } = supabase.auth.onAuthStateChange(
-        (event, session) => {
-          if (
-            [
-              "INITIAL_SESSION",
-              "SIGNED_IN",
-              "SIGNED_OUT",
-              "USER_UPDATED",
-            ].includes(event)
-          ) {
-            window.setTimeout(() => {
-              if (active) void loadUserData(session?.user || null);
-            }, 0);
-          }
-        },
-      );
       void Promise.all([
-        supabase
-          .from("storefront_categories")
-          .select("id,name,slug,image_url")
-          .order("sort_order"),
-        supabase
-          .from("storefront_collections")
-          .select("id,title,description,image_url")
-          .order("sort_order"),
-        supabase
-          .from("storefront_banners")
-          .select("id,title,subtitle,image_url,collection_id")
-          .order("sort_order"),
+        supabase.from("storefront_categories").select("id,name,slug,image_url").order("sort_order"),
+        supabase.from("storefront_collections").select("id,title,description,image_url").order("sort_order"),
+        supabase.from("storefront_banners").select("id,title,subtitle,image_url,collection_id").order("sort_order"),
         supabase.rpc("list_storefront_shops", { p_limit: 8 }),
-        supabase.rpc("search_storefront_products", {
-          p_section: "featured",
-          p_limit: 8,
-        }),
-        supabase.rpc("search_storefront_products", {
-          p_section: "ready",
-          p_limit: 8,
-        }),
-        supabase.rpc("search_storefront_products", {
-          p_section: "new",
-          p_limit: 8,
-        }),
+        supabase.rpc("search_storefront_products", { p_section: "featured", p_limit: 10 }),
+        supabase.rpc("search_storefront_products", { p_section: "ready", p_limit: 10 }),
+        supabase.rpc("search_storefront_products", { p_section: "new", p_limit: 10 }),
       ])
         .then((responses) => {
           if (!active) return;
@@ -263,345 +109,233 @@ export default function StorefrontPage() {
           setError("");
         })
         .catch(() => {
-          if (active)
-            setError(
-              "Não foi possível carregar a vitrine. Confirme a conexão com o Supabase e execute o script da vitrine.",
-            );
+          if (active) setError("Não conseguimos carregar a vitrine agora. Confira sua conexão e tente novamente.");
         })
         .finally(() => {
           if (active) setLoading(false);
         });
-      return () => {
-        active = false;
-        requestCounter.current++;
-        listener.subscription.unsubscribe();
-      };
     } catch {
       queueMicrotask(() => {
-        setCepError("A conexão com o Supabase não foi configurada.");
-        setCepStatus("error");
-        setError(
-          "Configure as variáveis públicas do Supabase para carregar a vitrine.",
-        );
+        if (!active) return;
+        setError("A vitrine está temporariamente indisponível.");
         setLoading(false);
       });
     }
-  }, [loadUserData]);
+    return () => { active = false; };
+  }, [attempt]);
 
   useEffect(() => {
-    if (!filter.query && !filter.categoryId && !filter.collectionId) return;
+    if (!collection) return;
     let active = true;
     void (async () => {
-      setLoading(true);
+      setCollectionLoading(true);
       try {
-        const { data, error: queryError } = await getSupabase().rpc(
-          "search_storefront_products",
-          {
-            p_query: filter.query || null,
-            p_category_id: filter.categoryId,
-            p_collection_id: filter.collectionId,
-            p_section: "all",
-            p_limit: 40,
-          },
-        );
+        const { data, error: queryError } = await getSupabase().rpc("search_storefront_products", {
+          p_query: null, p_category_id: null, p_collection_id: collection.id, p_section: "all", p_limit: 40,
+        });
         if (queryError) throw queryError;
-        if (active) {
-          setResults((data || []) as Product[]);
-          setError("");
-        }
+        if (active) setCollectionProducts((data || []) as Product[]);
       } catch {
-        if (active)
-          setError("Não foi possível fazer a pesquisa. Tente novamente.");
+        if (active) setCollectionProducts([]);
       } finally {
-        if (active) setLoading(false);
+        if (active) setCollectionLoading(false);
       }
     })();
-    return () => {
-      active = false;
-    };
-  }, [filter]);
+    return () => { active = false; };
+  }, [collection]);
 
-  function chooseFilter(next: Filter) {
-    setFilter(next);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  const chooseCollection = useCallback((next: CollectionFilter) => {
+    setCollection(next);
+    window.requestAnimationFrame(() => {
+      resultsRef.current?.scrollIntoView({ block: "start" });
+      resultsRef.current?.querySelector<HTMLElement>("h2")?.focus({ preventScroll: true });
+    });
+  }, []);
+
+  function retry() {
+    setLoading(true);
+    setError("");
+    setAttempt((value) => value + 1);
   }
-  function submitSearch(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const query = searchInput.trim().slice(0, 100);
-    router.push(query ? `/categorias?busca=${encodeURIComponent(query)}` : "/categorias");
-  }
-  async function toggleFavorite(product: Product) {
-    if (!user) {
-      rememberFavoriteIntent(product.id, product.name);
-      setAuthPrompt(true);
-      return;
-    }
-    try {
-      const saved = await saveFavorite(product.id);
-      if (saved) confirmFavoriteSaved(product.name);
-      else confirmFavoriteRemoved(product.name);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível atualizar seus favoritos.");
-    }
-  }
-  async function addToCart(product: Product) {
-    if (!user) {
-      setAuthPrompt(true);
-      return;
-    }
-    if (cartPending.current.has(product.id)) return;
-    cartPending.current.add(product.id);
-    try {
-      await addProductToCart(product.id);
-      confirmAddedToCart(product.name);
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Não foi possível adicionar este produto ao carrinho.",
-      );
-    } finally { cartPending.current.delete(product.id); }
-  }
-  async function saveCep(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (user) return;
-    const digits = cepInput.replace(/\D/g, "");
-    if (digits.length !== 8) {
-      toast.error("Digite um CEP com 8 números.");
-      return;
-    }
-    try {
-      const response = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
-      const address = await response.json();
-      if (!response.ok || address.erro) throw new Error();
-      localStorage.setItem("artenos_guest_cep", digits);
-      setCep(digits);
-      setCepOpen(false);
-      toast.success(`CEP de ${address.localidade}/${address.uf} selecionado.`);
-    } catch {
-      toast.error("CEP não encontrado. Confira e tente novamente.");
-    }
-  }
-  const filtered = Boolean(
-    filter.query || filter.categoryId || filter.collectionId,
-  );
-  const currentBanner = banners[0];
+
+  const banner = banners[0];
   const firstProducts = featured.length ? featured : latest.length ? latest : ready;
+  const heroImages = [banner?.image_url, ...firstProducts.map((product) => product.image_url)]
+    .filter((url): url is string => Boolean(url)).slice(0, 3);
+
   return (
     <div className="store-page">
-      <CustomerHeader
-        userSignedIn={!!user}
-        cep={cep}
-        cepStatus={cepStatus}
-        cepError={cepError}
-        cepOpen={cepOpen}
-        cepInput={cepInput}
-        searchInput={searchInput}
-        onSearchInput={setSearchInput}
-        onSearch={submitSearch}
-        onToggleCep={() => setCepOpen(!cepOpen)}
-        onCepInput={setCepInput}
-        onSaveCep={saveCep}
-      />
+      <CustomerHeader />
 
-      <main>
-        {error && (
-          <div className="store-error store-container" role="alert">
-            {error}
-          </div>
-        )}
-        <section className="store-hero">
+      <main id="conteudo" tabIndex={-1}>
+        <section className="store-hero" aria-labelledby="hero-title">
           <div className="store-container store-hero-inner">
             <div className="store-hero-copy">
               <p className="store-eyebrow">O encontro com o feito à mão</p>
-              <h1>
-                {currentBanner?.title ||
-                  "Histórias que ganham forma em cada detalhe."}
-              </h1>
-              <p>
-                {currentBanner?.subtitle ||
-                  "Explore criações de artesãs e descubra peças feitas para durar."}
-              </p>
+              <h1 id="hero-title">{banner?.title || "Histórias que ganham forma em cada detalhe."}</h1>
+              <p>{banner?.subtitle || "Peças autorais de artesãs e artesãos de todo o Brasil — escolha pronta entrega ou encomende algo só seu."}</p>
               <div className="store-hero-actions">
-                <Link href="#explorar-produtos">Explorar produtos <ArrowRight size={18} /></Link>
-                <Link href="/sob-encomenda">Solicitar uma peça personalizada</Link>
+                <Link className="an-btn an-btn--lg store-hero-primary" href="/categorias">
+                  Explorar peças <ArrowRight size={18} />
+                </Link>
+                {banner?.collection_id ? (
+                  <button type="button" className="an-btn an-btn--lg store-hero-secondary"
+                    onClick={() => chooseCollection({ id: banner.collection_id!, title: banner.title })}>
+                    Ver a coleção
+                  </button>
+                ) : (
+                  <Link className="an-btn an-btn--lg store-hero-secondary" href="/sob-encomenda">
+                    Encomendar uma peça
+                  </Link>
+                )}
               </div>
-              {currentBanner?.collection_id && (
-                <button className="store-hero-collection" onClick={() => chooseFilter({
-                  query: "", categoryId: null, collectionId: currentBanner.collection_id,
-                  label: currentBanner.title,
-                })}>Explorar coleção</button>
-              )}
             </div>
-            <div className="store-hero-art">
-              <span className="store-hero-art-kicker">Descubra a Artenós</span>
-              <strong>Feito à mão tem história.</strong>
-              <p>Conheça quem cria, encontre sua próxima peça ou encomende algo só seu.</p>
-              <Link href="/lojas">Conhecer as lojas <ArrowRight size={17} /></Link>
+            <div className={`store-hero-art${heroImages.length ? ` has-${heroImages.length}` : ""}`} aria-hidden="true">
+              {loading ? (
+                <span className="an-skeleton store-hero-art-skeleton" />
+              ) : heroImages.length ? (
+                heroImages.map((url, index) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={url + index} src={url} alt="" className={`store-hero-photo photo-${index + 1}`}
+                    fetchPriority={index === 0 ? "high" : "auto"} loading="eager" width={600} height={750} />
+                ))
+              ) : (
+                <div className="store-hero-art-fallback">
+                  <Sparkles size={36} />
+                  <strong>Feito à mão tem história.</strong>
+                </div>
+              )}
             </div>
           </div>
         </section>
 
-        <ProductSection
-          id="explorar-produtos"
-          eyebrow="Peças de artesãos da Artenós"
-          title="Explore o feito à mão"
-          products={firstProducts}
-          saved={favoriteIds}
-          pendingFavorites={pendingFavoriteIds}
-          onFavorite={toggleFavorite}
-          onCart={addToCart}
-          loading={loading}
-        />
+        <ul className="store-trust store-container" aria-label="Como a Artenós funciona">
+          <li><ShieldCheck size={20} /><span><strong>Lojas aprovadas</strong> pela equipe Artenós antes de vender</span></li>
+          <li><Truck size={20} /><span><strong>Frete por loja</strong>, calculado com o seu CEP no carrinho</span></li>
+          <li><CircleDollarSign size={20} /><span><strong>Pagamento</strong> por Pix ou cartão via Mercado Pago</span></li>
+          <li><MessageCircle size={20} /><span><strong>Converse com quem fez</strong> pelas mensagens do pedido</span></li>
+        </ul>
 
-        <nav className="store-discovery store-container" aria-label="Descubra a Artenós">
-          <Link href="/categorias">
-            <small>Encontre sua próxima peça</small>
-            <span>Explore o feito à mão <ArrowRight size={22} /></span>
-          </Link>
-          <Link href="/sob-encomenda">
-            <small>Uma criação do seu jeito</small>
-            <span>Solicitar uma peça personalizada <ArrowRight size={22} /></span>
-          </Link>
-          <Link href="/lojas">
-            <small>Por trás de cada criação</small>
-            <span>Conheça nossas lojas <ArrowRight size={22} /></span>
-          </Link>
-        </nav>
-
-        {filtered && (
-          <ProductSection
-            eyebrow="Sua descoberta"
-            title={filter.label}
-            products={results}
-            saved={favoriteIds}
-            pendingFavorites={pendingFavoriteIds}
-            onFavorite={toggleFavorite}
-            onCart={addToCart}
-            loading={loading}
-          />
+        {error && (
+          <div className="store-container">
+            <div className="an-alert an-alert--error store-error" role="alert">
+              <span>{error}</span>
+              <button type="button" className="an-btn an-btn--secondary an-btn--sm" onClick={retry}>
+                <RefreshCw size={14} /> Tentar novamente
+              </button>
+            </div>
+          </div>
         )}
 
-        <section id="categorias" className="store-section store-container">
+        <ProductSection id="explorar-produtos" eyebrow="Escolhidas na vitrine" title="Explore o feito à mão"
+          products={firstProducts} loading={loading} empty="Ainda não há peças publicadas nesta seleção." />
+
+        {collection && (
+          <div ref={resultsRef} className="store-collection-results">
+            <section className="store-section store-container" aria-labelledby="colecao-titulo">
+              <div className="store-section-heading">
+                <div>
+                  <p className="store-eyebrow">Coleção</p>
+                  <h2 id="colecao-titulo" tabIndex={-1}>{collection.title}</h2>
+                </div>
+                <button type="button" className="store-see-all" onClick={() => setCollection(null)}>Fechar coleção</button>
+              </div>
+              {collectionLoading ? <ProductGridSkeleton count={5} /> : collectionProducts.length ? (
+                <div className="store-products">
+                  {collectionProducts.map((product) => <MarketplaceProductCard key={product.id} product={product} />)}
+                </div>
+              ) : <p className="store-empty">Esta coleção ainda não tem peças publicadas.</p>}
+            </section>
+          </div>
+        )}
+
+        <section id="categorias" className="store-section store-container" aria-labelledby="categorias-titulo">
           <div className="store-section-heading">
             <div>
               <p className="store-eyebrow">Encontre seu estilo</p>
-              <h2>Categorias de artesanato</h2>
+              <h2 id="categorias-titulo">Categorias de artesanato</h2>
             </div>
           </div>
-          {categories.length ? (
+          {loading ? (
+            <div className="store-categories" aria-hidden="true">
+              {Array.from({ length: 6 }, (_, index) => <span key={index} className="an-skeleton store-category-skeleton" />)}
+            </div>
+          ) : categories.length ? (
             <div className="store-categories">
               {categories.map((category) => (
-                <button
-                  key={category.id}
-                  type="button"
-                  onClick={() =>
-                    router.push(
-                      `/categorias?categoria=${encodeURIComponent(category.id)}`,
-                    )
-                  }
-                >
+                <Link key={category.id} href={`/categorias?categoria=${encodeURIComponent(category.id)}`}>
                   {category.image_url ? (
-                    <img src={category.image_url} alt="" loading="lazy" />
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={category.image_url} alt="" loading="lazy" width={240} height={240} />
                   ) : (
-                    <span className="store-category-placeholder">
-                      <Sparkles size={25} />
-                    </span>
+                    <span className="store-category-placeholder"><Sparkles size={25} /></span>
                   )}
                   <span>{category.name}</span>
                   <ArrowRight size={16} />
-                </button>
+                </Link>
               ))}
             </div>
           ) : (
-            <p className="store-empty">
-              As categorias aparecerão aqui assim que forem publicadas.
-            </p>
+            <p className="store-empty">As categorias aparecerão aqui assim que forem publicadas.</p>
           )}
         </section>
 
         <div className="store-warm-band">
-          <ProductSection
-            eyebrow="Para receber em breve"
-            title="Peças prontas para envio"
-            products={ready}
-            saved={favoriteIds}
-            pendingFavorites={pendingFavoriteIds}
-            onFavorite={toggleFavorite}
-            onCart={addToCart}
-            loading={loading}
-          />
+          <ProductSection eyebrow="Para receber em breve" title="Peças prontas para envio" products={ready}
+            loading={loading} href="/categorias?pronta=1" hrefLabel="Ver pronta entrega"
+            empty="Nenhuma peça pronta para envio no momento." />
         </div>
 
-        <section className="store-section store-container">
-          <div className="store-section-heading">
-            <div>
-              <p className="store-eyebrow">Inspiração para explorar</p>
-              <h2>Coleções e temas</h2>
+        {(loading || collections.length > 0) && (
+          <section className="store-section store-container" aria-labelledby="colecoes-titulo">
+            <div className="store-section-heading">
+              <div>
+                <p className="store-eyebrow">Inspiração para explorar</p>
+                <h2 id="colecoes-titulo">Coleções e temas</h2>
+              </div>
             </div>
-          </div>
-          {collections.length ? (
             <div className="store-collections">
-              {collections.map((collection) => (
-                <button
-                  key={collection.id}
-                  className="store-collection"
-                  type="button"
-                  onClick={() =>
-                    chooseFilter({
-                      query: "",
-                      categoryId: null,
-                      collectionId: collection.id,
-                      label: collection.title,
-                    })
-                  }
-                >
-                  {collection.image_url && (
-                    <img src={collection.image_url} alt="" loading="lazy" />
-                  )}
-                  <span>
-                    <strong>{collection.title}</strong>
-                    {collection.description && (
-                      <small>{collection.description}</small>
-                    )}
-                    <em>
-                      Explorar coleção <ArrowRight size={16} />
-                    </em>
-                  </span>
-                </button>
-              ))}
+              {loading
+                ? Array.from({ length: 3 }, (_, index) => <span key={index} className="an-skeleton store-collection" aria-hidden="true" />)
+                : collections.map((item) => (
+                  <button key={item.id} className="store-collection" type="button"
+                    onClick={() => chooseCollection({ id: item.id, title: item.title })}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    {item.image_url && <img src={item.image_url} alt="" loading="lazy" width={600} height={400} />}
+                    <span>
+                      <strong>{item.title}</strong>
+                      {item.description && <small>{item.description}</small>}
+                      <em>Ver peças da coleção <ArrowRight size={16} /></em>
+                    </span>
+                  </button>
+                ))}
             </div>
-          ) : (
-            <p className="store-empty">
-              Novas coleções serão exibidas quando forem publicadas.
-            </p>
-          )}
-        </section>
+          </section>
+        )}
 
-        <section id="lojas" className="store-section store-container">
+        <section id="lojas" className="store-section store-container" aria-labelledby="lojas-titulo">
           <div className="store-section-heading">
             <div>
               <p className="store-eyebrow">Por trás de cada peça</p>
-              <h2>Artesãs e lojas em destaque</h2>
+              <h2 id="lojas-titulo">Quem faz a Artenós</h2>
             </div>
+            <Link href="/lojas" className="store-see-all">Ver todas as lojas <ArrowRight size={16} /></Link>
           </div>
-          {shops.length ? (
+          {loading ? (
+            <div className="store-shops" aria-hidden="true">
+              {Array.from({ length: 4 }, (_, index) => <span key={index} className="an-skeleton store-shop-skeleton" />)}
+            </div>
+          ) : shops.length ? (
             <div className="store-shops">
               {shops.map((shop) => (
-                <Link
-                  href={`/loja?id=${encodeURIComponent(shop.id)}`}
-                  key={shop.id}
-                >
-                  <div className="store-shop-symbol">
-                    <Sparkles size={24} />
-                  </div>
+                <Link href={`/loja?id=${encodeURIComponent(shop.id)}`} key={shop.id}>
+                  <span className="store-shop-symbol" aria-hidden="true">{initials(shop.store_name)}</span>
+                  <small>{shop.specialty || "Artesanato autoral"}</small>
                   <h3>{shop.store_name}</h3>
-                  <p>{shop.specialty || "Artesanato autoral"}</p>
-                  <small>
-                    {[shop.city, shop.state].filter(Boolean).join(" · ")}
-                  </small>
-                  <span>
-                    Conhecer a loja <ArrowRight size={14} />
+                  {shop.story && <p>{shop.story}</p>}
+                  <span className="store-shop-footer">
+                    <em>{[shop.city, shop.state].filter(Boolean).join(" · ") || "Brasil"}</em>
+                    <span>Conhecer <ArrowRight size={14} /></span>
                   </span>
                 </Link>
               ))}
@@ -611,57 +345,20 @@ export default function StorefrontPage() {
           )}
         </section>
 
-        <ProductSection
-          eyebrow="Sempre algo novo"
-          title="Novidades e recomendações"
-          products={latest}
-          saved={favoriteIds}
-          pendingFavorites={pendingFavoriteIds}
-          onFavorite={toggleFavorite}
-          onCart={addToCart}
-          loading={loading}
-        />
+        <section className="store-story-band store-container" aria-labelledby="como-titulo">
+          <div>
+            <p className="store-eyebrow">Para quem cria</p>
+            <h2 id="como-titulo">Seu trabalho merece uma vitrine à altura.</h2>
+            <p>Abra sua loja na Artenós: a equipe analisa cada cadastro e você publica peças prontas e opções sob encomenda.</p>
+          </div>
+          <Link className="an-btn an-btn--lg" href="/acesso?aba=artesa">Quero vender na Artenós <ArrowRight size={18} /></Link>
+        </section>
+
+        <ProductSection eyebrow="Sempre algo novo" title="Chegaram agora" products={latest} loading={loading}
+          empty="Novas peças aparecerão aqui." />
       </main>
 
-      <CustomerFooter
-        userSignedIn={!!user}
-        authLoading={cepStatus === "loading"}
-      />
-
-      {authPrompt && (
-        <div
-          className="store-modal-backdrop"
-          role="presentation"
-          onMouseDown={() => setAuthPrompt(false)}
-        >
-          <div
-            className="store-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="store-modal-title"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <button
-              className="store-modal-close"
-              onClick={() => setAuthPrompt(false)}
-              aria-label="Fechar"
-            >
-              <X size={20} />
-            </button>
-            <div className="store-modal-icon">
-              <Heart size={25} />
-            </div>
-            <h2 id="store-modal-title">Entre para continuar</h2>
-            <p>
-              Crie sua conta ou entre para salvar favoritos e adicionar produtos
-              ao carrinho.
-            </p>
-            <a href="/acesso">
-              Entrar ou criar conta <ArrowRight size={18} />
-            </a>
-          </div>
-        </div>
-      )}
+      <CustomerFooter />
     </div>
   );
 }
