@@ -17,6 +17,7 @@ esta branch em build de produção na porta 3002; mesmo banco e mesmos dados.
 | `audit.cjs` após a segunda rodada (cabeçalho/rodapé únicos, painel, acesso, mensagens) | — | **0** ocorrências axe, **0** overflow em 185 combinações; erros de console só no 404 (esperado) e no frete do carrinho (Edge Function fora do sandbox) |
 | `audit.cjs` após as notificações (390 e 1440 px, sininho no cabeçalho) | — | **0** ocorrências axe, **0** overflow em 74 combinações; console só com o 404 esperado e o frete do sandbox |
 | `audit.cjs` após o enquadramento da foto e a correção dos diálogos no celular (390 e 1440 px) | — | **0** ocorrências axe, **0** overflow em 74 combinações; console só com o 404 esperado e o frete do sandbox |
+| `audit.cjs` após desempenho, visitante e sessão (390 e 1440 px) | — | **0** ocorrências axe, **0** overflow em 74 combinações; console só com o 404 esperado |
 | `audit.cjs` com movimento reduzido (todo conteúdo visível) | — | **0** ocorrências / 74 combinações (390 e 1440 px) |
 | `tests/e2e/journey.cjs` (390 e 1440 px) | — | ok |
 | `tests/e2e/auth.cjs` | — | ok (inclui cadastro real no Supabase local) |
@@ -92,6 +93,13 @@ build de produção local com o Supabase do sandbox e dados reais.
 | `/categorias` | 56 → 88 | 7,09 → 2,77 s | 879 → 342 ms | 0 → 0 | 1.254 → 650 KB |
 | `/loja` | 35 → 79 | 6,12 → 3,67 s | 818 → 256 ms | 0,757 → 0 | 786 → 616 KB |
 | `/lojas` | 70 → 90 | 4,91 → 2,97 s | 466 → 227 ms | 0 → 0 | 609 → 612 KB |
+
+Versão final (com carrinho de visitante e controle de sessão), duas rodadas
+de 3 execuções: `/` 70 e 71, `/categorias` 83 e 80, `/loja` 71 e 92, `/lojas`
+81 e 86; CLS 0 em todas; peso 640–699 KB. A variação entre rodadas chegou a
+21 pontos (`/loja`). Home e categorias ficaram cerca de 8 pontos abaixo da
+medição anterior às duas funções (+32 KB de JavaScript na home); continuam
+acima do "antes" (66 e 56).
 
 Perfil de CPU sem throttling: cerca de 150 ms de script e 330 ms de estilo,
 layout e pintura na abertura da home; o restante do TBT medido vem da
