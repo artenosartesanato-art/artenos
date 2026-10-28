@@ -16,7 +16,7 @@ const ROLES = {
 const ROUTES = [
   ['anon', '/'], ['anon', '/categorias'], ['anon', '/categorias?busca=vaso'], ['anon', '/categorias?busca=xyzqwe'],
   ['anon', '/lojas'], ['anon', '/loja?id=93410f0a-d632-43e8-b704-d60cda4357e8'], ['anon', '/loja?id=00000000-0000-0000-0000-000000000000'],
-  ['anon', '/sob-encomenda'], ['anon', '/acesso'], ['anon', '/termos'], ['anon', '/privacidade'], ['anon', '/rota-inexistente'],
+  ['anon', '/sob-encomenda'], ['anon', '/acesso'], ['anon', '/como-funciona'], ['anon', '/termos'], ['anon', '/privacidade'], ['anon', '/rota-inexistente'],
   ['anon', '/carrinho'], ['anon', '/favoritos'], ['anon', '/pedidos'], ['anon', '/mensagens'], ['anon', '/perfil'],
   ['cliente', '/'], ['cliente', '/carrinho'], ['cliente', '/favoritos'], ['cliente', '/pedidos'], ['cliente', '/mensagens'],
   ['cliente', '/perfil'], ['cliente', '/sob-encomenda'], ['cliente', '/repasses'],

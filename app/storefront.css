@@ -617,6 +617,10 @@
   min-height: 190px;
   border-radius: var(--an-r-lg);
 }
+/* Botão "ver todas" só existe no celular. */
+.store-categories-toggle {
+  display: none;
+}
 
 /* Card de produto ---------------------------------------------------------- */
 .store-products {
@@ -1107,10 +1111,20 @@
   color: var(--artenos-perola);
 }
 .store-footer-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 24px;
   padding-block: 18px 22px;
   border-top: 1px solid rgb(250 242 235 / 0.16);
   color: var(--artenos-pessego);
   font-size: var(--an-fs-xs);
+}
+.store-footer-bottom a {
+  color: var(--artenos-perola);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* Diálogo de produto ------------------------------------------------------- */
@@ -1659,20 +1673,38 @@
   .store-section {
     padding-top: 36px;
   }
+  /* Celular: grade de 3 colunas, blocos compactos, sem carrossel. */
   .store-categories {
-    display: flex;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;
-    margin-inline: -16px;
-    padding: 2px 16px 8px;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: none;
   }
   .store-categories > a,
   .store-category-skeleton {
-    flex: 0 0 42%;
-    min-height: 170px;
-    scroll-snap-align: start;
+    min-height: 0;
+  }
+  .store-category-skeleton {
+    aspect-ratio: 1 / 1.25;
+  }
+  .store-categories img,
+  .store-category-placeholder {
+    aspect-ratio: 1;
+  }
+  .store-categories > a > span:not(.store-category-placeholder) {
+    padding: 8px 8px 10px;
+    font-size: var(--an-fs-xs);
+    text-align: center;
+    hyphens: auto;
+    overflow-wrap: anywhere;
+  }
+  .store-categories > a > svg {
+    display: none;
+  }
+  .store-categories:not(.is-expanded) > a:nth-child(n + 10) {
+    display: none;
+  }
+  .store-categories-toggle {
+    display: inline-flex;
+    margin-top: 12px;
   }
   .store-products {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2010,4 +2042,100 @@
   gap: 8px;
   width: 100%;
   margin-top: 12px;
+}
+
+/* Chamada para vender, à direita da navegação (some no celular: está no menu). */
+.store-nav-sell {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: auto;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--artenos-musgo);
+  border-radius: var(--an-r-pill);
+  color: var(--artenos-musgo);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.store-nav-sell:hover {
+  background: var(--artenos-musgo);
+  color: var(--artenos-perola);
+}
+@media (max-width: 760px) {
+  .store-nav-sell {
+    display: none;
+  }
+}
+
+/* Escolha pelo orçamento: etiquetas de preço com contagem real. */
+.store-budgets {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.store-budgets a,
+.store-budgets div {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  height: 100%;
+  padding: 18px 18px 16px 26px;
+  border: 1px dashed var(--an-line-strong);
+  border-radius: var(--an-r-md);
+  background: var(--an-surface-warm);
+  color: var(--an-text);
+}
+/* Furo de etiqueta. */
+.store-budgets a::before,
+.store-budgets div::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 10px;
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid var(--an-line-strong);
+  border-radius: 50%;
+  background: var(--an-bg);
+  transform: translateY(-50%);
+}
+.store-budgets a:hover {
+  border-style: solid;
+  border-color: var(--artenos-marrom);
+}
+.store-budgets strong {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+.store-budgets small {
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-sm);
+}
+.store-budgets span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  color: var(--an-argila-texto);
+  font-size: var(--an-fs-sm);
+  font-weight: 700;
+}
+.store-budgets div {
+  opacity: 0.7;
+}
+@media (max-width: 900px) {
+  .store-budgets {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 420px) {
+  .store-budgets strong {
+    font-size: 1.05rem;
+  }
 }

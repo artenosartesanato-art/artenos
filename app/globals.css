@@ -1041,6 +1041,7 @@ img {
 .fields-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  align-items: start;
   gap: 18px;
 }
 .form-section-title {
@@ -1297,7 +1298,13 @@ img {
   font-weight: 500;
 }
 .field-cep-notice:empty {
-  margin: -18px 0 0;
+  /* Vazio: fora do fluxo (sem linha extra na grade), mas ainda anunciado ao preencher. */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
 }
 .field .field-error {
   display: flex;

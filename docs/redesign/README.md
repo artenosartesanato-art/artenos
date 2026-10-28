@@ -112,8 +112,16 @@ Branch: `FEAT/REDESIGN-UX-UI-ARTE-NOSSA` (base `main`).
 - Incluir `https://SEU-DOMINIO/redefinir-senha` nas Redirect URLs do Auth
   para a recuperação de senha.
 - Para as notificações (sininho, sons e avisos): executar
-  `supabase/notificacoes.sql` uma vez. Até lá, o sininho fica escondido e o
-  restante do site funciona normalmente.
+  `supabase/notificacoes.sql`. O script pode ser executado de novo (é
+  idempotente) e a versão atual acrescenta os avisos de peça salva
+  (baixou o preço, voltou ao estoque, esgotou) para quem tem a peça nos
+  favoritos ou no carrinho. Enquanto o script não roda, o sininho aparece
+  para quem está logado, mas o painel mostra "Notificações em breve".
+- Limpeza total de dados (mantém login, `profiles`, administradores e
+  pedidos de cadastro das artesãs; por padrão mantém também categorias,
+  coleções, banners e taxas): `supabase/limpar_dados_manter_contas.sql`.
+  **Faça backup antes.** Os arquivos do bucket `artenos-store-assets`
+  precisam ser apagados pelo painel do Storage.
 - Para zerar o chat (testes), use `supabase/zerar_mensagens.sql`: apaga
   mensagens e conversas; cada conversa é recriada quando alguém a abre de
   novo (balão da peça, "Compras sem conversa" ou página de encomendas).

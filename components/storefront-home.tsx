@@ -13,6 +13,7 @@ import {
 } from "@/components/icons";
 import { getSupabase } from "@/lib/supabase";
 import { MarketplaceProductCard, ProductGridSkeleton, type MarketplaceProduct } from "@/components/marketplace-product-card";
+import { budgetHref, loadBudgets, type Budget } from "@/lib/budgets";
 import "@/app/storefront.css";
 import { OptimizedImage } from "@/components/optimized-image";
 
@@ -66,6 +67,8 @@ function ProductSection({ id, eyebrow, title, products, loading, href = "/catego
 }
 
 /** Vitrine já carregada no servidor (app/page.tsx); null = buscar no navegador. */
+const MOBILE_CATEGORIES = 9;
+
 export type HomeData = {
   categories: Category[];
   collections: Collection[];
@@ -74,6 +77,7 @@ export type HomeData = {
   featured: Product[];
   ready: Product[];
   latest: Product[];
+  budgets?: Budget[] | null;
 };
 
 export function StorefrontHome({ initial }: { initial: HomeData | null }) {
@@ -84,10 +88,12 @@ export function StorefrontHome({ initial }: { initial: HomeData | null }) {
   const [featured, setFeatured] = useState<Product[]>(initial?.featured ?? []);
   const [ready, setReady] = useState<Product[]>(initial?.ready ?? []);
   const [latest, setLatest] = useState<Product[]>(initial?.latest ?? []);
+  const [budgets, setBudgets] = useState<Budget[]>(initial?.budgets ?? []);
   const [collection, setCollection] = useState<CollectionFilter | null>(null);
   const [collectionProducts, setCollectionProducts] = useState<Product[]>([]);
   const [collectionLoading, setCollectionLoading] = useState(false);
   const [loading, setLoading] = useState(!initial);
+  const [showAllCategories, setShowAllCategories] = useState(false);
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -119,6 +125,8 @@ export function StorefrontHome({ initial }: { initial: HomeData | null }) {
           setReady((responses[5].data || []) as Product[]);
           setLatest((responses[6].data || []) as Product[]);
           setError("");
+          // Atalhos de orçamento são um extra: se falharem, a seção some.
+          void loadBudgets(supabase).then((rows) => { if (active) setBudgets(rows ?? []); }).catch(() => undefined);
         })
         .catch(() => {
           if (active) setError("Não conseguimos carregar a vitrine agora. Confira sua conexão e tente novamente.");
@@ -272,7 +280,8 @@ export function StorefrontHome({ initial }: { initial: HomeData | null }) {
               {Array.from({ length: 6 }, (_, index) => <span key={index} className="an-skeleton store-category-skeleton" />)}
             </div>
           ) : categories.length ? (
-            <div className="store-categories">
+            <>
+            <div id="lista-categorias" className={`store-categories${showAllCategories ? " is-expanded" : ""}`}>
               {categories.map((category) => (
                 <Link key={category.id} prefetch={false} href={`/categorias?categoria=${encodeURIComponent(category.id)}`}>
                   {category.image_url ? (
@@ -286,6 +295,15 @@ export function StorefrontHome({ initial }: { initial: HomeData | null }) {
                 </Link>
               ))}
             </div>
+            {/* Celular: grade de 3 colunas com 9 categorias; o resto abre aqui (sem arrastar). */}
+            {categories.length > MOBILE_CATEGORIES && (
+              <button type="button" className="an-btn an-btn--secondary an-btn--block store-categories-toggle"
+                aria-expanded={showAllCategories} aria-controls="lista-categorias"
+                onClick={() => setShowAllCategories((open) => !open)}>
+                {showAllCategories ? "Ver menos categorias" : `Ver todas as categorias (${categories.length})`}
+              </button>
+            )}
+            </>
           ) : (
             <p className="store-empty">As categorias aparecerão aqui assim que forem publicadas.</p>
           )}
@@ -296,6 +314,36 @@ export function StorefrontHome({ initial }: { initial: HomeData | null }) {
             loading={loading} href="/categorias?pronta=1" hrefLabel="Ver pronta entrega"
             empty="Nenhuma peça pronta para envio no momento." />
         </div>
+
+        {budgets.some((budget) => budget.count > 0) && (
+          <section className="store-section store-container" aria-labelledby="orcamento-titulo">
+            <div className="store-section-heading">
+              <div>
+                <p className="store-eyebrow">Presente certo, preço certo</p>
+                <h2 id="orcamento-titulo">Escolha pelo orçamento</h2>
+              </div>
+            </div>
+            <ul className="store-budgets">
+              {budgets.map((budget) => (
+                <li key={budget.key}>
+                  {budget.count > 0 ? (
+                    <Link prefetch={false} href={budgetHref(budget)}>
+                      <strong>{budget.label}</strong>
+                      <small>{budget.hint}</small>
+                      <span>{budget.count} {budget.count === 1 ? "peça" : "peças"} <ArrowRight size={14} /></span>
+                    </Link>
+                  ) : (
+                    <div aria-disabled="true">
+                      <strong>{budget.label}</strong>
+                      <small>{budget.hint}</small>
+                      <span>Nenhuma peça agora</span>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {(loading || collections.length > 0) && (
           <section className="store-section store-container" aria-labelledby="colecoes-titulo">

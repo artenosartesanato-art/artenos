@@ -74,8 +74,9 @@ function Field({ name, label, error, hint, wide = false, children }: {
   return (
     <div className={`field${wide ? " field-wide" : ""}`}>
       <label htmlFor={id}>{label}</label>
-      {hint && <small id={`${id}-dica`}>{hint}</small>}
       {children({ id, "aria-invalid": error ? true : undefined, "aria-describedby": describedBy })}
+      {/* Dica abaixo do campo: rótulos e campos ficam na mesma altura em cada linha. */}
+      {hint && <small className="field-hint" id={`${id}-dica`}>{hint}</small>}
       {error && <small className="field-error" id={`${id}-erro`}><AlertTriangle size={13} /> {error}</small>}
     </div>
   );

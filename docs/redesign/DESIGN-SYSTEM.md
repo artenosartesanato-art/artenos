@@ -188,3 +188,23 @@ licenças de terceiros):
   formulário.
 - Perfil: cartão "Segurança da conta" com último acesso, como este aparelho
   fica conectado e "Sair de todos os aparelhos" (com confirmação).
+
+## Descoberta (inspirada em marketplaces de artesanato, com desenho próprio)
+
+- **Escolha pelo orçamento** (home e `/categorias`): faixas fixas em
+  `lib/budgets.ts`; a contagem de cada faixa vem de
+  `browse_storefront_products` (nunca número inventado). Faixa sem peças
+  aparece apagada; se a consulta falhar, a seção não aparece.
+- **Categorias sem arrastar**: na home, grade de 3 colunas no celular com as
+  9 primeiras e "Ver todas as categorias (N)"; em `/categorias`, chips que
+  quebram linha, com "+ N categorias" no celular.
+- **Lojas na busca**: buscar em `/categorias` também lista as lojas cujo
+  nome, técnica, cidade ou UF combinam com o termo.
+- **Filtro por estado** em `/lojas`, com as UFs que têm loja e a contagem.
+- **Como funciona** (`/como-funciona`): passos de quem compra e de quem
+  vende, só com o que a plataforma faz hoje (sem prazos, taxas ou garantias
+  que dependam de configuração).
+- **Venda na Artenós**: atalho na navegação (desktop), no menu do celular e
+  no rodapé, para quem ainda não tem loja.
+- Ficaram de fora de propósito (não há dado real que sustente): ofertas
+  do dia, desconto no Pix, depoimentos, botão de WhatsApp.

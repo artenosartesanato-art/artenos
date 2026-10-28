@@ -1,0 +1,122 @@
+.how-page {
+  padding-block: 36px 64px;
+}
+.how-intro {
+  max-width: 680px;
+}
+.how-intro h1 {
+  margin: 0 0 10px;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  line-height: 1.1;
+}
+.how-intro > p {
+  margin: 0;
+  color: var(--an-text-muted);
+}
+.how-jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+.how-jump a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 0 18px;
+  border: 1px solid var(--an-line-strong);
+  border-radius: var(--an-r-pill);
+  background: var(--an-surface);
+  color: var(--an-text);
+  font-weight: 650;
+}
+.how-jump a:hover {
+  border-color: var(--artenos-marrom);
+}
+.how-track {
+  margin-top: 40px;
+  padding: clamp(20px, 3vw, 32px);
+  border-radius: var(--an-r-lg);
+  background: color-mix(in srgb, var(--artenos-pessego) 22%, var(--an-surface));
+  scroll-margin-top: 140px;
+}
+.how-track--sell {
+  background: color-mix(in srgb, var(--artenos-musgo) 12%, var(--an-surface));
+}
+.how-track-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.how-track-head h2 {
+  margin: 0;
+  font-size: clamp(1.4rem, 2.6vw, 1.8rem);
+}
+.how-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+  margin: 22px 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: how;
+}
+.how-steps li {
+  position: relative;
+  padding: 18px 18px 16px;
+  border: 1px solid var(--an-line);
+  border-radius: var(--an-r-md);
+  background: var(--an-surface);
+  counter-increment: how;
+}
+.how-steps li::after {
+  content: counter(how, decimal-leading-zero);
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  color: var(--an-argila-texto);
+  font-size: var(--an-fs-xs);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.how-step-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--artenos-pessego) 55%, white);
+  color: var(--artenos-marrom);
+}
+.how-steps h3 {
+  margin: 12px 0 6px;
+  font-size: var(--an-fs-md);
+}
+.how-steps p {
+  margin: 0;
+  font-size: var(--an-fs-sm);
+  line-height: 1.55;
+}
+.how-note {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-top: 32px;
+  padding: 16px 18px;
+  border-left: 3px solid var(--artenos-marrom);
+  background: var(--an-surface);
+  font-size: var(--an-fs-sm);
+}
+.how-note svg {
+  flex: none;
+  color: var(--artenos-marrom);
+}
+.how-note p {
+  margin: 0;
+}
+.how-note a {
+  text-decoration: underline;
+}

@@ -238,6 +238,11 @@ export function CustomerHeader() {
             </Link>
           ))}
         </div>
+        {!sellerPanelAvailable && (
+          <Link className="store-nav-sell" href={userSignedIn ? "/como-funciona#vender" : "/acesso?aba=artesa"}>
+            <Store size={16} /> Venda na Artenós
+          </Link>
+        )}
       </nav>
 
       <Dialog open={menuOpen} onClose={() => setMenuOpen(false)} variant="drawer-left" label="Menu"
@@ -257,6 +262,7 @@ export function CustomerHeader() {
                 </li>
               ))}
               <li><Link href="/carrinho" onClick={() => setMenuOpen(false)}>Carrinho{cartCount > 0 ? ` (${cartCount})` : ""}</Link></li>
+              <li><Link href="/como-funciona" onClick={() => setMenuOpen(false)} aria-current={pathname === "/como-funciona" ? "page" : undefined}>Como funciona</Link></li>
             </ul>
           </nav>
           <div className="store-menu-section">
@@ -266,6 +272,12 @@ export function CustomerHeader() {
             {sellerPanelAvailable && (
               <Link className="an-btn an-btn--moss an-btn--block" href="/vendedor" onClick={() => setMenuOpen(false)}>
                 <Store size={18} /> Painel da loja
+              </Link>
+            )}
+            {!sellerPanelAvailable && (
+              <Link className="an-btn an-btn--moss an-btn--block" href={userSignedIn ? "/como-funciona#vender" : "/acesso?aba=artesa"}
+                onClick={() => setMenuOpen(false)}>
+                <Store size={18} /> Venda na Artenós
               </Link>
             )}
             <Link className={`an-btn an-btn--block${sellerPanelAvailable ? " an-btn--secondary" : ""}`} href={accountHref}
