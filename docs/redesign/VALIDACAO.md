@@ -15,6 +15,7 @@ esta branch em build de produção na porta 3002; mesmo banco e mesmos dados.
 | `npm run build` | ok* | ok* |
 | `tests/e2e/audit.cjs` (37 rotas × 5 larguras) | 1.205 ocorrências axe em 390/1440 px, 1 tela com overflow | **0** ocorrências, **0** overflow, **0** erros de console em 185 combinações |
 | `audit.cjs` após a segunda rodada (cabeçalho/rodapé únicos, painel, acesso, mensagens) | — | **0** ocorrências axe, **0** overflow em 185 combinações; erros de console só no 404 (esperado) e no frete do carrinho (Edge Function fora do sandbox) |
+| `audit.cjs` após as notificações (390 e 1440 px, sininho no cabeçalho) | — | **0** ocorrências axe, **0** overflow em 74 combinações; console só com o 404 esperado e o frete do sandbox |
 | `audit.cjs` com movimento reduzido (todo conteúdo visível) | — | **0** ocorrências / 74 combinações (390 e 1440 px) |
 | `tests/e2e/journey.cjs` (390 e 1440 px) | — | ok |
 | `tests/e2e/auth.cjs` | — | ok (inclui cadastro real no Supabase local) |
