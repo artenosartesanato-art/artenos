@@ -23,6 +23,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { useMarketplace } from "@/components/marketplace-state";
 import { useStorefrontActions } from "@/components/storefront-actions";
 import { ProductInquiryLink } from "@/components/product-inquiry-link";
+import { OptimizedImage } from "@/components/optimized-image";
 
 type ProductDetails = {
   id: string;
@@ -151,8 +152,8 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
         {product.image_url ? (
           <button type="button" className="product-details-zoom" onClick={() => setZoomed((value) => !value)}
             aria-pressed={zoomed} aria-label={zoomed ? "Reduzir imagem" : "Ampliar imagem"}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={product.image_url} alt={product.name} width={720} height={900} />
+            <OptimizedImage src={product.image_url} alt={product.name} width={720} height={900} quality={80}
+              sizes="(max-width: 760px) 100vw, 460px" priority />
           </button>
         ) : (
           <span className="product-details-noimage"><PackageOpen size={42} /><span>Foto em breve</span></span>

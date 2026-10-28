@@ -18,6 +18,7 @@ import { useStorefrontActions } from "@/components/storefront-actions";
 import { getSupabase } from "@/lib/supabase";
 import "../storefront.css";
 import "./custom-orders.css";
+import { OptimizedImage } from "@/components/optimized-image";
 
 type Profile = {
   account_type: "client" | "artisan";
@@ -464,14 +465,8 @@ export default function CustomOrdersPage() {
               {services.map((service) => (
                 <article className="custom-service-card" key={service.id}>
                   {service.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={service.image_url}
-                      alt=""
-                      loading="lazy"
-                      width={480}
-                      height={360}
-                    />
+                    <OptimizedImage src={service.image_url} alt="" width={480} height={360}
+                      sizes="(max-width: 640px) 100vw, (max-width: 1100px) 50vw, 400px" />
                   ) : (
                     <div className="custom-service-image">
                       <Palette size={36} />

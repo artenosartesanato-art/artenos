@@ -13,6 +13,10 @@
   flex: 1 0 auto;
   display: flex;
   flex-direction: column;
+  /* O conteúdo ocupa ao menos a tela: o rodapé começa abaixo da dobra e não
+     "pula" quando os dados da página chegam (era o CLS de 0,76 em /loja). */
+  min-height: calc(100vh - var(--an-header-h, 126px));
+  min-height: calc(100dvh - var(--an-header-h, 126px));
 }
 .an-site-body > * {
   flex: 1 0 auto;
@@ -46,15 +50,11 @@
   position: sticky;
   top: 0;
   z-index: var(--an-z-header);
-  background: color-mix(in srgb, var(--artenos-perola) 94%, transparent);
+  /* Fundo opaco, sem backdrop-filter: o desfoque era repintado a cada quadro
+     de rolagem e travava a rolagem em celulares mais simples. */
+  background: var(--artenos-perola);
   border-top: 4px solid var(--artenos-musgo);
   box-shadow: 0 1px 0 var(--an-line);
-}
-@supports (backdrop-filter: blur(10px)) {
-  .store-header {
-    background: color-mix(in srgb, var(--artenos-perola) 86%, transparent);
-    backdrop-filter: blur(10px) saturate(1.1);
-  }
 }
 .store-header-main {
   display: flex;
@@ -509,6 +509,13 @@
 }
 
 /* Seções ------------------------------------------------------------------ */
+/* Seções fora da tela não são desenhadas até chegarem perto (menos estilo,
+   layout e pintura na abertura). O tamanho estimado evita pulos na rolagem. */
+.store-page .store-section ~ .store-section,
+.store-footer {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 640px;
+}
 .store-section {
   padding-block: 44px 8px;
   scroll-margin-top: 140px;
@@ -1969,4 +1976,38 @@
   border: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
+}
+
+/* Aviso de inatividade ----------------------------------------------------- */
+.session-dialog-body {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 28px 24px 24px;
+  text-align: center;
+}
+.session-dialog-icon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--artenos-pessego) 50%, #fff);
+  color: var(--artenos-marrom);
+}
+.session-dialog-body h2 {
+  margin: 6px 0 0;
+  font: 500 var(--an-fs-2xl) / 1.15 var(--font-display);
+  color: var(--artenos-marrom);
+}
+.session-dialog-body p {
+  margin: 0;
+  color: var(--an-text-muted);
+  line-height: 1.55;
+}
+.session-dialog-actions {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  margin-top: 12px;
 }

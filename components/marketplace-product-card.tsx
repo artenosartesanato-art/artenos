@@ -5,6 +5,7 @@ import { ProductDetailsButton } from "@/components/product-details-button";
 import { useMarketplace } from "@/components/marketplace-state";
 import { useStorefrontActions } from "@/components/storefront-actions";
 import { ProductInquiryLink } from "@/components/product-inquiry-link";
+import { OptimizedImage } from "@/components/optimized-image";
 
 export type MarketplaceProduct = {
   id: string;
@@ -62,10 +63,8 @@ export function MarketplaceProductCard({ product, shopName, cartDisabled = false
             <button type="button" className="store-product-image-trigger" onClick={openDetails}
               aria-label={`Ver detalhes de ${product.name}`}>
               {product.image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={product.image_url} alt="" loading={priority ? "eager" : "lazy"} decoding="async"
-                  fetchPriority={priority ? "high" : "auto"}
-                  width={480} height={600} />
+                <OptimizedImage src={product.image_url} alt="" priority={priority} width={480} height={600}
+                  sizes="(max-width: 640px) 50vw, (max-width: 1100px) 33vw, 300px" />
               ) : (
                 <span className="store-no-image">
                   <Sparkles size={26} />

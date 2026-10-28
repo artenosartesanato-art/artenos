@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import { getSupabase } from "@/lib/supabase";
 import { useMarketplace } from "@/components/marketplace-state";
 import "./administration.css";
+import { endSession } from "@/lib/session";
 
 type ApplicationStatus =
   | "pending_review"
@@ -510,12 +511,12 @@ export default function AdministrationPage() {
   }
 
   async function signOut() {
-    const { error } = await getSupabase().auth.signOut();
+    const error = await endSession("local");
     if (error) {
       toast.error("Não foi possível sair agora.");
       return;
     }
-    router.replace("/acesso");
+    router.replace("/acesso?motivo=saiu");
   }
 
   if (screen !== "ready") {

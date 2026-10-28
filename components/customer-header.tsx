@@ -3,6 +3,7 @@
 import {
   ChevronDown,
   Heart,
+  LogOut,
   MapPin,
   Menu,
   Search,
@@ -18,6 +19,8 @@ import { useMarketplace } from "@/components/marketplace-state";
 import { Dialog } from "@/components/ui/dialog";
 import { SoundToggle } from "@/components/sound-toggle";
 import { accessHref } from "@/lib/navigation";
+import { endSession } from "@/lib/session";
+import { toast } from "sonner";
 import { useHeaderSearch } from "@/components/header-search";
 import { NotificationBell } from "@/components/notifications";
 
@@ -171,9 +174,7 @@ export function CustomerHeader() {
   const profileHref = sellerPanelAvailable ? "/vendedor/perfil" : "/perfil";
   const accountHref = userSignedIn ? profileHref : accessHref(pathname);
   const accountLabel = authReady ? (userSignedIn ? displayName || "Minha conta" : "Entrar") : "Minha conta";
-  const cartLabel = userSignedIn
-    ? `Carrinho, ${cartCount} ${cartCount === 1 ? "unidade" : "unidades"}`
-    : "Carrinho (entre para ver)";
+  const cartLabel = `Carrinho, ${cartCount} ${cartCount === 1 ? "unidade" : "unidades"}`;
 
   const searchForm = (id: string) => (
     <form className="store-search" role="search" onSubmit={submit}>
@@ -219,9 +220,9 @@ export function CustomerHeader() {
             <span className="store-account-name">{accountLabel}</span>
           </Link>
           <Link className={`store-header-link store-cart-link${pulsing ? " is-pulsing" : ""}`}
-            href={userSignedIn ? "/carrinho" : accessHref("/carrinho")} aria-label={cartLabel}>
+            href="/carrinho" aria-label={cartLabel}>
             <ShoppingBag size={21} />
-            {userSignedIn && cartCount > 0 && (
+            {cartCount > 0 && (
               <span className="store-cart-count" aria-hidden="true">{cartCount > 99 ? "99+" : cartCount}</span>
             )}
           </Link>
@@ -255,7 +256,7 @@ export function CustomerHeader() {
                   </Link>
                 </li>
               ))}
-              <li><Link href="/carrinho" onClick={() => setMenuOpen(false)}>Carrinho{userSignedIn && cartCount > 0 ? ` (${cartCount})` : ""}</Link></li>
+              <li><Link href="/carrinho" onClick={() => setMenuOpen(false)}>Carrinho{cartCount > 0 ? ` (${cartCount})` : ""}</Link></li>
             </ul>
           </nav>
           <div className="store-menu-section">
@@ -271,6 +272,16 @@ export function CustomerHeader() {
               onClick={() => setMenuOpen(false)}>
               <UserRound size={18} /> {userSignedIn ? "Meu perfil" : "Entrar ou criar conta"}
             </Link>
+            {userSignedIn && (
+              <button type="button" className="an-btn an-btn--ghost an-btn--block" onClick={async () => {
+                setMenuOpen(false);
+                await endSession("local");
+                router.replace("/");
+                toast.success("Você saiu da sua conta.");
+              }}>
+                <LogOut size={18} /> Sair da conta
+              </button>
+            )}
           </div>
           <SoundToggle className="store-menu-sound" />
         </div>

@@ -167,3 +167,24 @@ licenças de terceiros):
   original, sem perder qualidade; fotos antigas usam a própria imagem.
 - Ao trocar, a foto e o original anteriores são apagados do Storage.
 - Mesmo componente em `/perfil` (cliente e admin) e `/vendedor/perfil`.
+
+## Visitante (sem login)
+
+- Pode adicionar ao carrinho e favoritar. Os itens ficam só na memória da aba
+  (somem ao recarregar) e isso é dito na gaveta do carrinho, no carrinho e nos
+  favoritos, com o link "Entre".
+- Ao entrar (ou criar a conta) na mesma aba, carrinho e favoritos vão para a
+  conta, com aviso "Levamos para sua conta: …" e aviso separado do que não
+  pôde ir (estoque).
+- Frete, pagamento, pedidos, mensagens e perfil continuam exigindo login.
+
+## Sessão
+
+- Login com "Manter conectado neste aparelho" (desmarcado na primeira vez) e
+  ajuda curta embaixo.
+- Aviso de inatividade em diálogo: "Você ainda está aí?", contagem regressiva,
+  "Continuar conectado" (foco inicial) e "Sair agora".
+- Saídas não pedidas levam ao login com um aviso do motivo, no topo do
+  formulário.
+- Perfil: cartão "Segurança da conta" com último acesso, como este aparelho
+  fica conectado e "Sair de todos os aparelhos" (com confirmação).

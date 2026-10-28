@@ -15,7 +15,6 @@ import {
   PackageOpen,
   Plus,
   RefreshCw,
-  ShoppingBag,
   Sparkles,
   Store,
   Trash2,
@@ -23,12 +22,13 @@ import {
 } from "@/components/icons";
 import { getSupabase } from "@/lib/supabase";
 import { getCartErrorMessage } from "@/lib/cart";
-import { accessHref } from "@/lib/navigation";
 import { playUiSound } from "@/lib/ui-sound";
 import { notifyCartChanged, useMarketplace } from "@/components/marketplace-state";
 import { brl, groupCartByStore, toCents, type CartItem, type ShippingGroup } from "@/lib/cart-groups";
 import "../storefront.css";
 import "./cart.css";
+import { OptimizedImage } from "@/components/optimized-image";
+import { GuestCartView } from "@/components/guest-cart-view";
 
 const formatCep = (cep: string) => cep.replace(/(\d{5})(\d{3})/, "$1-$2");
 const days = (min: number, max: number) => (min === max ? `${max} ${max === 1 ? "dia útil" : "dias úteis"}` : `${min} a ${max} dias úteis`);
@@ -273,15 +273,7 @@ export default function CarrinhoPage() {
             <span className="an-skeleton cart-skeleton cart-skeleton-summary" />
           </div>
         ) : !userId ? (
-          <section className="an-state">
-            <ShoppingBag size={34} />
-            <h2>Entre para ver seu carrinho</h2>
-            <p>O carrinho fica guardado na sua conta Artenós, para você continuar em qualquer aparelho.</p>
-            <div className="an-state-actions">
-              <Link className="an-btn" href={accessHref("/carrinho")}>Entrar ou criar conta <ArrowRight size={16} /></Link>
-              <Link className="an-btn an-btn--secondary" href="/categorias">Explorar peças</Link>
-            </div>
-          </section>
+          <GuestCartView />
         ) : cartLoadError ? (
           <section className="an-state" role="alert">
             <AlertTriangle size={34} />
@@ -347,8 +339,7 @@ export default function CarrinhoPage() {
                           <li className={`cart-item${unavailable ? " is-unavailable" : ""}${busy ? " is-busy" : ""}`} key={item.item_id}>
                             <div className="cart-item-thumb">
                               {item.image_url
-                                // eslint-disable-next-line @next/next/no-img-element
-                                ? <img src={item.image_url} alt="" width={96} height={96} loading="lazy" />
+                                ? <OptimizedImage src={item.image_url} alt="" width={96} height={96} sizes="96px" />
                                 : <Sparkles size={22} />}
                             </div>
                             <div className="cart-item-copy">

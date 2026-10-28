@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
-import { confirmFavoriteSaved } from "@/components/marketplace-feedback";
+import { guestCartAdd, guestCartTotals, type GuestCartLine, type GuestProduct } from "@/lib/guest-cart";
 import { toast } from "sonner";
 
 type MarketplaceState = {
@@ -29,7 +29,16 @@ type MarketplaceState = {
   refreshCart: () => Promise<boolean>;
   pulseCart: () => void;
   refreshFavorites: () => Promise<boolean>;
-  toggleFavorite: (productId: string) => Promise<boolean>;
+  /** Visitante: `product` guarda os dados para mostrar a peça nos favoritos. */
+  toggleFavorite: (productId: string, product?: GuestProduct) => Promise<boolean>;
+  /**
+   * Carrinho e favoritos de quem não entrou: só na memória desta aba (somem ao
+   * recarregar) e levados para a conta quando a pessoa entra.
+   */
+  guestCart: readonly GuestCartLine[];
+  guestFavorites: readonly GuestProduct[];
+  addGuestToCart: (product: GuestProduct, quantity: number) => void;
+  setGuestQuantity: (productId: string, quantity: number) => void;
 };
 
 export type CepStatus = "loading" | "guest" | "account" | "error";
@@ -41,34 +50,42 @@ function readGuestCep() {
   catch { return ""; }
 }
 const emptyFavorites = new Set<string>();
-const FAVORITE_INTENT_KEY = "artenos:favorite-intent";
-type FavoriteIntent = { productId: string; name: string; returnTo: string; createdAt: number };
+/** Mantido por compatibilidade: favoritar não exige mais login. */
+export function favoriteIntentReturnPath(): string | null {
+  return null;
+}
 
-function pendingFavoriteIntent(): FavoriteIntent | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.sessionStorage.getItem(FAVORITE_INTENT_KEY);
-    if (!raw) return null;
-    const intent = JSON.parse(raw) as FavoriteIntent;
-    if (Date.now() - intent.createdAt > 15 * 60_000 ||
-      !/^[0-9a-f-]{36}$/i.test(intent.productId) ||
-      !intent.returnTo.startsWith("/") || intent.returnTo.startsWith("//")) {
-      window.sessionStorage.removeItem(FAVORITE_INTENT_KEY);
-      return null;
+/** Leva o carrinho e os favoritos do visitante para a conta que acabou de entrar. */
+async function carryGuestItems(userId: string, cart: readonly GuestCartLine[], favorites: readonly GuestProduct[]) {
+  const supabase = getSupabase();
+  let movedUnits = 0;
+  const failed: string[] = [];
+  for (const line of cart) {
+    try {
+      // RPC direto (lib/cart importa este módulo; evita import circular).
+      const { error } = await supabase.rpc("add_to_cart", { p_product_id: line.product.id, p_quantity: line.quantity });
+      if (error) throw error;
+      movedUnits += line.quantity;
+    } catch {
+      failed.push(line.product.name);
     }
-    return intent;
-  } catch { return null; }
-}
-
-export function rememberFavoriteIntent(productId: string, name: string) {
-  if (typeof window === "undefined") return;
-  const intent: FavoriteIntent = { productId, name, returnTo: location.pathname + location.search,
-    createdAt: Date.now() };
-  window.sessionStorage.setItem(FAVORITE_INTENT_KEY, JSON.stringify(intent));
-}
-
-export function favoriteIntentReturnPath() {
-  return pendingFavoriteIntent()?.returnTo ?? null;
+  }
+  let movedFavorites = 0;
+  if (favorites.length) {
+    const { error } = await supabase.from("storefront_favorites").upsert(
+      favorites.map((item) => ({ user_id: userId, product_id: item.id })),
+      { onConflict: "user_id,product_id", ignoreDuplicates: true });
+    if (error) failed.push(...favorites.map((item) => item.name));
+    else movedFavorites = favorites.length;
+  }
+  const parts = [
+    movedUnits ? `${movedUnits} ${movedUnits === 1 ? "unidade no carrinho" : "unidades no carrinho"}` : "",
+    movedFavorites ? `${movedFavorites} ${movedFavorites === 1 ? "favorito" : "favoritos"}` : "",
+  ].filter(Boolean);
+  if (parts.length) toast.success(`Levamos para sua conta: ${parts.join(" e ")}.`);
+  if (failed.length) {
+    toast.error(`Não foi possível levar ${failed.length === 1 ? `"${failed[0]}"` : `${failed.length} itens`} (estoque ou disponibilidade). Confira o carrinho.`);
+  }
 }
 
 export function MarketplaceProvider({ children }: { children: React.ReactNode }) {
@@ -96,6 +113,13 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
   const cartRequest = useRef(0);
   const favoritesRequest = useRef(0);
   const favoritePending = useRef(new Set<string>());
+  const [guestCart, setGuestCart] = useState<GuestCartLine[]>([]);
+  const [guestFavorites, setGuestFavorites] = useState<GuestProduct[]>([]);
+  // Cópias para o ouvinte de login, que roda fora do ciclo de render.
+  const guestCartRef = useRef<GuestCartLine[]>([]);
+  const guestFavoritesRef = useRef<GuestProduct[]>([]);
+  useEffect(() => { guestCartRef.current = guestCart; }, [guestCart]);
+  useEffect(() => { guestFavoritesRef.current = guestFavorites; }, [guestFavorites]);
 
   const refreshIdentity = useCallback(async () => {
     const account = accountRef.current;
@@ -166,9 +190,18 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
     return true;
   }, []);
 
-  const toggleFavorite = useCallback(async (productId: string) => {
+  const toggleFavorite = useCallback(async (productId: string, product?: GuestProduct) => {
     const account = accountRef.current;
-    if (!account) throw new Error("Entre na sua conta para salvar favoritos.");
+    if (!account) {
+      const saved = guestFavoritesRef.current.some((item) => item.id === productId);
+      if (!saved && !product) throw new Error("Não foi possível salvar este favorito.");
+      const next = saved
+        ? guestFavoritesRef.current.filter((item) => item.id !== productId)
+        : [product!, ...guestFavoritesRef.current];
+      guestFavoritesRef.current = next;
+      setGuestFavorites(next);
+      return !saved;
+    }
     if (favoritePending.current.has(productId)) throw new Error("Aguarde a atualização deste favorito.");
     favoritePending.current.add(productId);
     setPendingFavoriteIds(new Set(favoritePending.current));
@@ -203,6 +236,16 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
       const nextId = session?.user?.id ?? null;
       if (nextId === accountRef.current && readyRef.current) return;
       readyRef.current = true;
+      const wasGuest = accountRef.current === null;
+      const carried = nextId && wasGuest
+        ? { cart: guestCartRef.current, favorites: guestFavoritesRef.current }
+        : null;
+      // Ao entrar ou sair, o estado de visitante recomeça (o de quem entrou
+      // vai para a conta logo abaixo).
+      guestCartRef.current = [];
+      guestFavoritesRef.current = [];
+      setGuestCart([]);
+      setGuestFavorites([]);
       accountRef.current = nextId;
       generation.current++;
       identityRequest.current++;
@@ -239,22 +282,12 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
           .select("approval_status")
           .eq("id", nextId).maybeSingle();
         if (request !== generation.current || accountRef.current !== nextId) return;
+        if (carried && (carried.cart.length || carried.favorites.length) && data?.approval_status === "active") {
+          await carryGuestItems(nextId, carried.cart, carried.favorites);
+        }
+        if (request !== generation.current || accountRef.current !== nextId) return;
         void refreshCart();
         void refreshFavorites();
-        const intent = pendingFavoriteIntent();
-        if (intent && data?.approval_status === "active") {
-          const { error } = await supabase.from("storefront_favorites")
-            .upsert({ user_id: nextId, product_id: intent.productId },
-              { onConflict: "user_id,product_id", ignoreDuplicates: true });
-          if (request === generation.current && accountRef.current === nextId) {
-            if (error) toast.error("Não foi possível salvar o favorito após entrar. Tente novamente.");
-            else {
-              window.sessionStorage.removeItem(FAVORITE_INTENT_KEY);
-              void refreshFavorites();
-              confirmFavoriteSaved(intent.name);
-            }
-          }
-        }
       }, 0);
     });
     return () => {
@@ -286,6 +319,23 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
     };
   }, [refreshCart, refreshFavorites, refreshIdentity]);
 
+  const addGuestToCart = useCallback((product: GuestProduct, quantity: number) => {
+    // Lança "Estoque insuficiente…" como o carrinho da conta.
+    const next = guestCartAdd(guestCartRef.current, product, quantity);
+    guestCartRef.current = next;
+    setGuestCart(next);
+  }, []);
+
+  const setGuestQuantity = useCallback((productId: string, quantity: number) => {
+    const next = quantity <= 0
+      ? guestCartRef.current.filter((line) => line.product.id !== productId)
+      : guestCartRef.current.map((line) => line.product.id === productId
+        ? { ...line, quantity: Math.min(quantity, line.product.stock ?? quantity) }
+        : line);
+    guestCartRef.current = next;
+    setGuestCart(next);
+  }, []);
+
   const setGuestCep = useCallback((digits: string) => {
     const value = digits.replace(/\D/g, "").slice(0, 8);
     try { window.localStorage.setItem(GUEST_CEP_KEY, value); } catch { /* armazenamento bloqueado */ }
@@ -298,12 +348,23 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
 
   // Valor memoizado: sem isso, qualquer render do provedor re-renderizava
   // todos os cards e cabeçalhos que consomem o contexto.
+  // Visitante: contador, subtotal e favoritos vêm do estado em memória.
+  const guestTotals = useMemo(() => guestCartTotals(guestCart), [guestCart]);
+  const guestFavoriteIds = useMemo(() => new Set(guestFavorites.map((item) => item.id)), [guestFavorites]);
+  const guest = authReady && !userId;
   const value = useMemo(() => ({ authReady, userId, displayName, avatarUrl,
-    sellerPanelAvailable, accountType, cartCount, cartSubtotalCents, cartPulse, cep, cepStatus, cepError, setGuestCep,
-    favoriteIds, favoritesReady, pendingFavoriteIds, refreshCart, pulseCart, refreshFavorites, toggleFavorite }),
+    sellerPanelAvailable, accountType,
+    cartCount: guest ? guestTotals.count : cartCount,
+    cartSubtotalCents: guest ? guestTotals.subtotalCents : cartSubtotalCents,
+    cartPulse, cep, cepStatus, cepError, setGuestCep,
+    favoriteIds: guest ? guestFavoriteIds : favoriteIds,
+    favoritesReady: guest ? true : favoritesReady,
+    pendingFavoriteIds, refreshCart, pulseCart, refreshFavorites, toggleFavorite,
+    guestCart, guestFavorites, addGuestToCart, setGuestQuantity }),
   [authReady, userId, displayName, avatarUrl, sellerPanelAvailable, accountType, cartCount, cartSubtotalCents, cartPulse,
     cep, cepStatus, cepError, setGuestCep, favoriteIds, favoritesReady, pendingFavoriteIds, refreshCart, pulseCart,
-    refreshFavorites, toggleFavorite]);
+    refreshFavorites, toggleFavorite, guest, guestTotals, guestFavoriteIds, guestCart, guestFavorites, addGuestToCart,
+    setGuestQuantity]);
 
   return <MarketplaceContext.Provider value={value}>
     {children}

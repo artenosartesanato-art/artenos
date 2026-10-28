@@ -16,6 +16,8 @@ esta branch em build de produção na porta 3002; mesmo banco e mesmos dados.
 | `tests/e2e/audit.cjs` (37 rotas × 5 larguras) | 1.205 ocorrências axe em 390/1440 px, 1 tela com overflow | **0** ocorrências, **0** overflow, **0** erros de console em 185 combinações |
 | `audit.cjs` após a segunda rodada (cabeçalho/rodapé únicos, painel, acesso, mensagens) | — | **0** ocorrências axe, **0** overflow em 185 combinações; erros de console só no 404 (esperado) e no frete do carrinho (Edge Function fora do sandbox) |
 | `audit.cjs` após as notificações (390 e 1440 px, sininho no cabeçalho) | — | **0** ocorrências axe, **0** overflow em 74 combinações; console só com o 404 esperado e o frete do sandbox |
+| `audit.cjs` após o enquadramento da foto e a correção dos diálogos no celular (390 e 1440 px) | — | **0** ocorrências axe, **0** overflow em 74 combinações; console só com o 404 esperado e o frete do sandbox |
+| `audit.cjs` após desempenho, visitante e sessão (390 e 1440 px) | — | **0** ocorrências axe, **0** overflow em 74 combinações; console só com o 404 esperado |
 | `audit.cjs` com movimento reduzido (todo conteúdo visível) | — | **0** ocorrências / 74 combinações (390 e 1440 px) |
 | `tests/e2e/journey.cjs` (390 e 1440 px) | — | ok |
 | `tests/e2e/auth.cjs` | — | ok (inclui cadastro real no Supabase local) |
@@ -48,6 +50,8 @@ automática. "Estados" lista o que foi exercitado de fato.
 | Mensagens (novo layout) | cliente, artesã | lista, busca, filtros, conversa vazia com sugestões, histórico agrupado por dia e remetente, resposta com citação, Enter/Shift+Enter, Escape no painel de sugestões, celular (lista ↔ conversa) | ok | e2e `mensagens`, axe 0 em 390/1440, capturas | — |
 | Notificações | cliente, artesã | mensagem nova (sininho, 2 notas, aviso, título da aba), abrir pelo painel, conversa aberta (1 nota, sem acumular), peça editada (silêncio), pedido atualizado (3 notas, aviso, lido ao abrir Pedidos), som desligado; no banco: rastreio, previsão, nota fiscal, venda paga, encomenda (resposta e cancelamento), mudança interna sem aviso, permissões | ok | e2e `notificacoes`, testes SQL, axe 0 no painel 390/1440 | Navegadores só tocam som depois do primeiro clique/tecla na página; o aviso visual aparece mesmo antes |
 | Foto de perfil (enquadramento) | cliente (1280 px), artesã (390 px, toque) | escolher foto, Escape cancela, arrastar + zoom, salvar 512×512, reenquadrar a partir do original 1200×800, setas do teclado, foto no cabeçalho, Storage só com foto atual + original, axe no editor | ok | e2e `foto-perfil` (pixel central vermelho/azul) | Pinça testada só pela lógica (testes unitários); sem dispositivo físico |
+| Visitante (carrinho e favoritos) | visitante → cliente | adicionar e favoritar sem login, páginas de carrinho/favoritos, quantidade, recarregar apaga, entrar leva para a conta, contador da conta | ok | e2e `visitante` (14) | Levar itens ao criar conta exige confirmar o e-mail na mesma aba; se a pessoa sair do site para confirmar, os itens se perdem (memória da aba, como pedido) |
+| Controle de sessão | cliente, loja | cookie × localStorage, nova aba, fechar navegador, aviso e saída por inatividade, motivo no login, aparelho lembrado, saída entre abas, sair de todos os aparelhos, limite de tentativas, cabeçalhos | ok | e2e `sessao` (16), testes unitários | Inatividade testada adiantando o relógio da última atividade (não 30 min reais); limite de 15 min do admin pela lógica |
 | Zerar chat | — | `zerar_mensagens.sql` no sandbox | ok | 0 mensagens e 0 conversas; conversa de peça (balão) e de pedido (`start_conversation`) recriadas; e2e `mensagens` passa depois | Recriação de conversa de encomenda não exercitada (sandbox sem encomendas) |
 | Login | visitante | vazio, senha errada, sucesso, retorno ao destino | ok | `capturas/acesso-390.jpg`, `auth` | — |
 | Cadastro de cliente | visitante | erros por campo, resumo, sucesso | ok | `auth` | ViaCEP simulado no teste (bloqueado na rede do ambiente) |
@@ -77,6 +81,36 @@ automática. "Estados" lista o que foi exercitado de fato.
   tela de 1440 px com 200% equivale a ~720 px), sem overflow nem texto cortado.
 
 ## 4. Desempenho (Lighthouse 12.2.1)
+
+### 4.1 Rodada de desempenho (imagens, servidor e CLS)
+
+Mesmas condições (mobile, throttling simulado, CPU 4×, 3 execuções, mediana),
+build de produção local com o Supabase do sandbox e dados reais.
+
+| Rota | Perf. antes → depois | LCP | TBT | CLS | Peso |
+| --- | --- | --- | --- | --- | --- |
+| `/` | 66 → 80 | 4,07 → 3,26 s | 1.126 → 508 ms | 0 → 0 | 1.156 → 667 KB |
+| `/categorias` | 56 → 88 | 7,09 → 2,77 s | 879 → 342 ms | 0 → 0 | 1.254 → 650 KB |
+| `/loja` | 35 → 79 | 6,12 → 3,67 s | 818 → 256 ms | 0,757 → 0 | 786 → 616 KB |
+| `/lojas` | 70 → 90 | 4,91 → 2,97 s | 466 → 227 ms | 0 → 0 | 609 → 612 KB |
+
+Versão final (com carrinho de visitante e controle de sessão), duas rodadas
+de 3 execuções: `/` 70 e 71, `/categorias` 83 e 80, `/loja` 71 e 92, `/lojas`
+81 e 86; CLS 0 em todas; peso 640–699 KB. A variação entre rodadas chegou a
+21 pontos (`/loja`). Home e categorias ficaram cerca de 8 pontos abaixo da
+medição anterior às duas funções (+32 KB de JavaScript na home); continuam
+acima do "antes" (66 e 56).
+
+Perfil de CPU sem throttling: cerca de 150 ms de script e 330 ms de estilo,
+layout e pintura na abertura da home; o restante do TBT medido vem da
+simulação de CPU 4× do Lighthouse.
+
+Custos e decisões: o otimizador de imagens roda na Vercel (há cota de
+transformações por plano; com cache de 31 dias e 7 larguras, cada foto gera
+poucas versões). Para desligar sem novo deploy de código, defina
+`NEXT_PUBLIC_IMAGE_OPTIMIZATION=off` e faça um novo build.
+
+### 4.2 Primeira rodada
 
 Condições: Lighthouse padrão (mobile, throttling simulado, CPU 4×), build de
 produção local, 3 execuções, mediana. Uma execução isolada não representa

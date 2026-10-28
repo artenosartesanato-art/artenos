@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { getSupabase } from "@/lib/supabase";
 import { useMarketplace } from "@/components/marketplace-state";
 import { Dialog } from "@/components/ui/dialog";
+import { endSession } from "@/lib/session";
 
 export type SellerProfile = {
   id: string;
@@ -188,12 +189,9 @@ export function SellerShell({ children }: { children: React.ReactNode }) {
     }
 
     void authorize();
-    const { data: listener } = getSupabase().auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT") router.replace("/acesso");
-    });
+    // Saída/expiração da sessão é tratada pelo SessionGuard (leva ao login com o motivo).
     return () => {
       active = false;
-      listener.subscription.unsubscribe();
     };
   }, [router]);
 
@@ -206,12 +204,12 @@ export function SellerShell({ children }: { children: React.ReactNode }) {
     : <span className="seller-avatar"><UserRound size={20} /></span>;
 
   async function signOut() {
-    const { error } = await getSupabase().auth.signOut();
+    const error = await endSession("local");
     if (error) {
       toast.error("Não foi possível sair da conta agora.");
       return;
     }
-    router.replace("/acesso");
+    router.replace("/acesso?motivo=saiu");
   }
 
   function updateProfile(

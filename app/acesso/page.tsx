@@ -18,6 +18,8 @@ import {
 } from "@/components/icons";
 import { toast } from "sonner";
 import { favoriteIntentReturnPath } from "@/components/marketplace-state";
+import { markActivity, setRememberDevice } from "@/lib/session";
+import { checkThrottle, loadThrottle, registerFailure, registerSuccess, saveThrottle, waitLabel } from "@/lib/login-throttle";
 import { getSupabase, loginWithSupabase, registerWithSupabase } from "@/lib/supabase";
 import { safeReturnPath } from "@/lib/navigation";
 import {
@@ -345,6 +347,11 @@ function RegisterForm({ type, onGoToLogin }: { type: AccountType; onGoToLogin: (
   );
 }
 
+/** Lembra a escolha anterior; na primeira vez, desmarcado (mais seguro). */
+function rememberDeviceDefault() {
+  try { return window.localStorage.getItem("artenos:lembrar") === "1"; } catch { return false; }
+}
+
 function LoginForm({ returnTo, onRecover, onRegister }: { returnTo: string | null; onRecover: () => void; onRegister: () => void }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -366,10 +373,20 @@ function LoginForm({ returnTo, onRecover, onRegister }: { returnTo: string | nul
       setErrors(found);
       return;
     }
+    const email = String(values.email ?? "");
+    const throttle = checkThrottle(loadThrottle(), email, Date.now());
+    if (!throttle.allowed) {
+      setErrors({ _form: `Muitas tentativas sem sucesso. Por segurança, aguarde ${waitLabel(throttle.retryInMs)} e tente de novo.` });
+      return;
+    }
     setErrors({});
     setPending(true);
+    // Escolhido antes de entrar: define onde a sessão será guardada.
+    setRememberDevice(values.remember === "on");
     try {
       const result = await loginWithSupabase(values);
+      saveThrottle(registerSuccess(loadThrottle(), email));
+      markActivity(true);
       toast.success(result.approvalStatus === "active"
         ? `Boas-vindas, ${result.firstName}!`
         : `Olá, ${result.firstName}. Acompanhe aqui a análise do seu cadastro.`);
@@ -378,7 +395,10 @@ function LoginForm({ returnTo, onRecover, onRegister }: { returnTo: string | nul
         : returnTo || favoriteIntentReturnPath() || result.redirectTo;
       router.replace(destination);
     } catch (error) {
-      setErrors({ _form: error instanceof Error ? error.message : "Não foi possível entrar agora. Tente novamente." });
+      const message = error instanceof Error ? error.message : "Não foi possível entrar agora. Tente novamente.";
+      // Só senha/e-mail errados contam para o limite (não falhas de conexão).
+      if (/incorretos/i.test(message)) saveThrottle(registerFailure(loadThrottle(), email, Date.now()));
+      setErrors({ _form: message });
       setPending(false);
     }
   }
@@ -404,8 +424,16 @@ function LoginForm({ returnTo, onRecover, onRegister }: { returnTo: string | nul
         {(props) => <PasswordInput id={props.id} name="password" autoComplete="current-password" placeholder="Sua senha" invalid={props["aria-invalid"]} describedBy={props["aria-describedby"]} />}
       </Field>
       <div className="login-row">
+        <label className="remember-device">
+          <input type="checkbox" name="remember" className="check" defaultChecked={rememberDeviceDefault()}
+            aria-describedby="lembrar-ajuda" />
+          <span>Manter conectado neste aparelho</span>
+        </label>
         <button type="button" className="link-button" onClick={onRecover}>Esqueci minha senha</button>
       </div>
+      <p className="remember-help" id="lembrar-ajuda">
+        Desmarcado, você sai ao fechar o navegador ou após 30 min sem uso. Em computador compartilhado, deixe desmarcado.
+      </p>
       <button className="primary-button" disabled={pending} aria-busy={pending}>
         {pending && <Loader2 size={18} className="spin" />}{pending ? "Entrando…" : "Entrar"}
       </button>
@@ -484,6 +512,13 @@ function RecoveryForm({ onBack }: { onBack: () => void }) {
   );
 }
 
+const SESSION_REASONS: Record<string, string> = {
+  inatividade: "Por segurança, sua sessão foi encerrada depois de um tempo sem uso. Entre de novo para continuar.",
+  expirada: "Sua sessão expirou ou foi encerrada em outro aparelho. Entre de novo para continuar.",
+  todos: "Você saiu da conta em todos os aparelhos.",
+  saiu: "Você saiu da sua conta.",
+};
+
 function AccessContent() {
   const params = useSearchParams();
   const tabsId = useId();
@@ -493,6 +528,8 @@ function AccessContent() {
   const tabRefs = useRef<Record<Tab, HTMLButtonElement | null>>({ login: null, client: null, artisan: null });
   // `retorno` é aceito por compatibilidade com links antigos de mensagens.
   const returnTo = safeReturnPath(params.get("voltar") ?? params.get("retorno"));
+  // Por que a sessão terminou (definido pelo controle de sessão).
+  const reason = SESSION_REASONS[params.get("motivo") ?? ""];
 
   function choose(next: Tab, focus = false) {
     setTab(next);
@@ -531,6 +568,11 @@ function AccessContent() {
       <section className="auth-panel">
         <div className="auth-tabs">
           <h1 className="an-visually-hidden">Entrar ou criar conta na Artenós</h1>
+          {reason && (
+            <div className="an-alert an-alert--info session-reason" role="status">
+              <ShieldCheck size={18} /><span>{reason}</span>
+            </div>
+          )}
           <div className="tab-list" role="tablist" aria-label="Acesso e cadastro">
             {TABS.map((item, index) => (
               <button key={item.id} ref={(node) => { tabRefs.current[item.id] = node; }} type="button" role="tab"

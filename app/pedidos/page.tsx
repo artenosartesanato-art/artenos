@@ -22,6 +22,7 @@ import { useMarketplace } from "@/components/marketplace-state";
 import { orderProgress } from "@/lib/order-progress";
 import "../storefront.css";
 import "./orders.css";
+import { OptimizedImage } from "@/components/optimized-image";
 
 type AccountType = "client" | "artisan";
 type OrderStatus =
@@ -306,8 +307,7 @@ function OrderCard({
       <div className="order-card-main">
         <div className="order-product-image">
           {firstItem?.image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={firstItem.image_url} alt="" width={96} height={96} loading="lazy" />
+            <OptimizedImage src={firstItem.image_url} alt="" width={96} height={96} sizes="96px" />
           ) : (
             <Sparkles size={27} />
           )}
