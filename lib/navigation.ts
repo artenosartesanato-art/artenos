@@ -21,3 +21,9 @@ export function accessHref(returnTo?: string | null) {
   const path = safeReturnPath(returnTo);
   return path && path !== "/" ? `/acesso?${RETURN_PARAM}=${encodeURIComponent(path)}` : "/acesso";
 }
+
+/** Quem tem loja usa só as mensagens do painel; clientes, /mensagens. */
+export function messagesHref(sellerPanel: boolean, query = "") {
+  const base = sellerPanel ? "/vendedor/mensagens" : "/mensagens";
+  return query ? `${base}?${query.replace(/^\?/, "")}` : base;
+}

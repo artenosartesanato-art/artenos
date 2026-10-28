@@ -208,3 +208,22 @@ licenças de terceiros):
   no rodapé, para quem ainda não tem loja.
 - Ficaram de fora de propósito (não há dado real que sustente): ofertas
   do dia, desconto no Pix, depoimentos, botão de WhatsApp.
+
+## Mensagens de quem tem loja
+
+- Uma só tela: `/vendedor/mensagens`. Quem tem loja aprovada e abre
+  `/mensagens` (link de aviso, e-mail, favorito antigo) é levado ao painel com
+  os mesmos parâmetros (`conversa`, `produto`). Cabeçalho, rodapé, pedidos e
+  o balão da peça já apontam para o painel.
+- O painel mostra também as conversas em que a artesã comprou de outra loja,
+  com a etiqueta "Sua compra" e o atalho "Ver loja".
+
+## Avisos sem depender só do tempo real
+
+- O canal Realtime informa o status; se cair, reconecta com espera crescente
+  (2 s, 4 s… até 60 s) e, enquanto isso, o sininho consulta a cada 30 s.
+- Também consulta ao voltar para a aba/app, ao reconectar a rede e ao trocar
+  de página. O que chegou nesse meio-tempo toca o som e mostra o aviso, como
+  no tempo real (`freshUnread` em `lib/notifications.ts`).
+- Botões herdam a cor do texto: no Safari do iPhone o padrão é azul e
+  deixava o sininho com o contorno azul.

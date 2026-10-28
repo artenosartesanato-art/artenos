@@ -22,6 +22,7 @@ esta branch em build de produção na porta 3002; mesmo banco e mesmos dados.
 | `audit.cjs` após orçamento, chips, lojas na busca, filtro por UF, "Como funciona" e alinhamento do cadastro (390 e 1440 px, movimento reduzido) | — | **0** ocorrências axe, **0** overflow em 76 combinações; console só com o 404 esperado e o frete do sandbox (Edge Function ausente) |
 | Alinhamento do cadastro (cliente e vendedor, 1440 px): topo e altura de cada campo comparados por linha da grade | — | **0** linhas desalinhadas (CPF × Telefone, Senha × Confirme, CEP × UF…) |
 | Categorias da home no celular (390 px) | — | 9 blocos em grade 3×3, "Ver todas as categorias (15)" mostra os 15; sem rolagem lateral |
+| `tests/e2e/mensagens-vendedor.cjs` | — | ok (10/10): `/mensagens` leva a artesã ao painel com a mesma conversa; links do cabeçalho e rodapé; compra de outra loja aberta no painel ("Sua compra"); com o Realtime bloqueado o aviso chega em até 40 s; sininho na cor do texto |
 | `tests/e2e/journey.cjs` (390 e 1440 px) | — | ok |
 | `tests/e2e/auth.cjs` | — | ok (inclui cadastro real no Supabase local) |
 | `tests/e2e/interacoes.cjs` | — | ok |

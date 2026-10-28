@@ -104,7 +104,10 @@ begin
     recipient, 'mensagem',
     'Nova mensagem de ' || coalesce(nullif(sender_name, ''), 'Artenós'),
     new.body,
-    case when recipient = c.artisan_id then '/vendedor/mensagens?conversa=' else '/mensagens?conversa=' end || c.id,
+    -- Quem tem loja aprovada responde tudo pelo painel (mesmo quando comprou).
+    case when exists (select 1 from public.profiles p where p.id = recipient
+        and p.account_type = 'artisan' and p.approval_status = 'active')
+      then '/vendedor/mensagens?conversa=' else '/mensagens?conversa=' end || c.id,
     c.id);
   return new;
 end;

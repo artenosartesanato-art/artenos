@@ -4,6 +4,7 @@ import Link from "next/link";
 import { BrandLogo } from "@/components/brand-logo";
 import { useMarketplace } from "@/components/marketplace-state";
 import { SoundToggle } from "@/components/sound-toggle";
+import { messagesHref } from "@/lib/navigation";
 
 /** As props antigas continuam aceitas, mas o estado vem do MarketplaceProvider. */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -39,7 +40,7 @@ export function CustomerFooter(_props: { userSignedIn?: boolean; authLoading?: b
           )}
           <Link href="/favoritos">Favoritos</Link>
           <Link href="/pedidos">Pedidos</Link>
-          <Link href="/mensagens">Mensagens</Link>
+          <Link href={messagesHref(sellerPanelAvailable)}>Mensagens</Link>
         </div>
         <div>
           <h2>Informações</h2>

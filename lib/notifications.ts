@@ -65,3 +65,16 @@ export function unreadByRef(items: AppNotification[]) {
   }
   return map;
 }
+
+/**
+ * Avisos que chegaram desde a última leitura (consulta de segurança quando o
+ * tempo real falha): não lidos que são novos ou que agruparam mais mensagens.
+ */
+export function freshUnread(previous: AppNotification[], next: AppNotification[]) {
+  const known = new Map(previous.map((item) => [item.id, item]));
+  return next.filter((item) => {
+    if (item.read_at) return false;
+    const before = known.get(item.id);
+    return !before || item.unread_count > before.unread_count || item.created_at > before.created_at;
+  });
+}

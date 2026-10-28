@@ -18,7 +18,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import { useMarketplace } from "@/components/marketplace-state";
 import { Dialog } from "@/components/ui/dialog";
 import { SoundToggle } from "@/components/sound-toggle";
-import { accessHref } from "@/lib/navigation";
+import { accessHref, messagesHref } from "@/lib/navigation";
 import { endSession } from "@/lib/session";
 import { toast } from "sonner";
 import { useHeaderSearch } from "@/components/header-search";
@@ -170,6 +170,9 @@ export function CustomerHeader() {
   }
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  // Quem tem loja responde tudo pelo painel: o link de mensagens vai para lá.
+  const navLinks = NAV_LINKS.map((link) => link.href === "/mensagens"
+    ? { ...link, href: messagesHref(sellerPanelAvailable) } : link);
   // Quem tem loja edita o perfil dentro do painel, junto do menu da loja.
   const profileHref = sellerPanelAvailable ? "/vendedor/perfil" : "/perfil";
   const accountHref = userSignedIn ? profileHref : accessHref(pathname);
@@ -232,7 +235,7 @@ export function CustomerHeader() {
       <nav className="store-nav store-container" aria-label="Navegação principal">
         <CepControl />
         <div className="store-nav-links">
-          {NAV_LINKS.map((link) => (
+          {navLinks.map((link) => (
             <Link key={link.href} href={link.href} aria-current={isActive(link.href) ? "page" : undefined}>
               {link.label}
             </Link>
@@ -254,7 +257,7 @@ export function CustomerHeader() {
           <nav aria-label="Menu principal">
             <ul className="store-menu-list">
               <li><Link href="/" onClick={() => setMenuOpen(false)} aria-current={pathname === "/" ? "page" : undefined}>Início</Link></li>
-              {NAV_LINKS.map((link) => (
+              {navLinks.map((link) => (
                 <li key={link.href}>
                   <Link href={link.href} onClick={() => setMenuOpen(false)} aria-current={isActive(link.href) ? "page" : undefined}>
                     {link.label}

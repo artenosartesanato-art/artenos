@@ -4,7 +4,7 @@ import Link from "next/link";
 import { MessageSquare } from "@/components/icons";
 import { useMarketplace } from "@/components/marketplace-state";
 import { rememberProductInquiry } from "@/lib/product-inquiry-intent";
-import { accessHref } from "@/lib/navigation";
+import { accessHref, messagesHref } from "@/lib/navigation";
 
 export function ProductInquiryLink({
   productId,
@@ -15,8 +15,8 @@ export function ProductInquiryLink({
   productName: string;
   compact?: boolean;
 }) {
-  const { authReady, userId } = useMarketplace();
-  const conversationPath = `/mensagens?produto=${encodeURIComponent(productId)}`;
+  const { authReady, userId, sellerPanelAvailable } = useMarketplace();
+  const conversationPath = messagesHref(sellerPanelAvailable, `produto=${encodeURIComponent(productId)}`);
   const href = authReady && !userId ? accessHref(conversationPath) : conversationPath;
 
   return (

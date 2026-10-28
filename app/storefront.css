@@ -129,6 +129,7 @@
 }
 .store-header-link {
   position: relative;
+  -webkit-tap-highlight-color: transparent;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1787,6 +1788,7 @@
   position: relative;
   border: 0;
   background: transparent;
+  color: var(--an-text);
   cursor: pointer;
 }
 .notif-drawer {

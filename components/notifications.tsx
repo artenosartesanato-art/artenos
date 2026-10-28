@@ -11,7 +11,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { getSupabase } from "@/lib/supabase";
 import { formatListTime } from "@/lib/message-format";
 import {
-  badgeText, readOnVisit, titleWithCount, unreadByRef, unreadTotal, upsertNotification,
+  badgeText, freshUnread, readOnVisit, titleWithCount, unreadByRef, unreadTotal, upsertNotification,
   MAX_ITEMS, type AppNotification, type NotificationKind,
 } from "@/lib/notifications";
 import {
@@ -49,6 +49,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   const activeRef = useRef<string | null>(null);
   const openRef = useRef(false);
   const itemsRef = useRef<AppNotification[]>([]);
+  const refreshRef = useRef<(() => void) | null>(null);
 
   useEffect(() => { openRef.current = open; }, [open]);
   useEffect(() => { itemsRef.current = items; }, [items]);
@@ -106,34 +107,93 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       }
     }
 
-    void Promise.resolve(supabase.from("notifications").select(COLUMNS)
-      .order("created_at", { ascending: false }).limit(MAX_ITEMS))
-      .then(({ data, error }) => {
-        if (!active) return;
-        // Tabela ausente: o recurso fica escondido até o script ser executado.
-        if (error) { setAvailable(false); return; }
-        setItems((data ?? []) as AppNotification[]);
-        setAvailable(true);
-      });
+    // Leitura completa. A primeira só preenche a lista; as seguintes (consulta
+    // de segurança) avisam o que chegou sem passar pelo tempo real.
+    let loaded = false;
+    async function load() {
+      const { data, error } = await supabase.from("notifications").select(COLUMNS)
+        .order("created_at", { ascending: false }).limit(MAX_ITEMS);
+      if (!active) return;
+      // Tabela ausente: o painel mostra "em breve" até o script ser executado.
+      if (error) { if (!loaded) setAvailable(false); return; }
+      const rows = (data ?? []) as AppNotification[];
+      const fresh = loaded ? freshUnread(itemsRef.current, rows) : [];
+      loaded = true;
+      itemsRef.current = rows;
+      setItems(rows);
+      setAvailable(true);
+      if (fresh[0]) alert(fresh[0]);
+    }
+    void load().catch(() => undefined);
 
-    const channel = supabase
-      .channel(`notificacoes-${userId}`)
-      .on("postgres_changes",
-        { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
-        (payload) => {
-          const row = payload.new as AppNotification;
-          if (!row?.id) return;
-          setItems((current) => upsertNotification(current, row));
-          // INSERT, ou UPDATE de agrupamento (mais uma mensagem não lida).
-          if (!row.read_at) alert(row);
-        })
-      .subscribe();
+    // Tempo real. Se o canal cair (rede, token expirado, Realtime fora do ar),
+    // tenta de novo com espera crescente; enquanto isso, consulta a cada 30 s.
+    let live = false;
+    let retry = 0;
+    let retryTimer: number | undefined;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    function connect() {
+      if (!active) return;
+      if (channel) void supabase.removeChannel(channel);
+      channel = supabase
+        .channel(`notificacoes-${userId}-${Date.now()}`)
+        .on("postgres_changes",
+          { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
+          (payload) => {
+            const row = payload.new as AppNotification;
+            if (!row?.id) return;
+            const next = upsertNotification(itemsRef.current, row);
+            itemsRef.current = next;
+            setItems(next);
+            // INSERT, ou UPDATE de agrupamento (mais uma mensagem não lida).
+            if (!row.read_at) alert(row);
+          })
+        .subscribe((status) => {
+          if (!active) return;
+          if (status === "SUBSCRIBED") {
+            // Pode ter chegado algo entre a leitura e a conexão.
+            if (!live && retry > 0) void load().catch(() => undefined);
+            live = true;
+            retry = 0;
+          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+            live = false;
+            window.clearTimeout(retryTimer);
+            retryTimer = window.setTimeout(connect, Math.min(60_000, 2_000 * 2 ** retry));
+            retry += 1;
+          }
+        });
+    }
+    // O token da sessão precisa estar no Realtime antes de entrar no canal,
+    // senão as regras de acesso escondem os avisos.
+    void supabase.auth.getSession().then(({ data }) => {
+      if (data.session) supabase.realtime.setAuth(data.session.access_token);
+      connect();
+    });
+
+    const poll = window.setInterval(() => {
+      if (!live && document.visibilityState === "visible") void load().catch(() => undefined);
+    }, 30_000);
+    // Voltar para a aba ou o app (celular suspende a conexão em segundo plano).
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void load().catch(() => undefined);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", onVisible);
+    refreshRef.current = () => void load().catch(() => undefined);
 
     return () => {
       active = false;
-      void supabase.removeChannel(channel);
+      refreshRef.current = null;
+      window.clearInterval(poll);
+      window.clearTimeout(retryTimer);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", onVisible);
+      if (channel) void supabase.removeChannel(channel);
     };
   }, [userId, router, markRead]);
+
+  // Trocar de página também confere se chegou algo (barato: uma consulta).
+  useEffect(() => { refreshRef.current?.(); }, [pathname]);
 
   // Abrir a página do aviso (ex.: /pedidos) já conta como visto.
   useEffect(() => {

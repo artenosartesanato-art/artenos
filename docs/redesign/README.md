@@ -117,6 +117,9 @@ Branch: `FEAT/REDESIGN-UX-UI-ARTE-NOSSA` (base `main`).
   (baixou o preço, voltou ao estoque, esgotou) para quem tem a peça nos
   favoritos ou no carrinho. Enquanto o script não roda, o sininho aparece
   para quem está logado, mas o painel mostra "Notificações em breve".
+  Para conferir em produção: `select tablename from pg_publication_tables
+  where pubname = 'supabase_realtime' and tablename in ('notifications',
+  'messages');` deve listar as duas tabelas.
 - Limpeza total de dados (mantém login, `profiles`, administradores e
   pedidos de cadastro das artesãs; por padrão mantém também categorias,
   coleções, banners e taxas): `supabase/limpar_dados_manter_contas.sql`.
