@@ -95,6 +95,9 @@ Branch: `FEAT/REDESIGN-UX-UI-ARTE-NOSSA` (base `main`).
   ela.
 - Incluir `https://SEU-DOMINIO/redefinir-senha` nas Redirect URLs do Auth
   para a recuperação de senha.
+- Para zerar o histórico de mensagens (testes), use
+  `supabase/zerar_mensagens.sql`: apaga só as mensagens e mantém as
+  conversas. O `zerar_mensagens_teste.sql` também apaga as conversas.
 - Para as conversas por peça: executar `supabase/conversas_produtos_topicos.sql`,
   `supabase/contexto_conversas_produtos.sql` e
   `supabase/permitir_conversas_por_produto.sql` (a regra

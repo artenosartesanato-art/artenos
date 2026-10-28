@@ -1,13 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { User } from "@supabase/supabase-js";
 import {
+  Check,
+  ChevronLeft,
   MessageCircle,
   PackageOpen,
+  Reply,
+  Search,
   Send,
   Sparkles,
+  Store,
   X,
 } from "@/components/icons";
 import Link from "next/link";
@@ -17,6 +22,7 @@ import { getSupabase } from "@/lib/supabase";
 import { getMessageSuggestions, messageTopics, type MessageTopic } from "@/lib/message-suggestions";
 import { clearProductInquiry, pendingProductInquiry, validProductId } from "@/lib/product-inquiry-intent";
 import { accessHref } from "@/lib/navigation";
+import { formatClock, formatListTime, groupChat, initials } from "@/lib/message-format";
 
 type Order = { id: string; product_name: string; created_at: string };
 const topicLabel = (value: MessageTopic) =>
@@ -43,8 +49,37 @@ type Message = {
   reply_to_id: string | null;
   created_at: string;
 };
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString("pt-BR");
+type ListFilter = "todas" | Conversation["kind"];
+const LIST_FILTERS: { value: ListFilter; label: string }[] = [
+  { value: "todas", label: "Todas" },
+  { value: "produto", label: "Peças" },
+  { value: "pedido", label: "Pedidos" },
+  { value: "encomenda", label: "Encomendas" },
+];
+const KIND_LABEL: Record<Conversation["kind"], string> = {
+  produto: "Pergunta sobre a peça",
+  pedido: "Pedido",
+  encomenda: "Sob encomenda",
+};
+
+/** Nome de quem está do outro lado da conversa. */
+function partnerName(conversation: Conversation, sellerMode: boolean) {
+  return sellerMode
+    ? conversation.other_name || "Cliente"
+    : conversation.store_name || conversation.artisan_name || conversation.other_name || "Loja";
+}
+
+function Avatar({ conversation, sellerMode, size = "md" }: {
+  conversation: Conversation; sellerMode: boolean; size?: "md" | "lg";
+}) {
+  // A foto da peça identifica o assunto; sem foto, as iniciais de quem responde.
+  return (
+    <span className={`chat-avatar chat-avatar--${size}`} aria-hidden="true">
+      {conversation.product_image_url
+        ? <Image src={conversation.product_image_url} alt="" width={48} height={48} unoptimized />
+        : <span>{initials(partnerName(conversation, sellerMode))}</span>}
+    </span>
+  );
 }
 
 export function MessagesWorkspace({
@@ -63,16 +98,23 @@ export function MessagesWorkspace({
   const [text, setText] = useState("");
   const [topic, setTopic] = useState<MessageTopic>("geral");
   const [topicFilter, setTopicFilter] = useState<MessageTopic | "todos">("todos");
-  const [suggestionTopic, setSuggestionTopic] = useState<MessageTopic | null>(null);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [listFilter, setListFilter] = useState<ListFilter>("todas");
+  const [listQuery, setListQuery] = useState("");
+  const [freshIds, setFreshIds] = useState<Set<string>>(() => new Set());
   const [openError, setOpenError] = useState("");
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [signInHref, setSignInHref] = useState(() => accessHref(sellerMode ? "/vendedor/mensagens" : "/mensagens"));
   const [sending, setSending] = useState(false);
   const threadRef = useRef<HTMLDivElement>(null);
-  const suggestionCloseRef = useRef<HTMLButtonElement>(null);
+  const textRef = useRef<HTMLTextAreaElement>(null);
+  const suggestionsToggleRef = useRef<HTMLButtonElement>(null);
   const productEntryRef = useRef<string | null>(null);
 
+  // Mensagens que chegam depois do carregamento (enviadas ou em tempo real)
+  // ganham a animação de entrada; o histórico carregado aparece sem animar.
   const addMessage = useCallback((msg: Message) => {
+    setFreshIds((previous) => new Set(previous).add(msg.id));
     setMessages((previous) =>
       previous.some((message) => message.id === msg.id)
         ? previous
@@ -167,7 +209,7 @@ export function MessagesWorkspace({
       setUser(data.session.user);
       setCurrent(null);
       setOpenError("");
-      setStatus(validProduct ? "Abrindo a conversa sobre esta peça..." : "Logado como " + data.session.user.email);
+      setStatus(validProduct ? "Abrindo a conversa sobre esta peça…" : "");
       let requestedConversation = params.get("conversa");
       let productError = "";
       if (validProduct) {
@@ -201,7 +243,7 @@ export function MessagesWorkspace({
           ? requested.conversation_id
           : null;
         setCurrent(requested);
-        setStatus("Logado como " + data.session.user.email);
+        setStatus("");
       } else if (validProduct) {
         const reason = productError || "A conversa desta peça não apareceu na sua conta. Tente novamente.";
         setOpenError(reason);
@@ -251,6 +293,7 @@ export function MessagesWorkspace({
       setReplyTo(null);
       setTopic(current.kind === "produto" ? "produto" : "geral");
       setTopicFilter("todos");
+      setSuggestionsOpen(false);
     });
     void loadMessages(current.conversation_id);
 
@@ -274,33 +317,68 @@ export function MessagesWorkspace({
     };
   }, [current, addMessage]);
 
+
   useEffect(() => {
     // Rola só o histórico: scrollIntoView também rolava a página e deixava o
     // cabeçalho fixo por cima da conversa.
     const thread = threadRef.current;
-    if (thread) thread.scrollTo({ top: thread.scrollHeight, behavior: "smooth" });
+    if (thread && messages.length > 0) thread.scrollTo({ top: thread.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
+  // Campo cresce com o texto até 6 linhas, como nos apps de conversa.
   useEffect(() => {
-    if (!suggestionTopic) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const focusTimer = window.setTimeout(() => suggestionCloseRef.current?.focus(), 0);
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setSuggestionTopic(null);
-    };
-    document.addEventListener("keydown", closeOnEscape);
-    return () => {
-      window.clearTimeout(focusTimer);
-      document.removeEventListener("keydown", closeOnEscape);
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [suggestionTopic]);
+    const field = textRef.current;
+    if (!field) return;
+    field.style.height = "auto";
+    field.style.height = `${Math.min(field.scrollHeight, 152)}px`;
+  }, [text]);
+
+  const visibleConversations = useMemo(() => {
+    const query = listQuery.trim().toLocaleLowerCase("pt-BR");
+    return conversations.filter((conversation) =>
+      (listFilter === "todas" || conversation.kind === listFilter) &&
+      (!query || `${conversation.product_name} ${partnerName(conversation, sellerMode)}`
+        .toLocaleLowerCase("pt-BR").includes(query)));
+  }, [conversations, listFilter, listQuery, sellerMode]);
+
+  const visibleMessages = useMemo(
+    () => groupChat(messages.filter((message) => topicFilter === "todos" || message.topic === topicFilter)),
+    [messages, topicFilter],
+  );
+
+  function focusComposer() {
+    window.setTimeout(() => textRef.current?.focus(), 0);
+  }
 
   function selectSuggestion(suggestion: string) {
     setText(suggestion);
-    setSuggestionTopic(null);
-    window.setTimeout(() => document.getElementById("messages-text")?.focus(), 0);
+    setSuggestionsOpen(false);
+    focusComposer();
+  }
+
+  function closeSuggestions() {
+    setSuggestionsOpen(false);
+    suggestionsToggleRef.current?.focus();
+  }
+
+  function openConversation(conversation: Conversation) {
+    setOpenError("");
+    setCurrent(conversation);
+  }
+
+  function backToList() {
+    const id = current?.conversation_id;
+    setCurrent(null);
+    window.setTimeout(() => document.getElementById(`conversa-${id}`)?.focus(), 0);
+  }
+
+  function jumpToMessage(id: string) {
+    const target = document.getElementById(`mensagem-${id}`);
+    if (!target) return;
+    target.scrollIntoView({ block: "center", behavior: "smooth" });
+    target.classList.remove("is-highlighted");
+    void target.offsetWidth;
+    target.classList.add("is-highlighted");
   }
 
   async function startConversation(orderId: string, title: string) {
@@ -317,8 +395,8 @@ export function MessagesWorkspace({
     else setStatus(`Não foi possível abrir a conversa de ${title}.`);
   }
 
-  async function sendMessage(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function sendMessage(event?: FormEvent<HTMLFormElement>) {
+    event?.preventDefault();
     const body = text.trim();
     if (!body || !current || !user || sending) return;
     const supabase = getSupabase();
@@ -345,30 +423,35 @@ export function MessagesWorkspace({
     setTopicFilter("todos");
     addMessage(data as Message);
     void refreshAll(user);
+    focusComposer();
   }
+
+  function onComposerKey(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    // Enter envia; Shift+Enter quebra a linha (e não interfere em teclados com acentuação em composição).
+    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+      event.preventDefault();
+      void sendMessage();
+    }
+  }
+
+  const authorName = (message: Message) =>
+    message.sender_id === user?.id ? "Você" : current ? partnerName(current, sellerMode) : "";
+  const suggestions = current
+    ? getMessageSuggestions(topic, `“${current.product_name}”`, current.my_role)
+    : [];
 
   // No painel da loja o SellerShell já fornece o <main>.
   const Main = sellerMode ? "div" : "main";
   return (
-    <div
-      className={
-        sellerMode
-          ? "messages-workspace messages-workspace-seller"
-          : "store-page messages-page"
-      }
-    >
+    <div className={sellerMode ? "messages-workspace messages-workspace-seller" : "store-page messages-page"}>
       <Main
         id={sellerMode ? undefined : "conteudo"}
         tabIndex={sellerMode ? undefined : -1}
-        className={
-          sellerMode
-            ? "messages-main messages-main-seller"
-            : "store-container messages-main"
-        }
+        className={`messages-main${sellerMode ? " messages-main-seller" : " store-container"}${current ? " has-current" : ""}`}
       >
         <div className="messages-intro">
           <p className={sellerMode ? "seller-eyebrow" : "store-eyebrow"}>
-            {sellerMode ? "ATENDIMENTO DA LOJA" : "SUA CONTA ARTENÓS"}
+            {sellerMode ? "Atendimento da loja" : "Sua conta Artenós"}
           </p>
           <h1>Mensagens</h1>
           <p>
@@ -377,9 +460,7 @@ export function MessagesWorkspace({
               : "Converse com as lojas sobre peças, encomendas e pedidos em um só lugar."}
           </p>
         </div>
-        <p className="messages-status" aria-live="polite">
-          {status}
-        </p>
+        {status && <p className="messages-status" role="status">{status}</p>}
 
         {!user ? (
           <div className="messages-signin">
@@ -389,247 +470,247 @@ export function MessagesWorkspace({
             <Link href={signInHref}>Entrar ou cadastrar</Link>
           </div>
         ) : (
-          <div className="messages-layout">
-            <aside
-              className="messages-sidebar"
-              aria-label="Pedidos e conversas"
-            >
-              <section className="messages-list-section">
-                <h2>
-                  Minhas conversas <span>{conversations.length}</span>
-                </h2>
-                {conversations.length === 0 ? (
-                  <p className="messages-empty-list">
-                    Você ainda não tem conversas.
+          <div className={`chat-app${current || openError ? " has-chat" : ""}`}>
+            <aside className="chat-list" aria-label="Conversas">
+              <div className="chat-list-head">
+                <h2>Conversas <span>{conversations.length}</span></h2>
+                <label className="chat-search">
+                  <Search size={16} aria-hidden="true" />
+                  <span className="messages-visually-hidden">Buscar conversa</span>
+                  <input type="search" value={listQuery} onChange={(event) => setListQuery(event.target.value)}
+                    placeholder="Buscar por peça ou nome" maxLength={80} />
+                </label>
+                <div className="chat-filters" role="group" aria-label="Filtrar conversas">
+                  {LIST_FILTERS.map((filter) => (
+                    <button key={filter.value} type="button" aria-pressed={listFilter === filter.value}
+                      onClick={() => setListFilter(filter.value)}>
+                      {filter.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="chat-list-scroll">
+                {visibleConversations.length === 0 ? (
+                  <p className="chat-list-empty">
+                    {conversations.length === 0
+                      ? sellerMode
+                        ? "Quando um cliente perguntar sobre uma peça ou pedido, a conversa aparece aqui."
+                        : "Para conversar com uma loja, toque no balão de mensagem de uma peça."
+                      : "Nenhuma conversa encontrada com este filtro."}
                   </p>
                 ) : (
-                  <ul>
-                    {conversations.map((conversation) => (
-                      <li key={conversation.conversation_id}>
-                        <button
-                          type="button"
-                          className={
-                            current?.conversation_id === conversation.conversation_id
-                              ? "is-active"
-                              : ""
-                          }
-                          onClick={() => setCurrent(conversation)}
-                        >
-                          <span className="messages-list-icon">
-                            <MessageCircle size={18} />
-                          </span>
-                          <span className="messages-list-copy">
-                            <strong>{conversation.product_name}</strong>
-                            <small className="messages-conversation-kind">
-                              {conversation.kind === "produto"
-                                ? "Pergunta sobre produto"
-                                : conversation.kind === "encomenda"
-                                  ? "Sob encomenda"
-                                  : "Pedido"}
-                            </small>
-                            {conversation.kind === "produto" && conversation.my_role === "client" && (
-                              <small className="messages-conversation-store">
-                                Loja: {conversation.store_name || conversation.artisan_name || "Artenós"}
-                              </small>
-                            )}
-                            <small>
-                              {conversation.my_role === "client"
-                                ? "Vendedor"
-                                : "Cliente"}
-                              : {conversation.other_name}
-                            </small>
-                            <time dateTime={conversation.last_message_at}>
-                              {formatDate(conversation.last_message_at)}
-                            </time>
-                          </span>
-                        </button>
-                      </li>
-                    ))}
+                  <ul className="chat-rows">
+                    {visibleConversations.map((conversation) => {
+                      const active = current?.conversation_id === conversation.conversation_id;
+                      return (
+                        <li key={conversation.conversation_id}>
+                          <button type="button" id={`conversa-${conversation.conversation_id}`}
+                            className={`chat-row${active ? " is-active" : ""}`}
+                            aria-current={active ? "true" : undefined}
+                            onClick={() => openConversation(conversation)}>
+                            <Avatar conversation={conversation} sellerMode={sellerMode} />
+                            <span className="chat-row-copy">
+                              <span className="chat-row-top">
+                                <strong>{partnerName(conversation, sellerMode)}</strong>
+                                <time dateTime={conversation.last_message_at}>
+                                  {formatListTime(conversation.last_message_at)}
+                                </time>
+                              </span>
+                              <span className="chat-row-sub">
+                                <span className={`chat-kind chat-kind--${conversation.kind}`}>{KIND_LABEL[conversation.kind]}</span>
+                                <span className="chat-row-product">{conversation.product_name}</span>
+                              </span>
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
-              </section>
-              <section className="messages-list-section messages-orders">
-                <h2>
-                  {sellerMode ? "Vendas sem conversa" : "Compras sem conversa"}{" "}
-                  <span>{orders.length}</span>
-                </h2>
-                {orders.length === 0 ? (
-                  <p className="messages-empty-list">
-                    {sellerMode
-                      ? "Nenhuma venda aguardando conversa."
-                      : "Nenhuma compra aguardando conversa."}
-                  </p>
-                ) : (
-                  <ul>
-                    {orders.map((order) => (
-                      <li key={order.id}>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            startConversation(order.id, order.product_name)
-                          }
-                        >
-                          <span className="messages-list-icon">
-                            <PackageOpen size={18} />
-                          </span>
-                          <span className="messages-list-copy">
-                            <strong>{order.product_name}</strong>
-                            <time dateTime={order.created_at}>
-                              {formatDate(order.created_at)}
-                            </time>
-                            <small>Iniciar conversa</small>
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
+
+                {orders.length > 0 && (
+                  <section className="chat-orders" aria-labelledby="chat-orders-title">
+                    <h3 id="chat-orders-title">{sellerMode ? "Vendas sem conversa" : "Compras sem conversa"}</h3>
+                    <ul className="chat-rows">
+                      {orders.map((order) => (
+                        <li key={order.id}>
+                          <button type="button" className="chat-row chat-row--start"
+                            onClick={() => startConversation(order.id, order.product_name)}>
+                            <span className="chat-avatar chat-avatar--md chat-avatar--icon" aria-hidden="true">
+                              <PackageOpen size={20} />
+                            </span>
+                            <span className="chat-row-copy">
+                              <span className="chat-row-top">
+                                <strong>{order.product_name}</strong>
+                                <time dateTime={order.created_at}>{formatListTime(order.created_at)}</time>
+                              </span>
+                              <span className="chat-row-sub"><span className="chat-row-cta">Iniciar conversa sobre este pedido</span></span>
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
                 )}
-              </section>
+              </div>
             </aside>
 
-            <section
-              className={`messages-chat${current || openError ? "" : " is-empty"}`}
-              aria-label="Conversa selecionada"
-            >
+            <section className="chat-pane" aria-label="Conversa selecionada">
               {current ? (
                 <>
-                  <div className="messages-chat-heading">
-                    <span className="messages-chat-icon">
-                      <MessageCircle size={20} />
-                    </span>
-                    <div>
-                      <small>
-                        {current.kind === "produto"
-                          ? "Conversa sobre produto"
-                          : current.kind === "encomenda"
-                            ? "Conversa sobre encomenda"
-                            : "Conversa sobre pedido"}
-                      </small>
-                      <h2>{current.kind === "produto"
-                        ? `Conversa com ${sellerMode ? current.other_name : current.store_name || current.artisan_name || "a loja"}`
-                        : current.product_name}</h2>
+                  <header className="chat-head">
+                    <button type="button" className="chat-back" onClick={backToList} aria-label="Voltar para as conversas">
+                      <ChevronLeft size={20} />
+                    </button>
+                    <Avatar conversation={current} sellerMode={sellerMode} size="lg" />
+                    <div className="chat-head-copy">
+                      <h2>{partnerName(current, sellerMode)}</h2>
+                      <p>{KIND_LABEL[current.kind]}</p>
                     </div>
-                  </div>
-                  {current.kind === "produto" && (
-                    <div className="messages-product-context">
-                      {current.product_image_url ? (
-                        <Image src={current.product_image_url} alt="" width={64} height={64} unoptimized />
-                      ) : (
-                        <span className="messages-product-image-fallback"><PackageOpen size={22} /></span>
-                      )}
-                      <div>
-                        <small>Produto desta conversa</small>
-                        <strong>{current.product_name}</strong>
-                        <p>
-                          Loja: {!sellerMode && current.artisan_id
-                            ? <Link href={`/loja?id=${encodeURIComponent(current.artisan_id)}`}>
-                                {current.store_name || current.artisan_name || "Ver loja"}
-                              </Link>
-                            : current.store_name || current.artisan_name || "Artenós"}
-                        </p>
-                        {current.artisan_name && <p>Vendedor(a): {current.artisan_name}</p>}
-                      </div>
-                    </div>
-                  )}
-                  <div className="messages-topic-filter">
-                    <label htmlFor="messages-topic-filter">Ver assunto</label>
-                    <select
-                      id="messages-topic-filter"
-                      value={topicFilter}
-                      onChange={(event) => setTopicFilter(event.target.value as MessageTopic | "todos")}
-                    >
-                      <option value="todos">Todos os assuntos</option>
-                      {messageTopics.map((entry) => (
-                        <option key={entry.value} value={entry.value}>{entry.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div
-                    ref={threadRef}
-                    className="messages-thread"
-                    role="log"
-                    aria-label="Histórico da conversa"
-                  >
-                    {(topicFilter === "todos" ? messages.length === 0 : !messages.some((message) => message.topic === topicFilter)) && (
-                      <div className="messages-empty-chat">
-                        <MessageCircle size={36} />
-                        <p>
-                          {messages.length === 0
-                            ? "Nenhuma mensagem ainda. Envie a primeira mensagem sobre este atendimento."
-                            : "Nenhuma mensagem neste assunto."}
-                        </p>
-                      </div>
-                    )}
-                    {messages.filter((message) => topicFilter === "todos" || message.topic === topicFilter).map((message) => (
-                      <div
-                        key={message.id}
-                        className={
-                          message.sender_id === user.id
-                            ? "messages-bubble is-own"
-                            : "messages-bubble"
-                        }
-                      >
-                        <small className="messages-bubble-topic">{topicLabel(message.topic)}</small>
-                        <span>
-                          {message.sender_id === user.id
-                            ? "Você"
-                            : current.other_name || (sellerMode ? "Cliente" : "Loja")}
-                        </span>
-                        {message.reply_to_id && (
-                          <blockquote className="messages-reply-quote">
-                            {messages.find((original) => original.id === message.reply_to_id)?.body
-                              ?? "Mensagem anterior"}
-                          </blockquote>
-                        )}
-                        <p>{message.body}</p>
-                        <div className="messages-bubble-foot">
-                          <time dateTime={message.created_at}>{formatDate(message.created_at)}</time>
-                          <button type="button" onClick={() => {
-                            setReplyTo(message);
-                            setTopic(message.topic);
-                            document.getElementById("messages-text")?.focus();
-                          }}>Responder</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <form className="messages-compose" onSubmit={sendMessage}>
-                    {replyTo && (
-                      <div className="messages-reply-target">
-                        <span>Respondendo: {replyTo.body}</span>
-                        <button type="button" onClick={() => setReplyTo(null)} aria-label="Cancelar resposta">Cancelar</button>
-                      </div>
-                    )}
-                    <div className="messages-compose-topic">
-                      <label htmlFor="messages-topic">Assunto da mensagem</label>
-                      <select id="messages-topic" value={topic}
-                        onChange={(event) => {
-                          const selected = event.target.value as MessageTopic;
-                          setTopic(selected);
-                          setSuggestionTopic(selected);
-                        }}>
+                    <label className="chat-topic-filter">
+                      <span className="messages-visually-hidden">Mostrar mensagens do assunto</span>
+                      <select value={topicFilter}
+                        onChange={(event) => setTopicFilter(event.target.value as MessageTopic | "todos")}>
+                        <option value="todos">Todos os assuntos</option>
                         {messageTopics.map((entry) => (
                           <option key={entry.value} value={entry.value}>{entry.label}</option>
                         ))}
                       </select>
-                      <button type="button" className="messages-suggestions-open"
-                        onClick={() => setSuggestionTopic(topic)}>
-                        <Sparkles size={15} /> Ver sugestões
-                      </button>
+                    </label>
+                  </header>
+
+                  <div className="chat-context">
+                    <span className="chat-context-thumb" aria-hidden="true">
+                      {current.product_image_url
+                        ? <Image src={current.product_image_url} alt="" width={40} height={40} unoptimized />
+                        : <PackageOpen size={18} />}
+                    </span>
+                    <div>
+                      <small>{current.kind === "produto" ? "Peça desta conversa" : current.kind === "encomenda" ? "Encomenda" : "Pedido"}</small>
+                      <strong>{current.product_name}</strong>
                     </div>
-                    <div className="messages-compose-row">
+                    {!sellerMode && current.artisan_id && (
+                      <Link className="chat-context-link" href={`/loja?id=${encodeURIComponent(current.artisan_id)}`} aria-label="Ver loja">
+                        <Store size={15} /> <span>Ver loja</span>
+                      </Link>
+                    )}
+                  </div>
+
+                  <div ref={threadRef} className="chat-thread" role="log" aria-live="polite" aria-label="Histórico da conversa">
+                    {visibleMessages.length === 0 ? (
+                      <div className="chat-empty">
+                        <Sparkles size={26} />
+                        <h3>{messages.length === 0 ? "Comece a conversa" : "Nenhuma mensagem neste assunto"}</h3>
+                        {messages.length === 0 && (
+                          <>
+                            <p>Escolha um ponto de partida ou escreva com suas palavras.</p>
+                            <div className="chat-quick">
+                              {suggestions.slice(0, 3).map((suggestion) => (
+                                <button key={suggestion} type="button" onClick={() => selectSuggestion(suggestion)}>
+                                  {suggestion}
+                                </button>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      <ol className="chat-messages">
+                        {visibleMessages.map(({ message, dayLabel, firstOfGroup, lastOfGroup }) => {
+                          const own = message.sender_id === user.id;
+                          const original = message.reply_to_id
+                            ? messages.find((item) => item.id === message.reply_to_id)
+                            : null;
+                          return (
+                            <li key={message.id} className="chat-item">
+                              {dayLabel && <p className="chat-day"><span>{dayLabel}</span></p>}
+                              <div id={`mensagem-${message.id}`}
+                                className={`chat-msg${own ? " is-own" : ""}${firstOfGroup ? " is-first" : ""}${lastOfGroup ? " is-last" : ""}${freshIds.has(message.id) ? " is-fresh" : ""}`}>
+                                <div className="chat-bubble">
+                                  <span className="messages-visually-hidden">{authorName(message)}: </span>
+                                  {message.reply_to_id && (
+                                    <button type="button" className="chat-quote"
+                                      onClick={() => original && jumpToMessage(original.id)}
+                                      aria-label={original ? `Ver a mensagem respondida de ${authorName(original)}` : "Mensagem respondida"}>
+                                      <strong>{original ? authorName(original) : "Mensagem anterior"}</strong>
+                                      <span>{original?.body ?? "Mensagem anterior"}</span>
+                                    </button>
+                                  )}
+                                  <p className="chat-text">{message.body}</p>
+                                  <span className="chat-meta">
+                                    {message.topic !== "geral" && <span className="chat-topic">{topicLabel(message.topic)}</span>}
+                                    <time dateTime={message.created_at}>{formatClock(message.created_at)}</time>
+                                    {own && <><Check size={14} className="chat-sent" /><span className="messages-visually-hidden">, enviada</span></>}
+                                  </span>
+                                </div>
+                                <button type="button" className="chat-reply"
+                                  onClick={() => { setReplyTo(message); setTopic(message.topic); focusComposer(); }}
+                                  aria-label={`Responder: ${message.body.slice(0, 60)}`}>
+                                  <Reply size={16} />
+                                </button>
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    )}
+                  </div>
+
+                  <form className="chat-composer" onSubmit={sendMessage}>
+                    {replyTo && (
+                      <div className="chat-replying">
+                        <div>
+                          <strong>Respondendo a {authorName(replyTo)}</strong>
+                          <span>{replyTo.body}</span>
+                        </div>
+                        <button type="button" onClick={() => { setReplyTo(null); focusComposer(); }} aria-label="Cancelar resposta">
+                          <X size={16} />
+                        </button>
+                      </div>
+                    )}
+                    {suggestionsOpen && (
+                      <div className="chat-suggestions" id="chat-sugestoes" role="region" aria-label="Sugestões de mensagem"
+                        onKeyDown={(event) => { if (event.key === "Escape") { event.stopPropagation(); closeSuggestions(); } }}>
+                        <div className="chat-suggestions-topics" role="group" aria-label="Assunto da mensagem">
+                          {messageTopics.map((entry) => (
+                            <button key={entry.value} type="button" aria-pressed={topic === entry.value}
+                              onClick={() => setTopic(entry.value)}>
+                              {entry.label}
+                            </button>
+                          ))}
+                        </div>
+                        <ul>
+                          {suggestions.map((suggestion) => (
+                            <li key={suggestion}>
+                              <button type="button" onClick={() => selectSuggestion(suggestion)}>{suggestion}</button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    <div className="chat-compose-row">
+                      <button ref={suggestionsToggleRef} type="button" className="chat-tool"
+                        aria-expanded={suggestionsOpen} aria-controls="chat-sugestoes"
+                        onClick={() => setSuggestionsOpen((open) => !open)}>
+                        <Sparkles size={18} aria-hidden="true" />
+                        <span className="chat-tool-label">{topicLabel(topic)}</span>
+                        <span className="messages-visually-hidden">: assunto e sugestões</span>
+                      </button>
                       <label htmlFor="messages-text" className="messages-visually-hidden">Sua mensagem</label>
-                      <input id="messages-text" type="text" value={text}
-                        onChange={(event) => setText(event.target.value)} maxLength={2000}
-                        placeholder="Digite sua mensagem" required />
-                      <button type="submit" disabled={sending || !text.trim()} aria-busy={sending}>
-                        <Send size={17} /> {sending ? "Enviando…" : "Enviar"}
+                      <textarea id="messages-text" ref={textRef} rows={1} value={text}
+                        onChange={(event) => setText(event.target.value)} onKeyDown={onComposerKey}
+                        maxLength={2000} placeholder="Escreva uma mensagem" aria-describedby="chat-compose-hint" />
+                      <button type="submit" className="chat-send" disabled={sending || !text.trim()} aria-busy={sending}
+                        aria-label={sending ? "Enviando mensagem" : "Enviar mensagem"}>
+                        <Send size={18} />
                       </button>
                     </div>
+                    <p id="chat-compose-hint" className="chat-compose-hint">Enter envia · Shift + Enter quebra a linha</p>
                   </form>
                 </>
               ) : openError ? (
-                <div className="messages-open-error" role="alert">
+                <div className="chat-placeholder" role="alert">
                   <MessageCircle size={40} />
                   <h2>Não foi possível abrir a conversa desta peça</h2>
                   <p>{openError}</p>
@@ -639,47 +720,16 @@ export function MessagesWorkspace({
                   <Link href="/categorias">Voltar aos produtos</Link>
                 </div>
               ) : (
-                <div className="messages-placeholder">
+                <div className="chat-placeholder">
                   <MessageCircle size={42} />
-                  <h2>Selecione uma conversa</h2>
-                  <p>
-                    Escolha uma conversa existente ou abra uma a partir de um produto,
-                    pedido ou encomenda.
-                  </p>
+                  <h2>Escolha uma conversa</h2>
+                  <p>Abra uma conversa da lista ou comece uma pelo balão de mensagem de uma peça.</p>
                 </div>
               )}
             </section>
           </div>
         )}
       </Main>
-
-      {suggestionTopic && current && (
-        <div className="messages-suggestions-backdrop">
-          <section className="messages-suggestions-modal" role="dialog" aria-modal="true"
-            aria-labelledby="messages-suggestions-title">
-            <div className="messages-suggestions-heading">
-              <div>
-                <small>ESCOLHA UMA MENSAGEM</small>
-                <h2 id="messages-suggestions-title">{topicLabel(suggestionTopic)}</h2>
-                <p>Toque em uma sugestão para preencher o campo. Você poderá editar antes de enviar.</p>
-              </div>
-              <button ref={suggestionCloseRef} type="button" onClick={() => setSuggestionTopic(null)}
-                aria-label="Fechar sugestões"><X size={18} /></button>
-            </div>
-            <div className="messages-suggestions-list">
-              {getMessageSuggestions(
-                suggestionTopic,
-                `“${current.product_name}”`,
-                current.my_role,
-              ).map((suggestion) => (
-                <button key={suggestion} type="button" onClick={() => selectSuggestion(suggestion)}>
-                  {suggestion}
-                </button>
-              ))}
-            </div>
-          </section>
-        </div>
-      )}
     </div>
   );
 }
