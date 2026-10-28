@@ -12,15 +12,34 @@ type MarketplaceState = {
   displayName: string | null;
   avatarUrl: string | null;
   sellerPanelAvailable: boolean;
+  accountType: "client" | "artisan" | null;
   cartCount: number;
+  /** Soma dos produtos no carrinho, em centavos (sem frete). */
+  cartSubtotalCents: number;
+  /** Incrementa a cada adição confirmada; usado para o pulso do badge. */
+  cartPulse: number;
+  cep: string;
+  cepStatus: CepStatus;
+  cepError: string;
+  setGuestCep: (digits: string) => void;
   favoriteIds: ReadonlySet<string>;
+  /** Verdadeiro depois que os favoritos da conta atual foram lidos ao menos uma vez. */
+  favoritesReady: boolean;
   pendingFavoriteIds: ReadonlySet<string>;
   refreshCart: () => Promise<boolean>;
+  pulseCart: () => void;
   refreshFavorites: () => Promise<boolean>;
   toggleFavorite: (productId: string) => Promise<boolean>;
 };
 
+export type CepStatus = "loading" | "guest" | "account" | "error";
 const MarketplaceContext = createContext<MarketplaceState | null>(null);
+const GUEST_CEP_KEY = "artenos_guest_cep";
+
+function readGuestCep() {
+  try { return (window.localStorage.getItem(GUEST_CEP_KEY) || "").replace(/\D/g, "").slice(0, 8); }
+  catch { return ""; }
+}
 const emptyFavorites = new Set<string>();
 const FAVORITE_INTENT_KEY = "artenos:favorite-intent";
 type FavoriteIntent = { productId: string; name: string; returnTo: string; createdAt: number };
@@ -60,8 +79,15 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const avatarUrlRef = useRef<string | null>(null);
   const [sellerPanelAvailable, setSellerPanelAvailable] = useState(false);
+  const [accountType, setAccountType] = useState<"client" | "artisan" | null>(null);
   const [cartCount, setCartCount] = useState(0);
+  const [cartSubtotalCents, setCartSubtotalCents] = useState(0);
+  const [cartPulse, setCartPulse] = useState(0);
+  const [cep, setCep] = useState("");
+  const [cepStatus, setCepStatus] = useState<CepStatus>("loading");
+  const [cepError, setCepError] = useState("");
   const [favoriteIds, setFavoriteIds] = useState<ReadonlySet<string>>(emptyFavorites);
+  const [favoritesReady, setFavoritesReady] = useState(false);
   const [pendingFavoriteIds, setPendingFavoriteIds] = useState<ReadonlySet<string>>(emptyFavorites);
   const accountRef = useRef<string | null>(null);
   const readyRef = useRef(false);
@@ -78,9 +104,23 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
     if (!account) return;
     const supabase = getSupabase();
     const { data, error } = await supabase.from("profiles")
-      .select("full_name,account_type,approval_status,avatar_path")
+      .select("full_name,account_type,approval_status,avatar_path,cep")
       .eq("id", account).maybeSingle();
-    if (error || request !== generation.current || identity !== identityRequest.current || account !== accountRef.current) return;
+    if (request !== generation.current || identity !== identityRequest.current || account !== accountRef.current) return;
+    const registeredCep = String(data?.cep ?? "").replace(/\D/g, "");
+    if (error || registeredCep.length !== 8) {
+      setCep("");
+      setCepStatus("error");
+      setCepError(error
+        ? "Não foi possível consultar o CEP do seu cadastro agora."
+        : "O CEP salvo no seu cadastro está incompleto. Atualize-o no seu perfil.");
+    } else {
+      setCep(registeredCep);
+      setCepStatus("account");
+      setCepError("");
+    }
+    if (error) return;
+    setAccountType(data?.account_type === "artisan" ? "artisan" : data?.account_type === "client" ? "client" : null);
     setDisplayName(String(data?.full_name ?? "").trim().split(/\s+/)[0] || null);
     setSellerPanelAvailable(data?.account_type === "artisan" && data.approval_status === "active");
     let nextUrl: string | null = null;
@@ -105,8 +145,10 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
     const { data, error } = await getSupabase().rpc("list_cart");
     if (error || generationAtStart !== generation.current ||
       request !== cartRequest.current || account !== accountRef.current) return false;
-    setCartCount((data ?? []).reduce((total: number, item: { quantity?: number }) =>
-      total + Math.max(0, Number(item.quantity) || 0), 0));
+    const rows = (data ?? []) as { quantity?: number; unit_price?: number }[];
+    setCartCount(rows.reduce((total, item) => total + Math.max(0, Number(item.quantity) || 0), 0));
+    setCartSubtotalCents(rows.reduce((total, item) =>
+      total + Math.round(Number(item.unit_price) * 100) * Math.max(0, Number(item.quantity) || 0), 0));
     return true;
   }, []);
 
@@ -120,6 +162,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
     if (error || generationAtStart !== generation.current ||
       request !== favoritesRequest.current || account !== accountRef.current) return false;
     setFavoriteIds(new Set((data ?? []).map((item) => item.product_id)));
+    setFavoritesReady(true);
     return true;
   }, []);
 
@@ -173,8 +216,20 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
       avatarUrlRef.current = null;
       setAvatarUrl(null);
       setSellerPanelAvailable(false);
+      setAccountType(null);
       setCartCount(0);
+      setCartSubtotalCents(0);
+      if (nextId) {
+        setCep("");
+        setCepStatus("loading");
+      } else {
+        const guestCep = readGuestCep();
+        setCep(guestCep.length === 8 ? guestCep : "");
+        setCepStatus("guest");
+      }
+      setCepError("");
       setFavoriteIds(new Set());
+      setFavoritesReady(false);
       setAuthReady(true);
       if (!nextId) return;
       const request = generation.current;
@@ -231,9 +286,19 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
     };
   }, [refreshCart, refreshFavorites, refreshIdentity]);
 
+  const setGuestCep = useCallback((digits: string) => {
+    const value = digits.replace(/\D/g, "").slice(0, 8);
+    try { window.localStorage.setItem(GUEST_CEP_KEY, value); } catch { /* armazenamento bloqueado */ }
+    if (!accountRef.current) {
+      setCep(value);
+      setCepStatus("guest");
+    }
+  }, []);
+  const pulseCart = useCallback(() => setCartPulse((value) => value + 1), []);
+
   return <MarketplaceContext.Provider value={{ authReady, userId, displayName, avatarUrl,
-    sellerPanelAvailable, cartCount, favoriteIds, pendingFavoriteIds,
-    refreshCart, refreshFavorites, toggleFavorite }}>
+    sellerPanelAvailable, accountType, cartCount, cartSubtotalCents, cartPulse, cep, cepStatus, cepError, setGuestCep,
+    favoriteIds, favoritesReady, pendingFavoriteIds, refreshCart, pulseCart, refreshFavorites, toggleFavorite }}>
     {children}
   </MarketplaceContext.Provider>;
 }

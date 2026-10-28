@@ -4,44 +4,57 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 
 const targets = [
-  ".store-section-heading", ".store-product", ".store-categories > button",
-  ".store-discovery > a", ".store-collection", ".store-shops > a",
-  ".shops-grid > a", ".seller-action-card", ".seller-section-heading",
-  ".store-footer-grid > div",
+  ".store-section-heading", ".store-product:not(.is-skeleton)", ".store-categories > a",
+  ".store-discovery > a", ".store-collection", ".store-shops > a", ".shops-grid > a",
+  ".seller-action-card", ".seller-section-heading", ".seller-metric", ".store-story-band",
 ].join(",");
 
+const STAGGER_MS = 55;
+const MAX_DELAY_MS = 275;
+
+/**
+ * Entrada progressiva por rolagem. O conteúdo é visível por padrão: a classe
+ * que esconde só é aplicada a elementos ainda fora da tela, quando há
+ * IntersectionObserver e o movimento não foi reduzido. Cada elemento anima
+ * uma única vez; nada é escondido se o JavaScript falhar.
+ */
 export function ScrollReveal() {
   const pathname = usePathname();
 
   useEffect(() => {
     if (!("IntersectionObserver" in window)) return;
     const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (preference.matches) return;
     const registered = new WeakSet<Element>();
-    const animations = new Set<Animation>();
+    let batch = 0;
+    let batchTimer = 0;
+
     const observer = new IntersectionObserver((entries) => {
       for (const entry of entries) {
         if (!entry.isIntersecting) continue;
-        observer.unobserve(entry.target);
-        if (preference.matches || !entry.target.animate) continue;
-        const animation = entry.target.animate(
-          [
-            { opacity: 0.35, transform: "translateY(18px)" },
-            { opacity: 1, transform: "translateY(0)" },
-          ],
-          { duration: 520, easing: "cubic-bezier(.22, 1, .36, 1)" },
-        );
-        animations.add(animation);
-        animation.onfinish = () => animations.delete(animation);
+        const element = entry.target as HTMLElement;
+        observer.unobserve(element);
+        element.style.setProperty("--an-reveal-delay", `${Math.min(batch * STAGGER_MS, MAX_DELAY_MS)}ms`);
+        batch++;
+        element.classList.add("is-revealed");
+        element.addEventListener("transitionend", () => {
+          element.classList.remove("an-reveal", "is-revealed");
+          element.style.removeProperty("--an-reveal-delay");
+        }, { once: true });
       }
-    }, { threshold: 0.08 });
+      window.clearTimeout(batchTimer);
+      batchTimer = window.setTimeout(() => { batch = 0; }, 120);
+    }, { threshold: 0.06, rootMargin: "0px 0px -6% 0px" });
 
     function register(root: Element) {
-      const elements = root.matches(targets)
-        ? [root, ...root.querySelectorAll(targets)]
-        : root.querySelectorAll(targets);
+      const elements = root.matches(targets) ? [root, ...root.querySelectorAll(targets)] : root.querySelectorAll(targets);
+      const fold = window.innerHeight;
       for (const element of elements) {
         if (registered.has(element)) continue;
         registered.add(element);
+        // O que já está visível nunca é escondido.
+        if (element.getBoundingClientRect().top < fold * 0.92) continue;
+        element.classList.add("an-reveal");
         observer.observe(element);
       }
     }
@@ -55,18 +68,19 @@ export function ScrollReveal() {
       }
     });
     mutations.observe(document.body, { childList: true, subtree: true });
+
     function stopMotion() {
-      if (preference.matches) {
-        animations.forEach((animation) => animation.cancel());
-        animations.clear();
-      }
+      if (!preference.matches) return;
+      document.querySelectorAll(".an-reveal").forEach((element) => element.classList.remove("an-reveal", "is-revealed"));
+      observer.disconnect();
     }
     preference.addEventListener("change", stopMotion);
     return () => {
       observer.disconnect();
       mutations.disconnect();
+      window.clearTimeout(batchTimer);
       preference.removeEventListener("change", stopMotion);
-      animations.forEach((animation) => animation.cancel());
+      document.querySelectorAll(".an-reveal").forEach((element) => element.classList.remove("an-reveal", "is-revealed"));
     };
   }, [pathname]);
 

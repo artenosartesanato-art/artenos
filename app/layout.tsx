@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { ScrollReveal } from "@/components/scroll-reveal";
 import { MarketplaceProvider } from "@/components/marketplace-state";
+import { StorefrontActionsProvider } from "@/components/storefront-actions";
 
 export const metadata: Metadata = {
   title: "Artenós | Artesanato com história",
@@ -20,6 +21,12 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  themeColor: "#faf2eb",
+  width: "device-width",
+  initialScale: 1,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -27,7 +34,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body className="antialiased"><MarketplaceProvider>{children}</MarketplaceProvider><ScrollReveal /><Toaster position="bottom-right" visibleToasts={1} closeButton /></body>
+      <head>
+        <link rel="preload" href="/fonts/Figtree-Variable.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preload" href="/fonts/CormorantGaramond-Variable.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+      </head>
+      <body className="antialiased">
+        <MarketplaceProvider>
+          <StorefrontActionsProvider>{children}</StorefrontActionsProvider>
+        </MarketplaceProvider>
+        <ScrollReveal />
+        <Toaster position="bottom-center" visibleToasts={1} closeButton toastOptions={{ duration: 5000 }} />
+      </body>
     </html>
   );
 }
