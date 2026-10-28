@@ -152,3 +152,18 @@ licenças de terceiros):
   mudanças internas do pedido (taxas, repasse).
 - **Lido automaticamente:** ao abrir a conversa ou a página do aviso
   (Pedidos, Vendas, Encomendas).
+
+## Foto de perfil (enquadramento)
+
+- Ao escolher a foto (JPG, PNG ou WebP, até 15 MB) abre o editor: a área
+  fora do círculo fica escurecida; arrastar posiciona, zoom por controle
+  deslizante, roda do mouse (no ponto do cursor) ou pinça; "Girar" 90° e
+  "Centralizar". Teclado: setas movem (Shift = passo maior), + e −
+  aproximam, 0 recomeça. A grade de terços aparece ao arrastar.
+- Prévia ao vivo em 80 px e 40 px (tamanhos do perfil e do cabeçalho).
+- O navegador gera a foto final 512×512 (WebP, ou JPEG onde não houver
+  WebP) e um original reduzido (lado maior até 1600 px) salvo como
+  `<id>-original.webp`. "Ajustar enquadramento" reabre a partir desse
+  original, sem perder qualidade; fotos antigas usam a própria imagem.
+- Ao trocar, a foto e o original anteriores são apagados do Storage.
+- Mesmo componente em `/perfil` (cliente e admin) e `/vendedor/perfil`.

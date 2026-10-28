@@ -678,6 +678,11 @@ img {
     padding-bottom: env(safe-area-inset-bottom);
     transform: translateY(40px);
   }
+  /* Sem isto, a regra acima (mais específica) mantinha a folha 40 px abaixo
+     da tela mesmo aberta, cortando os botões do rodapé. */
+  .an-overlay:not(.an-overlay--drawer)[data-state="open"] .an-dialog {
+    transform: none;
+  }
   .an-drawer {
     width: min(100vw, 420px);
   }

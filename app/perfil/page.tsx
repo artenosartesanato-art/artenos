@@ -16,6 +16,8 @@ import type { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { getSupabase } from "@/lib/supabase";
 import { notifyProfileChanged } from "@/components/marketplace-state";
+import { AvatarCropper, type CroppedAvatar } from "@/components/avatar-cropper";
+import { originalPathFor } from "@/lib/avatar-crop";
 import "../storefront.css";
 import "./profile.css";
 
@@ -40,7 +42,9 @@ type Profile = {
   avatar_path: string | null;
 };
 const AVATAR_BUCKET = "artenos-profile-avatars";
-const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+// A foto é recortada e reduzida no navegador antes do envio (512 px + original
+// até 1600 px), então aceitamos arquivos maiores, como os de celular.
+const MAX_AVATAR_BYTES = 15 * 1024 * 1024;
 const IMAGE_EXTENSIONS: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
@@ -143,6 +147,8 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
   const [awaitingNonce, setAwaitingNonce] = useState(false);
   const [nonce, setNonce] = useState("");
   const avatarUrlRef = useRef("");
+  const [cropSource, setCropSource] = useState<{ url: string; revoke: boolean } | null>(null);
+  const [loadingOriginal, setLoadingOriginal] = useState(false);
   const profileRequest = useRef(0);
 
   useEffect(() => {
@@ -195,7 +201,7 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
           if (!active || request !== requestCounter.current) return;
           if (imageError || !image)
             setAvatarError(
-              "Não foi possível carregar sua foto. Confira as permissões do Storage.",
+              "Não foi possível carregar sua foto agora. Recarregue a página para tentar de novo.",
             );
           else {
             const url = URL.createObjectURL(image);
@@ -242,7 +248,8 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
     }
   }, [router, sellerMode]);
 
-  async function uploadAvatar(event: React.ChangeEvent<HTMLInputElement>) {
+  /** Escolheu um arquivo: valida e abre o editor de enquadramento. */
+  function chooseAvatar(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file || !user || !profile || uploading) return;
@@ -251,32 +258,60 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
       return;
     }
     if (file.size > MAX_AVATAR_BYTES) {
-      toast.error("A foto deve ter no máximo 2 MB.");
+      toast.error("A foto deve ter no máximo 15 MB.");
       return;
     }
+    openCropper(URL.createObjectURL(file), true);
+  }
+
+  function openCropper(url: string, revoke: boolean) {
+    if (cropSource?.revoke) URL.revokeObjectURL(cropSource.url);
+    setCropSource({ url, revoke });
+  }
+
+  function closeCropper() {
+    if (cropSource?.revoke) URL.revokeObjectURL(cropSource.url);
+    setCropSource(null);
+  }
+
+  /** Reenquadrar a foto atual: usa o original guardado (ou a própria foto, se for antiga). */
+  async function adjustAvatar() {
+    if (!profile?.avatar_path || loadingOriginal) return;
+    setLoadingOriginal(true);
+    try {
+      const { data } = await getSupabase().storage.from(AVATAR_BUCKET).download(originalPathFor(profile.avatar_path));
+      if (data) openCropper(URL.createObjectURL(data), true);
+      else if (avatarUrl) openCropper(avatarUrl, false);
+    } finally {
+      setLoadingOriginal(false);
+    }
+  }
+
+  async function saveAvatar({ avatar, original }: CroppedAvatar) {
+    if (!user || !profile) return;
     const oldPath = profile.avatar_path;
-    const path = `${user.id}/${crypto.randomUUID()}.${IMAGE_EXTENSIONS[file.type]}`;
+    const id = crypto.randomUUID();
+    const path = `${user.id}/${id}.${IMAGE_EXTENSIONS[avatar.type] ?? "jpg"}`;
+    const originalPath = originalPathFor(path);
     setUploading(true);
     setAvatarError("");
     try {
       const supabase = getSupabase();
-      const { error: uploadError } = await supabase.storage
-        .from(AVATAR_BUCKET)
-        .upload(path, file, {
-          contentType: file.type,
-          upsert: false,
-          cacheControl: "3600",
-        });
-      if (uploadError) throw uploadError;
+      const bucket = supabase.storage.from(AVATAR_BUCKET);
+      const [avatarUpload, originalUpload] = await Promise.all([
+        bucket.upload(path, avatar, { contentType: avatar.type, upsert: false, cacheControl: "3600" }),
+        bucket.upload(originalPath, original, { contentType: original.type, upsert: false, cacheControl: "3600" }),
+      ]);
+      if (avatarUpload.error) throw avatarUpload.error;
       const { error: updateError } = await supabase
         .from("profiles")
         .update({ avatar_path: path, updated_at: new Date().toISOString() })
         .eq("id", user.id).select("avatar_path").single();
       if (updateError) {
-        await supabase.storage.from(AVATAR_BUCKET).remove([path]);
+        await bucket.remove([path, originalPath]);
         throw updateError;
       }
-      const url = URL.createObjectURL(file);
+      const url = URL.createObjectURL(avatar);
       if (avatarUrlRef.current) URL.revokeObjectURL(avatarUrlRef.current);
       avatarUrlRef.current = url;
       setAvatarUrl(url);
@@ -284,8 +319,11 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
         previous ? { ...previous, avatar_path: path } : previous,
       );
       notifyProfileChanged();
+      closeCropper();
+      // O original é opcional: sem ele, reenquadrar usa a própria foto.
+      if (originalUpload.error) console.error("avatar original:", originalUpload.error.message);
       if (oldPath && oldPath !== path)
-        await supabase.storage.from(AVATAR_BUCKET).remove([oldPath]);
+        await bucket.remove([oldPath, originalPathFor(oldPath)]);
       toast.success("Foto de perfil atualizada.");
     } catch {
       setAvatarError(
@@ -515,12 +553,18 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
                     <input
                       type="file"
                       accept="image/jpeg,image/png,image/webp"
-                      onChange={uploadAvatar}
+                      onChange={chooseAvatar}
                       disabled={uploading}
                       aria-label="Selecionar foto de perfil"
                     />
                   </label>
-                  <small>JPG, PNG ou WebP · até 2 MB</small>
+                  {profile.avatar_path && avatarUrl && (
+                    <button type="button" className="profile-photo-adjust" onClick={adjustAvatar}
+                      disabled={uploading || loadingOriginal} aria-busy={loadingOriginal}>
+                      {loadingOriginal ? "Abrindo…" : "Ajustar enquadramento"}
+                    </button>
+                  )}
+                  <small>JPG, PNG ou WebP · até 15 MB</small>
                   {avatarError && (
                     <p className="profile-photo-error" role="alert">
                       {avatarError}
@@ -734,6 +778,7 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
           )
         )}
       </Main>
+      <AvatarCropper src={cropSource?.url ?? null} onCancel={closeCropper} onSave={saveAvatar} />
     </div>
   );
 }
