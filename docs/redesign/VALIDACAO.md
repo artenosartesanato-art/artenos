@@ -18,6 +18,7 @@ esta branch em build de produção na porta 3002; mesmo banco e mesmos dados.
 | `tests/e2e/journey.cjs` (390 e 1440 px) | — | ok |
 | `tests/e2e/auth.cjs` | — | ok (inclui cadastro real no Supabase local) |
 | `tests/e2e/interacoes.cjs` | — | ok |
+| `tests/e2e/mensagens.cjs` (cliente × artesã, Realtime ligado) | — | ok: envio, recebimento em tempo real nos dois sentidos, indicação da peça, conversa reaproveitada |
 
 \* `next build` e `next dev` param na primeira execução com o aviso de
 vulnerabilidade do Next.js 16.4.0 e seguem na segunda (ver `SEGURANCA.md`).
@@ -40,7 +41,8 @@ automática. "Estados" lista o que foi exercitado de fato.
 | Favoritos | cliente | vazio, com itens, remover, filtro | ok | auditoria | — |
 | Lojas e loja | visitante | lista, filtro, loja com capa, loja inexistente | ok | `capturas/loja-1440.jpg` | — |
 | Sob encomenda | visitante, cliente | lista, convite de login, formulário (render) | ok parcial | auditoria | Envio de solicitação não exercitado |
-| Mensagens | cliente, artesã | lista, conversa | ok | auditoria | Envio em tempo real não exercitado (Realtime desligado no sandbox) |
+| Mensagens por peça | visitante, cliente, artesã | ícone no card e no detalhe, login com retorno, conversa nova com texto sugerido, envio, recebimento em tempo real, resposta, reabertura | ok | `mensagens.cjs` | Validado contra o sandbox com `conversas_produtos_topicos.sql` e `contexto_conversas_produtos.sql`; em produção, os dois scripts precisam ter sido executados |
+| Cabeçalho e rodapé | todos | 21 rotas × 5 perfis | ok | medição de caixas | — |
 | Login | visitante | vazio, senha errada, sucesso, retorno ao destino | ok | `capturas/acesso-390.jpg`, `auth` | — |
 | Cadastro de cliente | visitante | erros por campo, resumo, sucesso | ok | `auth` | ViaCEP simulado no teste (bloqueado na rede do ambiente) |
 | Cadastro de artesã | visitante | render e validação | ok parcial | auditoria | Envio não exercitado |
@@ -108,7 +110,8 @@ O que piorou e por quê:
   dependem dessas RPCs foram validadas contra a reconstrução, não contra a
   produção.
 - Não foram testados: pagamento (Mercado Pago), cotação de frete real
-  (Melhor Envio), e-mails (Resend/Auth), Realtime e uploads.
+  (Melhor Envio), e-mails (Resend/Auth) e uploads. Realtime foi testado só
+  no sandbox local.
 - Imagens de produto do sandbox são ilustrações geradas localmente; os hosts
   de fotos externos estavam bloqueados no ambiente.
 - Nenhuma compra real, e-mail real ou alteração em dados de produção foi

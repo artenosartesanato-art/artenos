@@ -19,7 +19,7 @@ const UPDATE_ERRORS: Record<string, string> = {
 export default function ResetPasswordPage() {
   const [stage, setStage] = useState<Stage>("checking");
   const [pending, setPending] = useState(false);
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState({ password: false, confirmPassword: false });
   const [errors, setErrors] = useState<FieldErrors>({});
 
   useEffect(() => {
@@ -97,15 +97,15 @@ export default function ResetPasswordPage() {
                 <label htmlFor={`campo-${name}`}>{name === "password" ? "Nova senha" : "Repita a nova senha"}</label>
                 <span className="input-wrap">
                   <LockKeyhole size={18} className="input-icon" />
-                  <input id={`campo-${name}`} name={name} type={visible ? "text" : "password"} autoComplete="new-password"
+                  <input id={`campo-${name}`} name={name} type={visible[name] ? "text" : "password"} autoComplete="new-password"
                     className="with-icon with-action" aria-invalid={errors[name] ? true : undefined}
+                    placeholder={name === "password" ? "Mínimo de 8 caracteres" : "Digite a nova senha novamente"}
                     aria-describedby={errors[name] ? `campo-${name}-erro` : undefined} />
-                  {name === "password" && (
-                    <button type="button" className="icon-button" onClick={() => setVisible(!visible)}
-                      aria-label={visible ? "Ocultar senhas" : "Mostrar senhas"} aria-pressed={visible}>
-                      {visible ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  )}
+                  <button type="button" className="icon-button"
+                    onClick={() => setVisible((current) => ({ ...current, [name]: !current[name] }))}
+                    aria-label={visible[name] ? "Ocultar senha" : "Mostrar senha"} aria-pressed={visible[name]}>
+                    {visible[name] ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
                 </span>
                 {errors[name] && <small className="field-error" id={`campo-${name}-erro`}><AlertTriangle size={13} /> {errors[name]}</small>}
               </div>

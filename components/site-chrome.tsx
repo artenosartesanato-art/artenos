@@ -9,9 +9,9 @@ import { HeaderSearchProvider } from "@/components/header-search";
 export function SiteChrome({ children }: { children: React.ReactNode }) {
   return (
     <HeaderSearchProvider>
-      <div className="site-shell">
+      <div className="an-site">
         <CustomerHeader />
-        <div className="site-body">{children}</div>
+        <div className="an-site-body">{children}</div>
         <CustomerFooter />
       </div>
     </HeaderSearchProvider>

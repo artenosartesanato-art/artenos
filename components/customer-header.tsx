@@ -199,7 +199,7 @@ export function CustomerHeader() {
         <div className="store-search-desktop">{searchForm("busca-cabecalho")}</div>
         <div className="store-header-actions">
           {sellerPanelAvailable && (
-            <Link className="store-seller-switch" href="/vendedor"
+            <Link className="store-seller-switch" href="/vendedor" aria-label="Painel da loja"
               aria-current={pathname.startsWith("/vendedor") ? "page" : undefined}>
               <Store size={18} />
               <span>Painel da loja</span>

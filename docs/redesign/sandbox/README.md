@@ -12,7 +12,10 @@ plataforma com dados, montamos um Supabase local com:
    `order_status_history`, `artisan_store_settings`);
 3. `90_rpcs_ausentes.sql`: RPCs usadas pelo front e ausentes no repositório
    (catálogo, loja pública, pedidos, encomendas...). **O comportamento foi
-   inferido do código** e não é a implementação real;
+   inferido do código** e não é a implementação real. Em seguida, o
+   `aplicar.sh` roda `supabase/conversas_produtos_topicos.sql` e
+   `supabase/contexto_conversas_produtos.sql` (conversas por peça), que
+   dependem de `conversations.custom_order_request_id`, criada no passo 3;
 4. `seed.py`: contas de teste, imagens ilustrativas geradas por
    `gen_images.py` (sem fotos de terceiros), produtos, pedidos e mensagens.
 
@@ -22,8 +25,11 @@ plataforma com dados, montamos um Supabase local com:
 npx supabase@2 init
 ```
 
+Deixe `[realtime] enabled = true` em `supabase/config.toml` (as mensagens
+chegam em tempo real por ele).
+
 ```bash
-SUPABASE_INTERNAL_IMAGE_REGISTRY=docker.io npx supabase@2 start -x studio,imgproxy,logflare,vector,supavisor,realtime,edge-runtime,mailpit,postgres-meta
+SUPABASE_INTERNAL_IMAGE_REGISTRY=docker.io npx supabase@2 start -x studio,imgproxy,logflare,vector,supavisor,edge-runtime,mailpit,postgres-meta
 ```
 
 ```bash

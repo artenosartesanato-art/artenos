@@ -2,19 +2,19 @@
    Vitrine (área pública e do comprador). Usa os tokens de globals.css.
    ========================================================================== */
 /* Moldura única: cabeçalho, conteúdo que cresce e rodapé no fim da tela. */
-.site-shell {
+.an-site {
   min-height: 100vh;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
   background: var(--an-bg);
 }
-.site-body {
+.an-site-body {
   flex: 1 0 auto;
   display: flex;
   flex-direction: column;
 }
-.site-body > * {
+.an-site-body > * {
   flex: 1 0 auto;
 }
 .store-page {

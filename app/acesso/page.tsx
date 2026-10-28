@@ -18,7 +18,6 @@ import {
 } from "@/components/icons";
 import { toast } from "sonner";
 import { favoriteIntentReturnPath } from "@/components/marketplace-state";
-import { BrandLogo } from "@/components/brand-logo";
 import { getSupabase, loginWithSupabase, registerWithSupabase } from "@/lib/supabase";
 import { safeReturnPath } from "@/lib/navigation";
 import {
@@ -171,6 +170,12 @@ function AddressFields({ errors, onClear }: { errors: FieldErrors; onClear: (nam
           </span>
         )}
       </Field>
+      <Field name="state" label="Estado (UF)" error={errors.state}>
+        {(props) => (
+          <input {...props} name="state" autoComplete="address-level1" maxLength={2} placeholder="SP"
+            onInput={(event) => { event.currentTarget.value = event.currentTarget.value.toUpperCase(); onClear("state"); }} />
+        )}
+      </Field>
       <p className="field field-cep-notice" aria-live="polite">{notice}</p>
       <Field name="address" label="Endereço" error={errors.address} wide>
         {(props) => <input {...props} name="address" autoComplete="address-line1" placeholder="Rua, avenida ou estrada" onInput={() => onClear("address")} />}
@@ -179,13 +184,7 @@ function AddressFields({ errors, onClear }: { errors: FieldErrors; onClear: (nam
         {(props) => <input {...props} name="number" autoComplete="address-line2" placeholder="123 ou s/n" onInput={() => onClear("number")} />}
       </Field>
       <Field name="city" label="Cidade" error={errors.city}>
-        {(props) => <input {...props} name="city" autoComplete="address-level2" onInput={() => onClear("city")} />}
-      </Field>
-      <Field name="state" label="Estado (UF)" error={errors.state}>
-        {(props) => (
-          <input {...props} name="state" autoComplete="address-level1" maxLength={2} placeholder="SP"
-            onInput={(event) => { event.currentTarget.value = event.currentTarget.value.toUpperCase(); onClear("state"); }} />
-        )}
+        {(props) => <input {...props} name="city" autoComplete="address-level2" placeholder="Sua cidade" onInput={() => onClear("city")} />}
       </Field>
     </>
   );
@@ -258,12 +257,12 @@ function RegisterForm({ type, onGoToLogin }: { type: AccountType; onGoToLogin: (
       <div className="fields-grid">
         <p className="form-section-title">Seus dados</p>
         <Field name="fullName" label="Nome completo" error={errors.fullName} wide>
-          {(props) => <input {...props} name="fullName" autoComplete="name" onInput={() => clear("fullName")} />}
+          {(props) => <input {...props} name="fullName" autoComplete="name" placeholder="Seu nome e sobrenome" onInput={() => clear("fullName")} />}
         </Field>
         {type === "artisan" && (
           <>
             <Field name="storeName" label="Nome da loja" error={errors.storeName}>
-              {(props) => <input {...props} name="storeName" autoComplete="organization" onInput={() => clear("storeName")} />}
+              {(props) => <input {...props} name="storeName" autoComplete="organization" placeholder="Como sua loja vai aparecer na vitrine" onInput={() => clear("storeName")} />}
             </Field>
             <Field name="specialty" label="Especialidade principal" error={errors.specialty}>
               {(props) => (
@@ -278,7 +277,7 @@ function RegisterForm({ type, onGoToLogin }: { type: AccountType; onGoToLogin: (
         <Field name="document" label={docLabel} error={errors.document} hint="Usado só para validar o cadastro; não aparece na loja.">
           {(props) => (
             <input {...props} name="document" inputMode="numeric" autoComplete="off"
-              placeholder={type === "artisan" ? "000.000.000-00" : "000.000.000-00"}
+              placeholder="000.000.000-00"
               onChange={(event) => { event.target.value = maskDocument(event.target.value); clear("document"); }} />
           )}
         </Field>
@@ -301,15 +300,16 @@ function RegisterForm({ type, onGoToLogin }: { type: AccountType; onGoToLogin: (
           )}
         </Field>
         <Field name="password" label="Senha" error={errors.password} hint="Pelo menos 8 caracteres.">
-          {(props) => <PasswordInput id={props.id} name="password" autoComplete="new-password" invalid={props["aria-invalid"]} describedBy={props["aria-describedby"]} />}
+          {(props) => <PasswordInput id={props.id} name="password" autoComplete="new-password" placeholder="Mínimo de 8 caracteres" invalid={props["aria-invalid"]} describedBy={props["aria-describedby"]} />}
         </Field>
         <Field name="confirmPassword" label="Confirme a senha" error={errors.confirmPassword}>
-          {(props) => <PasswordInput id={props.id} name="confirmPassword" autoComplete="new-password" invalid={props["aria-invalid"]} describedBy={props["aria-describedby"]} />}
+          {(props) => <PasswordInput id={props.id} name="confirmPassword" autoComplete="new-password" placeholder="Digite a senha novamente" invalid={props["aria-invalid"]} describedBy={props["aria-describedby"]} />}
         </Field>
         {type === "artisan" && (
           <Field name="story" label="Conte a história da sua loja" error={errors.story} wide
             hint="Como você começou, o que inspira suas peças e o que torna seu trabalho especial (40 a 1.200 caracteres).">
-            {(props) => <textarea {...props} name="story" maxLength={1200} rows={5} onInput={() => clear("story")} />}
+            {(props) => <textarea {...props} name="story" maxLength={1200} rows={5}
+              placeholder="Ex.: comecei a bordar com minha avó, uso linhas de algodão e cada peça leva uma semana…" onInput={() => clear("story")} />}
           </Field>
         )}
       </div>
@@ -401,7 +401,7 @@ function LoginForm({ returnTo, onRecover, onRegister }: { returnTo: string | nul
         )}
       </Field>
       <Field name="password" label="Senha" error={errors.password}>
-        {(props) => <PasswordInput id={props.id} name="password" autoComplete="current-password" invalid={props["aria-invalid"]} describedBy={props["aria-describedby"]} />}
+        {(props) => <PasswordInput id={props.id} name="password" autoComplete="current-password" placeholder="Sua senha" invalid={props["aria-invalid"]} describedBy={props["aria-describedby"]} />}
       </Field>
       <div className="login-row">
         <button type="button" className="link-button" onClick={onRecover}>Esqueci minha senha</button>
@@ -515,9 +515,8 @@ function AccessContent() {
   }
 
   return (
-    <main id="conteudo" tabIndex={-1} className="site-shell">
+    <main id="conteudo" tabIndex={-1} className="access-shell">
       <aside className="brand-panel" aria-label="Sobre a Artenós">
-        <div className="brand"><BrandLogo variant="perola" /></div>
         <div className="brand-copy">
           <span className="kicker">Feito à mão. Encontrado aqui.</span>
           <p className="brand-title">Um lugar para criar conexões que têm alma.</p>
@@ -562,7 +561,7 @@ function AccessContent() {
 export default function AccessPage() {
   return (
     <div className="store-page access-page">
-      <Suspense fallback={<main className="site-shell" />}>
+      <Suspense fallback={<main className="access-shell" />}>
         <AccessContent />
       </Suspense>
     </div>
