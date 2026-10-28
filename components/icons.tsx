@@ -53,6 +53,7 @@ export const FileText = icon("file-text");
 export const HandCoins = icon("cash-coin");
 export const HandHeart = icon("suit-heart");
 export const Heart = icon("heart");
+export const KeyRound = icon("key");
 export const History = icon("clock-history");
 export const ImagePlus = icon("image");
 export const LayoutDashboard = icon("grid");

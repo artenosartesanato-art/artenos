@@ -227,3 +227,27 @@ licenças de terceiros):
   no tempo real (`freshUnread` em `lib/notifications.ts`).
 - Botões herdam a cor do texto: no Safari do iPhone o padrão é azul e
   deixava o sininho com o contorno azul.
+
+## Painel administrativo (`/administracao`)
+
+Mesmo esqueleto do painel da loja (menu lateral fixo no desktop, gaveta no
+celular), com o acesso conferido no banco (`is_active_admin`) antes de
+mostrar qualquer tela.
+
+| Tela | O que mostra / faz | Fonte |
+| --- | --- | --- |
+| Visão geral | Vendido, pedidos, receita da plataforma, ticket médio (com variação sobre o período anterior), vendas por dia/mês, lojas e categorias que mais venderam, pedidos por situação, números da plataforma e avisos que pedem ação | `admin_dashboard(p_days)` |
+| Aprovações | Fila de cadastro de lojas (tela anterior, agora no menu) | funções de `painel_administrativo.sql` |
+| Vendedores | Todas as lojas com peças, pedidos, vendido e última venda; ficha com números, 6 meses de vendas, peças, pedidos e suspender/reativar com orientação | `admin_list_sellers`, `admin_seller_detail`, `admin_seller_action` |
+| Pedidos | Todos os pedidos, filtro por situação e busca; detalhe com frete, tarifa, destino e rastreio | `admin_list_orders` |
+| Clientes | Contas de compradores com pedidos e total comprado | `admin_list_clients` |
+| Categorias | Criar, editar, ordenar, ocultar e **enviar a foto** de cada categoria | `admin_list_categories`, `admin_save_category` + Storage |
+| Tarifa | Percentual da plataforma e simulação (só a proprietária altera) | `get_admin_platform_fee`, `admin_update_platform_fee` |
+| Equipe | Quem acessa o painel; proprietária dá/retira acesso e muda o papel (ninguém altera o próprio) | `admin_list_team`, `admin_save_team_member` |
+| Atividade | Histórico permanente de decisões sobre lojas e mudanças na equipe | `admin_recent_activity` |
+| Meu perfil | Nome, troca de senha (pede a atual) e sair dos outros aparelhos | Supabase Auth |
+
+Regras: "vendido" = pedidos não cancelados nem reembolsados; nenhuma
+porcentagem de variação quando o período anterior está zerado; gráficos de
+uma série na cor argila, com tooltip no mouse e tabela para teclado/leitor de
+tela; situação sempre em texto (selo), nunca só cor.

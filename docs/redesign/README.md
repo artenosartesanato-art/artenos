@@ -105,6 +105,13 @@ Branch: `FEAT/REDESIGN-UX-UI-ARTE-NOSSA` (base `main`).
 
 ## Ações necessárias no Supabase
 
+- Painel administrativo completo (visão geral, vendedores, pedidos,
+  clientes, categorias, equipe, atividade): executar
+  `supabase/painel_admin_completo.sql` depois de `administracao_aprovacao.sql`,
+  `painel_administrativo.sql` e `tarifa_plataforma.sql`. Sem ele, as telas
+  novas mostram "O banco ainda não tem esta função"; as aprovações e a tarifa
+  continuam funcionando.
+
 - Conta administrativa: `supabase/criar_admin.sql` cria (ou recupera)
   `artenosartesanato@gmail.com` com e-mail confirmado e acesso de
   proprietária em `admin_users`. Troque `TROQUE_PELA_SENHA` pela senha antes

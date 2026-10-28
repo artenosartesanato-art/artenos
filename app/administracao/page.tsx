@@ -1,1009 +1,259 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
-  AlertTriangle,
-  ArrowLeft,
-  CheckCircle2,
-  ChevronRight,
-  CircleSlash2,
-  Clock3,
-  FileCheck2,
-  FileSearch,
-  Loader2,
-  LogOut,
-  MessageSquareWarning,
-  Percent,
-  RefreshCw,
-  Save,
-  Search,
-  ShieldCheck,
-  Store,
-  UserRoundCheck,
-  UserRound,
+  AlertTriangle, ArrowRight, HandCoins, MessageCircle, Package, PackageCheck, Palette, Percent, RefreshCw,
+  ShoppingBag, Store, Tags, Truck, UserRound, UserRoundCheck,
 } from "@/components/icons";
-import { toast } from "sonner";
+import { useAdmin } from "@/components/admin-shell";
+import {
+  AdminPageHead, Badge, ColumnChart, FilterChips, LoadState, RankBars, StatCard, friendlyError, type BarDatum,
+} from "@/components/admin-ui";
 import { getSupabase } from "@/lib/supabase";
-import { useMarketplace } from "@/components/marketplace-state";
-import "./administration.css";
-import { endSession } from "@/lib/session";
+import { ORDER_STATUS_LABEL, brl, brlShort, change, formatDate, orderTone } from "@/lib/admin";
 
-type ApplicationStatus =
-  | "pending_review"
-  | "under_review"
-  | "changes_requested"
-  | "approved"
-  | "rejected"
-  | "suspended";
-type AdminAction =
-  | "start_review"
-  | "request_changes"
-  | "approve"
-  | "reject"
-  | "suspend"
-  | "reactivate";
-type ScreenState = "loading" | "ready" | "unauthenticated" | "denied" | "error";
-
-type ApplicationSummary = {
-  application_id: string;
-  application_number: number;
-  status: ApplicationStatus;
-  submission_type: "standard" | "assisted";
-  assigned_admin_id: string | null;
-  artisan_id: string;
-  full_name: string;
-  email: string;
-  store_name: string | null;
-  specialty: string | null;
-  city: string;
-  state: string;
-  submitted_at: string;
-  updated_at: string;
-  total_count: number;
+type Dashboard = {
+  period_days: number;
+  since: string;
+  sales: { orders: number; gmv: number; products_amount: number; shipping_amount: number; platform_fee: number; buyers: number; sellers: number };
+  sales_previous: { orders: number; gmv: number; platform_fee: number };
+  cancelled: number;
+  orders_by_status: { status: string; total: number }[];
+  daily: { day: string; orders: number; gmv: number }[];
+  top_sellers: { artisan_id: string; store_name: string; orders: number; gmv: number }[];
+  top_categories: { name: string; units: number; amount: number }[];
+  sellers: { active: number; in_review: number; new: number };
+  applications: { waiting: number; suspended: number };
+  clients: { total: number; new: number };
+  products: { active: number; out_of_stock: number; new: number; shops_with_products: number };
+  payouts: { pending_amount: number; pending_count: number; failed_count: number; paid_amount: number };
+  to_ship: number;
+  delivery_problems: number;
+  messages: number;
+  custom_orders: number;
 };
+type RecentOrder = { order_id: string; order_code: string; status: string; created_at: string; total_amount: number; store_name: string; client_name: string };
 
-type ApplicationDetail = {
-  application_id: string;
-  application_number: number;
-  application_status: ApplicationStatus;
-  submission_type: "standard" | "assisted";
-  assigned_admin_id: string | null;
-  decision_reason: string | null;
-  submitted_at: string;
-  review_started_at: string | null;
-  changes_requested_at: string | null;
-  decided_at: string | null;
-  application_updated_at: string;
-  artisan_id: string;
-  full_name: string;
-  email: string;
-  document: string;
-  phone: string;
-  cep: string;
-  address: string;
-  address_number: string;
-  city: string;
-  state: string;
-  store_name: string | null;
-  specialty: string | null;
-  story: string | null;
-  terms_accepted_at: string;
-  profile_created_at: string;
-  profile_updated_at: string;
-};
+const PERIODS = [
+  { value: "7", label: "7 dias" },
+  { value: "30", label: "30 dias" },
+  { value: "90", label: "90 dias" },
+  { value: "365", label: "12 meses" },
+] as const;
+type Period = (typeof PERIODS)[number]["value"];
 
-type AuditEntry = {
-  id: string;
-  action: string;
-  status_from: string | null;
-  status_to: string | null;
-  public_note: string | null;
-  internal_note: string | null;
-  actor_name: string;
-  created_at: string;
-};
+const dayShort = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "UTC" });
+const dayLong = new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "2-digit", month: "short", timeZone: "UTC" });
+const monthShort = new Intl.DateTimeFormat("pt-BR", { month: "short", timeZone: "UTC" });
+const monthLong = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" });
 
-type StatusCount = { status: ApplicationStatus; total: number };
-
-const PAGE_SIZE = 30;
-const statuses: Array<{ value: "all" | ApplicationStatus; label: string }> = [
-  { value: "all", label: "Todas" },
-  { value: "pending_review", label: "Pendentes" },
-  { value: "under_review", label: "Em análise" },
-  { value: "changes_requested", label: "Aguardando correção" },
-  { value: "approved", label: "Aprovadas" },
-  { value: "rejected", label: "Recusadas" },
-  { value: "suspended", label: "Suspensas" },
-];
-
-const statusLabels: Record<ApplicationStatus, string> = {
-  pending_review: "Pendente",
-  under_review: "Em análise",
-  changes_requested: "Correção solicitada",
-  approved: "Aprovada",
-  rejected: "Recusada",
-  suspended: "Suspensa",
-};
-
-const actionLabels: Record<string, string> = {
-  submitted: "Cadastro enviado",
-  backfilled: "Cadastro incluído",
-  assigned: "Responsável definido",
-  review_started: "Análise iniciada",
-  changes_requested: "Correções solicitadas",
-  approved: "Cadastro aprovado",
-  rejected: "Cadastro recusado",
-  suspended: "Conta suspensa",
-  reactivated: "Conta reativada",
-  resubmitted: "Cadastro reenviado",
-  status_changed: "Situação atualizada",
-};
-
-const actionContent: Record<
-  AdminAction,
-  { label: string; confirmation: string; success: string }
-> = {
-  start_review: {
-    label: "Iniciar análise",
-    confirmation: "Deseja assumir e iniciar a análise deste cadastro?",
-    success: "Análise iniciada.",
-  },
-  request_changes: {
-    label: "Solicitar correções",
-    confirmation: "Enviar a orientação ao artesão e solicitar correções?",
-    success: "Correções solicitadas.",
-  },
-  approve: {
-    label: "Aprovar cadastro",
-    confirmation: "Aprovar este artesão e liberar os recursos de vendedor?",
-    success: "Cadastro aprovado e recursos de vendedor liberados.",
-  },
-  reject: {
-    label: "Recusar cadastro",
-    confirmation:
-      "Recusar este cadastro? O motivo informado ficará visível para o artesão.",
-    success: "Cadastro recusado.",
-  },
-  suspend: {
-    label: "Suspender vendedor",
-    confirmation: "Suspender os recursos de vendedor desta conta?",
-    success: "Recursos de vendedor suspensos.",
-  },
-  reactivate: {
-    label: "Reativar vendedor",
-    confirmation: "Reativar os recursos de vendedor desta conta?",
-    success: "Recursos de vendedor reativados.",
-  },
-};
-
-const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
-function formatDate(value: string | null) {
-  if (!value) return "Não registrado";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? "Data indisponível"
-    : dateFormatter.format(date);
+/** Até 90 dias: uma coluna por dia. 12 meses: soma por mês. */
+function chartData(daily: Dashboard["daily"], days: number): BarDatum[] {
+  if (days <= 90) {
+    return daily.map((item) => {
+      const date = new Date(`${item.day}T00:00:00Z`);
+      return {
+        key: item.day, label: dayLong.format(date), short: dayShort.format(date), value: Number(item.gmv),
+        detail: `${item.orders} ${Number(item.orders) === 1 ? "pedido" : "pedidos"}`,
+      };
+    });
+  }
+  const months = new Map<string, { gmv: number; orders: number }>();
+  for (const item of daily) {
+    const key = item.day.slice(0, 7);
+    const entry = months.get(key) ?? { gmv: 0, orders: 0 };
+    entry.gmv += Number(item.gmv);
+    entry.orders += Number(item.orders);
+    months.set(key, entry);
+  }
+  return [...months].map(([key, entry]) => {
+    const date = new Date(`${key}-01T00:00:00Z`);
+    return { key, label: monthLong.format(date), short: monthShort.format(date), value: entry.gmv,
+      detail: `${entry.orders} ${entry.orders === 1 ? "pedido" : "pedidos"}` };
+  });
 }
 
-function formatDocument(value: string) {
-  const digits = value.replace(/\D/g, "");
-  if (digits.length === 11)
-    return digits.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
-  if (digits.length === 14)
-    return digits.replace(
-      /^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,
-      "$1.$2.$3/$4-$5",
-    );
-  return value;
-}
+export default function AdminDashboardPage() {
+  const { account, waiting } = useAdmin();
+  const [period, setPeriod] = useState<Period>("30");
+  const [data, setData] = useState<Dashboard | null>(null);
+  const [recent, setRecent] = useState<RecentOrder[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
-function formatPhone(value: string) {
-  const digits = value.replace(/\D/g, "");
-  if (digits.length === 11)
-    return digits.replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3");
-  if (digits.length === 10)
-    return digits.replace(/^(\d{2})(\d{4})(\d{4})$/, "($1) $2-$3");
-  return value;
-}
-
-function formatCep(value: string) {
-  const digits = value.replace(/\D/g, "");
-  return digits.length === 8
-    ? `${digits.slice(0, 5)}-${digits.slice(5)}`
-    : value;
-}
-
-function availableActions(status: ApplicationStatus): AdminAction[] {
-  if (status === "approved") return ["suspend"];
-  if (status === "suspended") return ["reactivate"];
-  if (status === "under_review")
-    return ["request_changes", "approve", "reject"];
-  if (status === "pending_review")
-    return ["start_review", "request_changes", "approve", "reject"];
-  if (status === "changes_requested")
-    return ["start_review", "approve", "reject"];
-  return ["start_review", "approve"];
-}
-
-function DetailItem({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | null | undefined;
-}) {
-  return (
-    <div className="admin-detail-item">
-      <dt>{label}</dt>
-      <dd>{value?.trim() || "Não informado"}</dd>
-    </div>
-  );
-}
-
-export default function AdministrationPage() {
-  const { displayName, avatarUrl } = useMarketplace();
-  const router = useRouter();
-  const [screen, setScreen] = useState<ScreenState>("loading");
-  const [adminEmail, setAdminEmail] = useState("");
-  const [adminName, setAdminName] = useState("");
-  const [adminRole, setAdminRole] = useState<"owner" | "reviewer">("reviewer");
-  const [statusFilter, setStatusFilter] = useState<"all" | ApplicationStatus>(
-    "pending_review",
-  );
-  const [searchInput, setSearchInput] = useState("");
-  const [query, setQuery] = useState("");
-  const [offset, setOffset] = useState(0);
-  const [applications, setApplications] = useState<ApplicationSummary[]>([]);
-  const [counts, setCounts] = useState<StatusCount[]>([]);
-  const [total, setTotal] = useState(0);
-  const [listLoading, setListLoading] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [detail, setDetail] = useState<ApplicationDetail | null>(null);
-  const [audit, setAudit] = useState<AuditEntry[]>([]);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [publicNote, setPublicNote] = useState("");
-  const [internalNote, setInternalNote] = useState("");
-  const [actionLoading, setActionLoading] = useState<AdminAction | null>(null);
-  const [platformFee, setPlatformFee] = useState("");
-  const [platformFeeUpdatedAt, setPlatformFeeUpdatedAt] = useState<
-    string | null
-  >(null);
-  const [feeLoading, setFeeLoading] = useState(false);
-  const [feeSaving, setFeeSaving] = useState(false);
-
-  const initialize = useCallback(async () => {
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
     try {
       const supabase = getSupabase();
-      const { data: authData, error: authError } =
-        await supabase.auth.getUser();
-      if (authError || !authData.user) {
-        setScreen("unauthenticated");
-        return;
-      }
-
-      setAdminEmail(authData.user.email || "");
-      setAdminName(String(authData.user.user_metadata?.full_name || authData.user.email?.split("@")[0] || "Administrador"));
-      const { data: allowed, error: allowedError } =
-        await supabase.rpc("is_active_admin");
-      if (allowedError || allowed !== true) {
-        setScreen("denied");
-        return;
-      }
-
-      const { data: adminData } = await supabase
-        .from("admin_users")
-        .select("role")
-        .eq("user_id", authData.user.id)
-        .single();
-      if (adminData?.role === "owner") setAdminRole("owner");
-      setScreen("ready");
-    } catch {
-      setScreen("error");
-    }
-  }, []);
-
-  const loadApplications = useCallback(async () => {
-    if (screen !== "ready") return;
-    setListLoading(true);
-    try {
-      const supabase = getSupabase();
-      const [listResult, countResult] = await Promise.all([
-        supabase.rpc("list_admin_artisan_applications", {
-          p_status: statusFilter === "all" ? null : statusFilter,
-          p_query: query || null,
-          p_limit: PAGE_SIZE,
-          p_offset: offset,
-        }),
-        supabase.rpc("get_admin_application_counts"),
+      const [dashboard, orders] = await Promise.all([
+        supabase.rpc("admin_dashboard", { p_days: Number(period) }),
+        supabase.rpc("admin_list_orders", { p_status: null, p_query: null, p_limit: 6, p_offset: 0 }),
       ]);
-
-      if (listResult.error) throw listResult.error;
-      if (countResult.error) throw countResult.error;
-      const rows = (listResult.data || []) as ApplicationSummary[];
-      setApplications(rows);
-      setTotal(Number(rows[0]?.total_count || 0));
-      setCounts((countResult.data || []) as StatusCount[]);
-    } catch {
-      toast.error("Não foi possível carregar as solicitações administrativas.");
+      if (dashboard.error) throw dashboard.error;
+      setData(dashboard.data as Dashboard);
+      setRecent((orders.data ?? []) as RecentOrder[]);
+      setUpdatedAt(new Date());
+    } catch (loadError) {
+      setError(friendlyError(loadError, "Não foi possível carregar os números agora."));
     } finally {
-      setListLoading(false);
+      setLoading(false);
     }
-  }, [offset, query, screen, statusFilter]);
+  }, [period]);
 
-  const loadPlatformFee = useCallback(async () => {
-    if (screen !== "ready") return;
-    setFeeLoading(true);
-    try {
-      const { data, error } = await getSupabase().rpc(
-        "get_admin_platform_fee",
-      );
-      if (error) throw error;
-      const setting = Array.isArray(data) ? data[0] : data;
-      setPlatformFee(String(Number(setting?.platform_fee_percent ?? 0)));
-      setPlatformFeeUpdatedAt(setting?.updated_at ?? null);
-    } catch {
-      toast.error(
-        "Não foi possível carregar a tarifa agora. Tente novamente; se persistir, confira a configuração da tarifa no banco.",
-      );
-    } finally {
-      setFeeLoading(false);
-    }
-  }, [screen]);
+  useEffect(() => { queueMicrotask(() => void load()); }, [load]);
 
-  const openApplication = useCallback(async (applicationId: string) => {
-    setSelectedId(applicationId);
-    setDetailLoading(true);
-    setPublicNote("");
-    setInternalNote("");
-    try {
-      const supabase = getSupabase();
-      const [detailResult, auditResult] = await Promise.all([
-        supabase
-          .rpc("get_admin_artisan_application", {
-            p_application_id: applicationId,
-          })
-          .single(),
-        supabase.rpc("list_admin_application_audit", {
-          p_application_id: applicationId,
-        }),
-      ]);
-      if (detailResult.error || !detailResult.data)
-        throw detailResult.error || new Error("Solicitação não encontrada.");
-      if (auditResult.error) throw auditResult.error;
-      setDetail(detailResult.data as ApplicationDetail);
-      setAudit((auditResult.data || []) as AuditEntry[]);
-    } catch {
-      setDetail(null);
-      setAudit([]);
-      toast.error("Não foi possível abrir os detalhes desta solicitação.");
-    } finally {
-      setDetailLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    queueMicrotask(() => void initialize());
-  }, [initialize]);
-
-  useEffect(() => {
-    if (screen === "ready") {
-      queueMicrotask(() => {
-        void loadApplications();
-        void loadPlatformFee();
-      });
-    }
-  }, [loadApplications, loadPlatformFee, screen]);
-
-  const countMap = useMemo(
-    () => new Map(counts.map((item) => [item.status, Number(item.total)])),
-    [counts],
-  );
-  const totalAll = useMemo(
-    () => counts.reduce((sum, item) => sum + Number(item.total), 0),
-    [counts],
-  );
-  const currentPage = Math.floor(offset / PAGE_SIZE) + 1;
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-
-  function submitSearch(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setOffset(0);
-    setSelectedId(null);
-    setDetail(null);
-    setQuery(searchInput.trim().slice(0, 100));
-  }
-
-  function chooseStatus(status: "all" | ApplicationStatus) {
-    setStatusFilter(status);
-    setOffset(0);
-    setSelectedId(null);
-    setDetail(null);
-  }
-
-  async function runAction(action: AdminAction) {
-    if (!detail || actionLoading) return;
-    if (
-      ["request_changes", "reject", "suspend"].includes(action) &&
-      !publicNote.trim()
-    ) {
-      toast.error("Informe a orientação que ficará visível para o artesão.");
-      return;
-    }
-    if (!window.confirm(actionContent[action].confirmation)) return;
-
-    setActionLoading(action);
-    try {
-      const { error } = await getSupabase().rpc(
-        "admin_manage_artisan_application",
-        {
-          p_application_id: detail.application_id,
-          p_action: action,
-          p_public_note: publicNote.trim() || null,
-          p_internal_note: internalNote.trim() || null,
-        },
-      );
-      if (error) throw error;
-      toast.success(actionContent[action].success);
-      await Promise.all([
-        openApplication(detail.application_id),
-        loadApplications(),
-      ]);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "";
-      toast.error(
-        message.includes("orientação pública")
-          ? "Informe uma orientação pública para esta decisão."
-          : message.includes("não é permitida")
-            ? "Esta ação não é permitida para a situação atual. Atualize a lista."
-            : "Não foi possível registrar a decisão.",
-      );
-    } finally {
-      setActionLoading(null);
-    }
-  }
-
-  async function savePlatformFee(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (adminRole !== "owner" || feeSaving) return;
-    const value = Number(platformFee.replace(",", "."));
-    if (!Number.isFinite(value) || value < 0 || value >= 100) {
-      toast.error("Informe uma tarifa entre 0 e 99,99%.");
-      return;
-    }
-    if (
-      !window.confirm(
-        `Definir a tarifa da plataforma em ${value.toLocaleString("pt-BR")}% para as próximas vendas?`,
-      )
-    )
-      return;
-
-    setFeeSaving(true);
-    try {
-      const { data, error } = await getSupabase().rpc(
-        "admin_update_platform_fee",
-        { p_platform_fee_percent: value },
-      );
-      if (error) throw error;
-      setPlatformFee(String(Number(data)));
-      setPlatformFeeUpdatedAt(new Date().toISOString());
-      toast.success(
-        "Tarifa atualizada. Ela será aplicada somente às próximas vendas.",
-      );
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "";
-      toast.error(
-        message.includes("Somente a proprietária")
-          ? "Somente a proprietária pode alterar a tarifa."
-          : "Não foi possível atualizar a tarifa da plataforma.",
-      );
-    } finally {
-      setFeeSaving(false);
-    }
-  }
-
-  async function signOut() {
-    const error = await endSession("local");
-    if (error) {
-      toast.error("Não foi possível sair agora.");
-      return;
-    }
-    router.replace("/acesso?motivo=saiu");
-  }
-
-  if (screen !== "ready") {
-    return (
-      <main id="conteudo" tabIndex={-1} className="admin-gate">
-        {screen === "loading" && (
-          <div className="admin-gate-card">
-            <Loader2 className="admin-spin" size={30} />
-            <h1>Validando acesso administrativo</h1>
-            <p>Estamos confirmando sua sessão e suas permissões.</p>
-          </div>
-        )}
-        {screen === "unauthenticated" && (
-          <div className="admin-gate-card">
-            <ShieldCheck size={34} />
-            <h1>Entre com a conta administrativa</h1>
-            <p>Este painel é reservado à equipe autorizada da Artenós.</p>
-            <Link href="/acesso">Entrar na plataforma</Link>
-          </div>
-        )}
-        {screen === "denied" && (
-          <div className="admin-gate-card">
-            <CircleSlash2 size={34} />
-            <h1>Acesso não autorizado</h1>
-            <p>
-              Sua conta está autenticada, mas não consta como administradora
-              ativa.
-            </p>
-            <div>
-              <Link href="/">Voltar para a vitrine</Link>
-              <button type="button" onClick={signOut}>
-                Sair da conta
-              </button>
-            </div>
-          </div>
-        )}
-        {screen === "error" && (
-          <div className="admin-gate-card">
-            <AlertTriangle size={34} />
-            <h1>Não foi possível validar o acesso</h1>
-            <p>
-              Tente novamente. Se o problema continuar, confirme que o painel
-              administrativo foi configurado no banco de dados.
-            </p>
-            <button type="button" onClick={() => void initialize()}>
-              <RefreshCw size={17} /> Tentar novamente
-            </button>
-          </div>
-        )}
-      </main>
-    );
-  }
+  const first = account.name.split(/\s+/)[0];
+  const periodLabel = PERIODS.find((item) => item.value === period)?.label ?? "";
+  const ticket = data && Number(data.sales.orders) ? Number(data.sales.gmv) / Number(data.sales.orders) : 0;
 
   return (
-    <div className="admin-page">
-      <div className="admin-header">
-        <div className="admin-session">
-          <div>
-            <span>{adminRole === "owner" ? "Proprietária" : "Revisora"}</span>
-            <strong title={adminEmail}>{displayName || adminName}</strong>
-          </div>
-          {avatarUrl ? <img className="admin-session-avatar" src={avatarUrl} alt="" /> : <span className="admin-session-avatar"><UserRound size={19} /></span>}
-          <button type="button" onClick={signOut} aria-label="Sair da conta">
-            <LogOut size={18} />
+    <div className="adm-page">
+      <AdminPageHead eyebrow="Administração" title={first ? `Olá, ${first}` : "Visão geral"}
+        description="Números calculados agora, direto dos pedidos, lojas e cadastros da plataforma."
+        actions={<>
+          <FilterChips label="Período" value={period} onChange={setPeriod}
+            options={PERIODS.map((item) => ({ value: item.value, label: item.label }))} />
+          <button type="button" className="adm-btn adm-btn--ghost" onClick={() => void load()} disabled={loading}>
+            <RefreshCw size={15} className={loading ? "admin-spin" : ""} /> Atualizar
           </button>
-        </div>
-      </div>
+        </>} />
 
-      <main id="conteudo" tabIndex={-1} className="admin-main">
-        <section className="admin-title-row">
-          <div>
-            <p>Gestão e segurança</p>
-            <h1>Aprovação de artesãos</h1>
-            <span>
-              Analise solicitações e mantenha um histórico verificável de cada
-              decisão.
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => void loadApplications()}
-            disabled={listLoading}
-          >
-            <RefreshCw className={listLoading ? "admin-spin" : ""} size={17} />{" "}
-            Atualizar
-          </button>
+      {(waiting > 0 || (data && (data.to_ship > 0 || data.delivery_problems > 0 || data.payouts.failed_count > 0))) && (
+        <section className="adm-alerts" aria-label="Precisa de atenção">
+          {waiting > 0 && (
+            <Link href="/administracao/aprovacoes"><UserRoundCheck size={18} />
+              <span><strong>{waiting}</strong> {waiting === 1 ? "cadastro de loja aguarda" : "cadastros de loja aguardam"} decisão</span>
+              <ArrowRight size={15} /></Link>
+          )}
+          {data && data.to_ship > 0 && (
+            <Link href="/administracao/pedidos?status=open"><PackageCheck size={18} />
+              <span><strong>{data.to_ship}</strong> {data.to_ship === 1 ? "pedido pago aguarda" : "pedidos pagos aguardam"} envio da loja</span>
+              <ArrowRight size={15} /></Link>
+          )}
+          {data && data.delivery_problems > 0 && (
+            <Link href="/administracao/pedidos?status=delivery_failed" className="is-alert"><AlertTriangle size={18} />
+              <span><strong>{data.delivery_problems}</strong> com problema na entrega</span>
+              <ArrowRight size={15} /></Link>
+          )}
+          {data && data.payouts.failed_count > 0 && (
+            <div className="is-alert"><AlertTriangle size={18} />
+              <span><strong>{data.payouts.failed_count}</strong> {data.payouts.failed_count === 1 ? "repasse falhou" : "repasses falharam"}</span></div>
+          )}
         </section>
+      )}
 
-        <section
-          className="admin-overview"
-          aria-label="Resumo das solicitações"
-        >
-          <div>
-            <Clock3 size={20} />
-            <span>Pendentes</span>
-            <strong>{countMap.get("pending_review") || 0}</strong>
-          </div>
-          <div>
-            <FileSearch size={20} />
-            <span>Em análise</span>
-            <strong>{countMap.get("under_review") || 0}</strong>
-          </div>
-          <div>
-            <MessageSquareWarning size={20} />
-            <span>Correções</span>
-            <strong>{countMap.get("changes_requested") || 0}</strong>
-          </div>
-          <div>
-            <CheckCircle2 size={20} />
-            <span>Aprovadas</span>
-            <strong>{countMap.get("approved") || 0}</strong>
-          </div>
-        </section>
+      <LoadState loading={loading && !data} error={data ? "" : error} onRetry={() => void load()}>
+        {data && (
+          <>
+            {error && <p className="adm-inline-error" role="alert">{error}</p>}
+            <section aria-labelledby="vendas-titulo" className="adm-section">
+              <div className="adm-section-head">
+                <h2 id="vendas-titulo">Vendas · últimos {periodLabel}</h2>
+                {updatedAt && <small>Atualizado às {updatedAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</small>}
+              </div>
+              <div className="adm-stats">
+                <StatCard icon={ShoppingBag} label="Vendido (com frete)" value={brl(data.sales.gmv)}
+                  delta={change(Number(data.sales.gmv), Number(data.sales_previous.gmv))}
+                  hint={`${brl(data.sales.products_amount)} em peças`} />
+                <StatCard icon={Package} label="Pedidos" value={String(data.sales.orders)}
+                  delta={change(Number(data.sales.orders), Number(data.sales_previous.orders))}
+                  hint={data.cancelled ? `${data.cancelled} cancelado(s) fora da conta` : "nenhum cancelado"} href="/administracao/pedidos" />
+                <StatCard icon={Percent} label="Receita da plataforma" value={brl(data.sales.platform_fee)}
+                  delta={change(Number(data.sales.platform_fee), Number(data.sales_previous.platform_fee))} hint="tarifa sobre as peças" />
+                <StatCard icon={Tags} label="Ticket médio" value={data.sales.orders ? brl(ticket) : "—"}
+                  hint={`${data.sales.buyers} ${Number(data.sales.buyers) === 1 ? "comprador" : "compradores"} · ${data.sales.sellers} ${Number(data.sales.sellers) === 1 ? "loja vendeu" : "lojas venderam"}`} />
+              </div>
+              <div className="adm-card">
+                <ColumnChart data={chartData(data.daily, data.period_days)} format={brlShort}
+                  caption={`Valor vendido por ${data.period_days > 90 ? "mês" : "dia"} (pedidos não cancelados)`} />
+              </div>
+            </section>
 
-        <section className="admin-fee-card" aria-labelledby="platform-fee-title">
-          <div className="admin-fee-copy">
-            <span><Percent size={20} /></span>
-            <div>
-              <p>Financeiro</p>
-              <h2 id="platform-fee-title">Tarifa da plataforma</h2>
-              <small>
-                Incide sobre os produtos das próximas vendas. O frete fica fora
-                da comissão e vendas anteriores não são recalculadas.
-              </small>
-              {platformFeeUpdatedAt && (
-                <time dateTime={platformFeeUpdatedAt}>
-                  Última atualização: {formatDate(platformFeeUpdatedAt)}
-                </time>
-              )}
-            </div>
-          </div>
-          <form onSubmit={savePlatformFee}>
-            <label>
-              Percentual atual
-              <span>
-                <input
-                  type="number"
-                  min="0"
-                  max="99.99"
-                  step="0.01"
-                  inputMode="decimal"
-                  value={platformFee}
-                  onChange={(event) => setPlatformFee(event.target.value)}
-                  disabled={feeLoading || feeSaving || adminRole !== "owner"}
-                  required
-                />
-                <strong>%</strong>
-              </span>
-            </label>
-            {adminRole === "owner" ? (
-              <button type="submit" disabled={feeLoading || feeSaving}>
-                {feeSaving ? (
-                  <Loader2 className="admin-spin" size={17} />
-                ) : (
-                  <Save size={17} />
-                )}
-                {feeSaving ? "Salvando..." : "Salvar tarifa"}
-              </button>
-            ) : (
-              <small>Somente a proprietária pode alterar.</small>
-            )}
-          </form>
-        </section>
-
-        <section className="admin-workspace">
-          <aside className="admin-queue">
-            <form className="admin-search" onSubmit={submitSearch}>
-              <Search size={17} />
-              <input
-                value={searchInput}
-                onChange={(event) => setSearchInput(event.target.value)}
-                placeholder="Nome, loja, e-mail ou documento"
-                aria-label="Buscar solicitações"
-              />
-              <button type="submit">Buscar</button>
-            </form>
-
-            <div className="admin-filters" aria-label="Filtrar solicitações">
-              {statuses.map((status) => (
-                <button
-                  key={status.value}
-                  type="button"
-                  className={statusFilter === status.value ? "active" : ""}
-                  onClick={() => chooseStatus(status.value)}
-                >
-                  {status.label}
-                  <span>
-                    {status.value === "all"
-                      ? totalAll
-                      : countMap.get(status.value) || 0}
-                  </span>
-                </button>
-              ))}
+            <div className="adm-grid-2">
+              <section className="adm-card" aria-labelledby="lojas-top-titulo">
+                <div className="adm-section-head">
+                  <h2 id="lojas-top-titulo">Lojas que mais venderam</h2>
+                  <Link href="/administracao/vendedores">Ver vendedores</Link>
+                </div>
+                <RankBars format={brl} empty="Nenhuma venda no período."
+                  items={data.top_sellers.map((item) => ({
+                    key: item.artisan_id, label: item.store_name, value: Number(item.gmv),
+                    detail: `${item.orders} ${Number(item.orders) === 1 ? "pedido" : "pedidos"}`,
+                    href: `/administracao/vendedores?loja=${item.artisan_id}`,
+                  }))} />
+              </section>
+              <section className="adm-card" aria-labelledby="status-titulo">
+                <div className="adm-section-head">
+                  <h2 id="status-titulo">Pedidos por situação</h2>
+                  <Link href="/administracao/pedidos">Ver pedidos</Link>
+                </div>
+                <RankBars format={(value) => String(value)} empty="Nenhum pedido no período."
+                  items={data.orders_by_status.map((item) => ({
+                    key: item.status, label: ORDER_STATUS_LABEL[item.status] ?? item.status, value: Number(item.total),
+                    href: `/administracao/pedidos?status=${item.status}`,
+                  }))} />
+              </section>
             </div>
 
-            <div className="admin-list" aria-busy={listLoading}>
-              {listLoading ? (
-                <div className="admin-list-feedback">
-                  <Loader2 className="admin-spin" size={24} /> Carregando
-                  solicitações...
+            <section className="adm-section" aria-labelledby="base-titulo">
+              <div className="adm-section-head"><h2 id="base-titulo">Plataforma</h2></div>
+              <div className="adm-stats adm-stats--compact">
+                <StatCard icon={Store} label="Lojas ativas" value={String(data.sellers.active)}
+                  hint={`${data.products.shops_with_products} com peças publicadas`} href="/administracao/vendedores" />
+                <StatCard icon={UserRoundCheck} label="Lojas em análise" value={String(data.applications.waiting)}
+                  hint={data.applications.suspended ? `${data.applications.suspended} suspensa(s)` : "nenhuma suspensa"} href="/administracao/aprovacoes" />
+                <StatCard icon={UserRound} label="Clientes" value={String(data.clients.total)}
+                  hint={`${data.clients.new} novo(s) no período`} href="/administracao/clientes" />
+                <StatCard icon={Palette} label="Peças publicadas" value={String(data.products.active)}
+                  hint={`${data.products.out_of_stock} esgotada(s) · ${data.products.new} nova(s)`} />
+                <StatCard icon={HandCoins} label="Repasses pendentes" value={brl(data.payouts.pending_amount)}
+                  hint={`${data.payouts.pending_count} repasse(s) · ${brl(data.payouts.paid_amount)} pagos no período`} />
+                <StatCard icon={Truck} label="Aguardando envio" value={String(data.to_ship)} hint="pedidos pagos ainda não enviados"
+                  href="/administracao/pedidos?status=open" />
+                <StatCard icon={MessageCircle} label="Mensagens" value={String(data.messages)} hint="trocadas no período" />
+                <StatCard icon={Palette} label="Encomendas" value={String(data.custom_orders)} hint="pedidos sob medida no período" />
+              </div>
+            </section>
+
+            <div className="adm-grid-2">
+              <section className="adm-card" aria-labelledby="categorias-top-titulo">
+                <div className="adm-section-head">
+                  <h2 id="categorias-top-titulo">Categorias que mais venderam</h2>
+                  <Link href="/administracao/categorias">Ver categorias</Link>
                 </div>
-              ) : applications.length ? (
-                applications.map((application) => (
-                  <button
-                    key={application.application_id}
-                    type="button"
-                    className={`admin-application ${selectedId === application.application_id ? "selected" : ""}`}
-                    onClick={() =>
-                      void openApplication(application.application_id)
-                    }
-                  >
-                    <div className="admin-application-top">
-                      <span
-                        className={`admin-status status-${application.status}`}
-                      >
-                        {statusLabels[application.status]}
-                      </span>
-                      <small>#{application.application_number}</small>
-                    </div>
-                    <strong>
-                      {application.store_name || application.full_name}
-                    </strong>
-                    <p>{application.full_name}</p>
-                    <div>
-                      <span>
-                        {application.city}/{application.state}
-                      </span>
-                      <time>{formatDate(application.submitted_at)}</time>
-                    </div>
-                    <ChevronRight size={17} />
-                  </button>
-                ))
-              ) : (
-                <div className="admin-list-feedback">
-                  <FileSearch size={29} />
-                  <strong>Nenhuma solicitação encontrada</strong>
-                  <p>Altere o filtro ou faça uma nova busca.</p>
+                <RankBars format={brl} empty="Sem itens vendidos no período."
+                  items={data.top_categories.map((item) => ({
+                    key: item.name, label: item.name, value: Number(item.amount),
+                    detail: `${item.units} ${Number(item.units) === 1 ? "unidade" : "unidades"}`,
+                  }))} />
+              </section>
+              <section className="adm-card" aria-labelledby="recentes-titulo">
+                <div className="adm-section-head">
+                  <h2 id="recentes-titulo">Últimos pedidos</h2>
+                  <Link href="/administracao/pedidos">Ver todos</Link>
                 </div>
-              )}
+                {recent.length ? (
+                  <ul className="adm-recent">
+                    {recent.map((order) => (
+                      <li key={order.order_id}>
+                        <div>
+                          <strong>{order.order_code}</strong>
+                          <small>{order.store_name} · {order.client_name || "Cliente"} · {formatDate(order.created_at, true)}</small>
+                        </div>
+                        <Badge tone={orderTone(order.status)}>{ORDER_STATUS_LABEL[order.status] ?? order.status}</Badge>
+                        <span>{brl(order.total_amount)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : <p className="adm-empty-line">Nenhum pedido ainda.</p>}
+              </section>
             </div>
-
-            {total > PAGE_SIZE && (
-              <div className="admin-pagination">
-                <button
-                  type="button"
-                  disabled={offset === 0}
-                  onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
-                >
-                  Anterior
-                </button>
-                <span>
-                  {currentPage} de {totalPages}
-                </span>
-                <button
-                  type="button"
-                  disabled={offset + PAGE_SIZE >= total}
-                  onClick={() => setOffset(offset + PAGE_SIZE)}
-                >
-                  Próxima
-                </button>
-              </div>
-            )}
-          </aside>
-
-          <section className="admin-review">
-            {!selectedId && (
-              <div className="admin-empty-detail">
-                <FileCheck2 size={43} />
-                <h2>Selecione uma solicitação</h2>
-                <p>
-                  Os dados cadastrais, o histórico e as ações aparecerão aqui.
-                </p>
-              </div>
-            )}
-            {selectedId && detailLoading && (
-              <div className="admin-empty-detail">
-                <Loader2 className="admin-spin" size={32} />
-                <p>Carregando os dados do cadastro...</p>
-              </div>
-            )}
-            {selectedId && !detailLoading && !detail && (
-              <div className="admin-empty-detail">
-                <AlertTriangle size={36} />
-                <h2>Detalhes indisponíveis</h2>
-                <button
-                  type="button"
-                  onClick={() => void openApplication(selectedId)}
-                >
-                  Tentar novamente
-                </button>
-              </div>
-            )}
-            {detail && !detailLoading && (
-              <div className="admin-detail">
-                <div className="admin-detail-header">
-                  <div>
-                    <span
-                      className={`admin-status status-${detail.application_status}`}
-                    >
-                      {statusLabels[detail.application_status]}
-                    </span>
-                    <p>Solicitação #{detail.application_number}</p>
-                    <h2>{detail.store_name || detail.full_name}</h2>
-                    <small>
-                      {detail.submission_type === "assisted"
-                        ? "Cadastro assistido"
-                        : "Cadastro padrão"}{" "}
-                      · enviado em {formatDate(detail.submitted_at)}
-                    </small>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedId(null);
-                      setDetail(null);
-                    }}
-                    aria-label="Fechar detalhes"
-                  >
-                    <ArrowLeft size={18} />
-                  </button>
-                </div>
-
-                {detail.decision_reason && (
-                  <div className="admin-current-note">
-                    <strong>Orientação pública atual</strong>
-                    <p>{detail.decision_reason}</p>
-                  </div>
-                )}
-
-                <div className="admin-detail-sections">
-                  <section>
-                    <h3>
-                      <Store size={18} /> Informações da loja
-                    </h3>
-                    <dl>
-                      <DetailItem
-                        label="Nome da loja"
-                        value={detail.store_name}
-                      />
-                      <DetailItem
-                        label="Especialidade"
-                        value={detail.specialty}
-                      />
-                      <DetailItem label="História" value={detail.story} />
-                    </dl>
-                  </section>
-                  <section>
-                    <h3>
-                      <UserRoundCheck size={18} /> Responsável
-                    </h3>
-                    <dl>
-                      <DetailItem
-                        label="Nome completo"
-                        value={detail.full_name}
-                      />
-                      <DetailItem label="E-mail" value={detail.email} />
-                      <DetailItem
-                        label={
-                          detail.document.replace(/\D/g, "").length === 14
-                            ? "CNPJ"
-                            : "CPF"
-                        }
-                        value={formatDocument(detail.document)}
-                      />
-                      <DetailItem
-                        label="Telefone"
-                        value={formatPhone(detail.phone)}
-                      />
-                    </dl>
-                  </section>
-                  <section>
-                    <h3>
-                      <ShieldCheck size={18} /> Endereço e cadastro
-                    </h3>
-                    <dl>
-                      <DetailItem label="CEP" value={formatCep(detail.cep)} />
-                      <DetailItem
-                        label="Endereço"
-                        value={`${detail.address}, ${detail.address_number}`}
-                      />
-                      <DetailItem
-                        label="Cidade/UF"
-                        value={`${detail.city}/${detail.state}`}
-                      />
-                      <DetailItem
-                        label="Termos aceitos"
-                        value={formatDate(detail.terms_accepted_at)}
-                      />
-                      <DetailItem
-                        label="Cadastro criado"
-                        value={formatDate(detail.profile_created_at)}
-                      />
-                    </dl>
-                  </section>
-                </div>
-
-                <section className="admin-decision">
-                  <div>
-                    <p>Registrar decisão</p>
-                    <h3>Ação administrativa</h3>
-                    <span>
-                      A orientação pública será exibida ao artesão. A nota
-                      interna fica visível apenas para administradores.
-                    </span>
-                  </div>
-                  <label>
-                    Orientação para o artesão
-                    <textarea
-                      value={publicNote}
-                      onChange={(event) => setPublicNote(event.target.value)}
-                      maxLength={2000}
-                      rows={3}
-                      placeholder="Obrigatória para solicitar correções, recusar ou suspender."
-                    />
-                  </label>
-                  <label>
-                    Nota interna
-                    <textarea
-                      value={internalNote}
-                      onChange={(event) => setInternalNote(event.target.value)}
-                      maxLength={4000}
-                      rows={2}
-                      placeholder="Opcional. Não será exibida ao artesão."
-                    />
-                  </label>
-                  <div className="admin-actions">
-                    {availableActions(detail.application_status).map(
-                      (action) => (
-                        <button
-                          key={action}
-                          type="button"
-                          className={`action-${action}`}
-                          disabled={actionLoading !== null}
-                          onClick={() => void runAction(action)}
-                        >
-                          {actionLoading === action && (
-                            <Loader2 className="admin-spin" size={16} />
-                          )}
-                          {actionContent[action].label}
-                        </button>
-                      ),
-                    )}
-                  </div>
-                </section>
-
-                <section className="admin-audit">
-                  <div>
-                    <p>Registro permanente</p>
-                    <h3>Histórico da solicitação</h3>
-                  </div>
-                  {audit.length ? (
-                    <ol>
-                      {audit.map((entry) => (
-                        <li key={entry.id}>
-                          <span className="admin-audit-dot" />
-                          <div>
-                            <strong>
-                              {actionLabels[entry.action] ||
-                                "Situação atualizada"}
-                            </strong>
-                            <small>
-                              {entry.actor_name} ·{" "}
-                              {formatDate(entry.created_at)}
-                            </small>
-                            {entry.public_note && (
-                              <p>
-                                <b>Visível ao artesão:</b> {entry.public_note}
-                              </p>
-                            )}
-                            {entry.internal_note && (
-                              <p className="admin-internal-note">
-                                <b>Nota interna:</b> {entry.internal_note}
-                              </p>
-                            )}
-                          </div>
-                        </li>
-                      ))}
-                    </ol>
-                  ) : (
-                    <p className="admin-no-audit">Nenhum evento registrado.</p>
-                  )}
-                </section>
-              </div>
-            )}
-          </section>
-        </section>
-      </main>
+          </>
+        )}
+      </LoadState>
     </div>
   );
 }
