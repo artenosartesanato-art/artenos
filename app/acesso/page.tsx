@@ -400,6 +400,11 @@ function LoginForm({ returnTo, onRecover, onRegister }: { returnTo: string | nul
         ? result.redirectTo
         : returnTo || favoriteIntentReturnPath() || result.redirectTo;
       router.replace(destination);
+      // Se a troca de página não andar (ex.: aba aberta numa versão antiga do
+      // site, cujos arquivos já não existem), recarrega direto no destino.
+      window.setTimeout(() => {
+        if (window.location.pathname === "/acesso") window.location.replace(destination);
+      }, 2500);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Não foi possível entrar agora. Tente novamente.";
       // Só senha/e-mail errados contam para o limite (não falhas de conexão).
