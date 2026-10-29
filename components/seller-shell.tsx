@@ -2,6 +2,7 @@
 
 import {
   Calculator,
+  FileText,
   HandCoins,
   Heart,
   LayoutDashboard,
@@ -71,6 +72,7 @@ const managementLinks = [
   { label: "Vendas", href: "/vendedor/vendas", icon: ShoppingBag },
   { label: "Avaliações", href: "/vendedor/avaliacoes", icon: Star },
   { label: "Repasses", href: "/vendedor/repasses", icon: HandCoins },
+  { label: "Dados fiscais", href: "/vendedor/dados-fiscais", icon: FileText },
   { label: "Mensagens", href: "/vendedor/mensagens", icon: Mail },
 ];
 

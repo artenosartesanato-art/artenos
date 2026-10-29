@@ -142,6 +142,8 @@ function errorMessage(error: unknown) {
   ];
   const blocked = moderationError(error);
   if (blocked) return blocked;
+  const fiscal = message.match(/FISCAL:\s*(.+)/);
+  if (fiscal) return fiscal[1];
   return expected.find((text) => message.includes(text))
     ? message
     : "Não foi possível salvar o produto. Confira os dados e tente novamente.";
