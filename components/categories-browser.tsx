@@ -7,7 +7,7 @@ import { Dialog } from "@/components/ui/dialog";
 import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
 import { BUDGETS } from "@/lib/budgets";
-import { CATALOG_URL_EVENT, catalogHref, EMPTY_FILTERS, parseCatalogQuery, sameFilters, type CatalogFilters, type CatalogSort } from "@/lib/catalog-filters";
+import { activeFilterCount, CATALOG_URL_EVENT, catalogHref, EMPTY_FILTERS, parseCatalogQuery, sameFilters, type CatalogFilters, type CatalogSort } from "@/lib/catalog-filters";
 import { findCategory, primeStorefrontCategories, useStorefrontCategories } from "@/lib/storefront-categories";
 import { MarketplaceProductCard, ProductGridSkeleton, type MarketplaceProduct } from "@/components/marketplace-product-card";
 import "@/app/storefront.css";
@@ -34,11 +34,10 @@ function writeFilters(filters: Filters, categorySlug: string | null, push: boole
   else window.history.replaceState(null, "", href);
 }
 
-function FilterPanel({ categories, filters, onChange, onClear, idPrefix }: {
-  categories: Category[];
+/** Filtros da gaveta: só preço e disponibilidade (as categorias ficam no menu do cabeçalho). */
+function FilterPanel({ filters, onChange, idPrefix }: {
   filters: Filters;
   onChange: (patch: Partial<Filters>) => void;
-  onClear: () => void;
   idPrefix: string;
 }) {
   const [minPrice, setMinPrice] = useState(filters.min?.toString() ?? "");
@@ -64,22 +63,6 @@ function FilterPanel({ categories, filters, onChange, onClear, idPrefix }: {
 
   return (
     <div className="category-filter-panel">
-      <fieldset className="category-filter-block">
-        <legend>Categoria</legend>
-        <label className="category-option">
-          <input type="radio" name={`${idPrefix}-categoria`} checked={!filters.category}
-            onChange={() => onChange({ category: null })} />
-          <span>Todas as peças</span>
-        </label>
-        {categories.map((category) => (
-          <label className="category-option" key={category.id}>
-            <input type="radio" name={`${idPrefix}-categoria`} checked={filters.category === category.slug || filters.category === category.id}
-              onChange={() => onChange({ category: category.slug || category.id })} />
-            <span>{category.name}</span>
-            <small aria-label={`${category.product_count} peças`}>{category.product_count}</small>
-          </label>
-        ))}
-      </fieldset>
       <form className="category-filter-block" onSubmit={applyPrices} noValidate>
         <fieldset>
           <legend>Faixa de preço</legend>
@@ -125,9 +108,6 @@ function FilterPanel({ categories, filters, onChange, onClear, idPrefix }: {
           Só sob encomenda
         </label>
       </fieldset>
-      <button type="button" className="category-clear" onClick={() => { setMinPrice(""); setMaxPrice(""); setPriceError(""); onClear(); }}>
-        Limpar filtros
-      </button>
     </div>
   );
 }
@@ -262,6 +242,11 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
   function update(patch: Partial<Filters>) {
     setFilters((current) => ({ ...current, ...patch }));
   }
+  /** "Limpar" da gaveta: só preço e disponibilidade (mantém busca e categoria). */
+  function clearPanelFilters() {
+    setPanelKey((value) => value + 1);
+    update({ min: null, max: null, readyOnly: false, madeToOrderOnly: false });
+  }
   function clearFilters() {
     setSearchInput("");
     setPanelKey((value) => value + 1);
@@ -307,7 +292,7 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
     if (filters.madeToOrderOnly) chips.push({ key: "e", label: "Sob encomenda", clear: { madeToOrderOnly: false } });
     return chips;
   }, [filters, selectedCategory]);
-  const filterCount = activeChips.filter((chip) => chip.key !== "q").length;
+  const filterCount = activeFilterCount(filters);
 
   return (
     <div className="store-page category-page">
@@ -332,12 +317,6 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
         </header>
 
         <div className="category-layout">
-          <aside className="category-filters" aria-labelledby="filtros-titulo">
-            <h2 id="filtros-titulo"><SlidersHorizontal size={17} /> Filtros</h2>
-            <FilterPanel key={`desk-${panelKey}-${filters.min}-${filters.max}`} categories={categories} filters={filters}
-              onChange={update} onClear={clearFilters} idPrefix="desk" />
-          </aside>
-
           <section className="category-results" aria-labelledby="resultados-titulo">
             <div className="category-toolbar">
               <div>
@@ -350,8 +329,8 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
               </div>
               <div className="category-toolbar-actions">
                 <button type="button" className="an-btn an-btn--secondary category-filter-button" onClick={() => setFiltersOpen(true)}
-                  aria-haspopup="dialog">
-                  <SlidersHorizontal size={16} /> Filtros{filterCount ? ` (${filterCount})` : ""}
+                  aria-haspopup="dialog" aria-expanded={filtersOpen} aria-controls="filtros-gaveta">
+                  <SlidersHorizontal size={16} /> Filtros{filterCount ? ` · ${filterCount}` : ""}
                 </button>
                 <label className="category-sort">
                   <span>Ordenar</span>
@@ -448,20 +427,22 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
         </div>
       </main>
 
-      <Dialog open={filtersOpen} onClose={() => setFiltersOpen(false)} variant="drawer-left" labelledBy="filtros-mobile-titulo"
+      <Dialog open={filtersOpen} onClose={() => setFiltersOpen(false)} variant="drawer-left" labelledBy="filtros-titulo"
         className="category-filter-drawer" closeLabel="Fechar filtros">
-        <header className="an-drawer-header">
-          <h2 id="filtros-mobile-titulo">Filtros</h2>
-        </header>
-        <div className="an-drawer-body">
-          <FilterPanel key={`mob-${panelKey}-${filters.min}-${filters.max}`} categories={categories} filters={filters}
-            onChange={update} onClear={clearFilters} idPrefix="mob" />
+        <div id="filtros-gaveta" className="category-filter-sheet">
+          <header className="an-drawer-header">
+            <h2 id="filtros-titulo">Filtros</h2>
+          </header>
+          <div className="an-drawer-body">
+            <FilterPanel key={`panel-${panelKey}-${filters.min}-${filters.max}`} filters={filters} onChange={update} idPrefix="gaveta" />
+          </div>
+          <footer className="an-drawer-footer category-filter-footer">
+            <button type="button" className="an-btn an-btn--ghost" onClick={clearPanelFilters} disabled={filterCount === 0}>Limpar</button>
+            <button type="button" className="an-btn an-btn--lg" onClick={() => setFiltersOpen(false)} disabled={loading} aria-live="polite">
+              {loading ? "Atualizando…" : `Ver ${total} ${total === 1 ? "peça" : "peças"}`}
+            </button>
+          </footer>
         </div>
-        <footer className="an-drawer-footer">
-          <button type="button" className="an-btn an-btn--lg an-btn--block" onClick={() => setFiltersOpen(false)} disabled={loading}>
-            {loading ? "Atualizando…" : `Ver ${total} ${total === 1 ? "peça" : "peças"}`}
-          </button>
-        </footer>
       </Dialog>
     </div>
   );
