@@ -9,14 +9,17 @@ import {
   CircleDollarSign,
   ShieldCheck,
   Sparkles,
+  TrendingUp,
   Truck,
 } from "@/components/icons";
 import { getSupabase } from "@/lib/supabase";
 import { categoryHref } from "@/lib/category-utils";
 import { MarketplaceProductCard, ProductGridSkeleton, type MarketplaceProduct } from "@/components/marketplace-product-card";
 import { budgetHref, loadBudgets, type Budget } from "@/lib/budgets";
+import { loadBestSeller } from "@/lib/best-seller";
 import "@/app/storefront.css";
 import { OptimizedImage } from "@/components/optimized-image";
+import { ProductDetailsButton } from "@/components/product-details-button";
 
 export type Category = { id: string; name: string; slug: string; image_url: string | null };
 export type Collection = { id: string; title: string; description: string | null; image_url: string | null };
@@ -79,6 +82,7 @@ export type HomeData = {
   ready: Product[];
   latest: Product[];
   budgets?: Budget[] | null;
+  bestSeller?: Product | null;
 };
 
 export function StorefrontHome({ initial }: { initial: HomeData | null }) {
@@ -90,6 +94,7 @@ export function StorefrontHome({ initial }: { initial: HomeData | null }) {
   const [ready, setReady] = useState<Product[]>(initial?.ready ?? []);
   const [latest, setLatest] = useState<Product[]>(initial?.latest ?? []);
   const [budgets, setBudgets] = useState<Budget[]>(initial?.budgets ?? []);
+  const [bestSeller, setBestSeller] = useState<Product | null>(initial?.bestSeller ?? null);
   const [collection, setCollection] = useState<CollectionFilter | null>(null);
   const [collectionProducts, setCollectionProducts] = useState<Product[]>([]);
   const [collectionLoading, setCollectionLoading] = useState(false);
@@ -128,6 +133,7 @@ export function StorefrontHome({ initial }: { initial: HomeData | null }) {
           setError("");
           // Atalhos de orçamento são um extra: se falharem, a seção some.
           void loadBudgets(supabase).then((rows) => { if (active) setBudgets(rows ?? []); }).catch(() => undefined);
+          void loadBestSeller(supabase).then((product) => { if (active) setBestSeller(product); });
         })
         .catch(() => {
           if (active) setError("Não conseguimos carregar a vitrine agora. Confira sua conexão e tente novamente.");
@@ -181,8 +187,12 @@ export function StorefrontHome({ initial }: { initial: HomeData | null }) {
 
   const banner = banners[0];
   const firstProducts = featured.length ? featured : latest.length ? latest : ready;
+  // A mais vendida ocupa o quadro da peça (com a etiqueta); o fundo e o círculo usam o banner e outras peças.
+  const heroBestSeller = bestSeller?.image_url ? bestSeller : null;
   const heroImages = [banner?.image_url, ...firstProducts.map((product) => product.image_url)]
-    .filter((url): url is string => Boolean(url)).slice(0, 3);
+    .filter((url): url is string => Boolean(url) && url !== heroBestSeller?.image_url)
+    .filter((url, index, list) => list.indexOf(url) === index).slice(0, heroBestSeller ? 2 : 3);
+  const heroPhotoClass = (index: number) => `store-hero-photo photo-${heroBestSeller && index === 1 ? 3 : index + 1}`;
 
   return (
     <div className="store-page">
@@ -210,17 +220,30 @@ export function StorefrontHome({ initial }: { initial: HomeData | null }) {
                 )}
               </div>
             </div>
-            <div className={`store-hero-art${heroImages.length ? ` has-${heroImages.length}` : ""}`} aria-hidden="true">
+            <div className="store-hero-art">
               {loading ? (
                 <span className="an-skeleton store-hero-art-skeleton" />
-              ) : heroImages.length ? (
-                heroImages.map((url, index) => (
-                  <OptimizedImage key={url + index} src={url} alt="" className={`store-hero-photo photo-${index + 1}`}
-                    priority={index === 0} width={600} height={750}
-                    sizes={index === 0 ? "(max-width: 900px) 100vw, 620px" : "200px"} />
-                ))
+              ) : heroImages.length || heroBestSeller ? (
+                <>
+                  {heroImages.map((url, index) => (
+                    <OptimizedImage key={url + index} src={url} alt="" className={heroPhotoClass(index)}
+                      priority={index === 0} width={600} height={750}
+                      sizes={index === 0 ? "(max-width: 900px) 100vw, 620px" : "200px"} />
+                  ))}
+                  {heroBestSeller && (
+                    <ProductDetailsButton product={heroBestSeller}>
+                      {(openDetails) => (
+                        <button type="button" className="store-hero-bestseller" onClick={openDetails}
+                          aria-label={`Mais vendida: ${heroBestSeller.name}. Ver detalhes da peça`}>
+                          <OptimizedImage src={heroBestSeller.image_url!} alt="" width={360} height={450} sizes="240px" priority />
+                          <span className="store-hero-bestseller-tag"><TrendingUp size={13} /> Mais vendida</span>
+                        </button>
+                      )}
+                    </ProductDetailsButton>
+                  )}
+                </>
               ) : (
-                <div className="store-hero-art-fallback">
+                <div className="store-hero-art-fallback" aria-hidden="true">
                   <Sparkles size={36} />
                   <strong>Feito à mão tem história.</strong>
                 </div>

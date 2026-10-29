@@ -80,7 +80,7 @@ export function MarketplaceProductCard({ product, shopName, cartDisabled = false
               aria-label={`Ver detalhes de ${product.name}`}>
               {product.image_url ? (
                 <OptimizedImage src={product.image_url} alt="" priority={priority} width={480} height={600}
-                  sizes="(max-width: 600px) 50vw, (max-width: 1024px) 33vw, 340px" />
+                  sizes="(max-width: 600px) 50vw, (max-width: 1024px) 50vw, 460px" />
               ) : (
                 <span className="store-no-image">
                   <Sparkles size={26} />
@@ -103,18 +103,18 @@ export function MarketplaceProductCard({ product, shopName, cartDisabled = false
             </button>
           </div>
           <div className="store-product-body">
-            {displayShop && <p className="store-product-shop">{displayShop}</p>}
+            {/* Loja e nota na mesma linha; título e resumo têm altura reservada para preço e botões alinharem. */}
+            <div className="store-product-meta">
+              {displayShop && <p className="store-product-shop">{displayShop}</p>}
+              {Number(product.rating_count) > 0 && (
+                <StarRating className="store-product-rating" avg={product.rating_avg} count={product.rating_count} size={12} />
+              )}
+            </div>
             <h3>
               <button type="button" className="store-product-title" onClick={openDetails}>
                 {product.name}
               </button>
             </h3>
-            {/* Linhas reservadas: preço e botões ficam na mesma altura em todos os cards. */}
-            <div className="store-product-rating-row">
-              {Number(product.rating_count) > 0 && (
-                <StarRating className="store-product-rating" avg={product.rating_avg} count={product.rating_count} size={12} />
-              )}
-            </div>
             <p className="store-product-summary">{summary}</p>
             <p className="store-product-price">{money.format(Number(product.price))}</p>
             <div className="store-product-actions">

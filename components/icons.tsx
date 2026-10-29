@@ -93,6 +93,7 @@ export const ShoppingBag = icon("bag");
 export const SlidersHorizontal = icon("sliders");
 export const Sparkles = icon("stars");
 export const Star = icon("star-fill");
+export const TrendingUp = icon("graph-up-arrow");
 export const StarHalf = icon("star-half");
 export const StarEmpty = icon("star");
 export const Store = icon("shop");

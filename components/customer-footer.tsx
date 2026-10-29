@@ -52,7 +52,6 @@ export function CustomerFooter(_props: { userSignedIn?: boolean; authLoading?: b
           <button type="button" className="store-footer-link-button" onClick={openCookiePreferences}>Preferências de cookies</button>
           {siteConfig.supportEmail && <a href={`mailto:${siteConfig.supportEmail}`}>{siteConfig.supportEmail}</a>}
           {siteConfig.supportPhone && <a href={`tel:+55${siteConfig.supportPhone.replace(/\D/g, "").replace(/^55/, "")}`}>{formatPhone(siteConfig.supportPhone)}</a>}
-          {!userId && <Link href="/acesso">Venda na Artenós</Link>}
         </div>
       </div>
       <div className="store-container store-footer-bottom">

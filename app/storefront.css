@@ -655,7 +655,7 @@
 }
 .store-product-image {
   position: relative;
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 1;
   overflow: hidden;
   background: var(--artenos-perola);
 }
@@ -739,7 +739,8 @@
   padding: 14px;
 }
 .store-product-shop {
-  margin: 0 0 4px;
+  min-width: 0;
+  margin: 0;
   overflow: hidden;
   color: var(--an-text-muted);
   font-size: var(--an-fs-xs);
@@ -748,7 +749,7 @@
   text-overflow: ellipsis;
 }
 .store-product h3 {
-  margin: 0 0 8px;
+  margin: 0 0 4px;
   font-size: var(--an-fs-md);
   font-weight: 650;
   line-height: 1.32;
@@ -773,17 +774,17 @@
 }
 .store-product-summary {
   display: -webkit-box;
-  margin: 4px 0 8px;
+  margin: 0 0 6px;
   overflow: hidden;
   color: var(--an-text-muted);
   font-size: var(--an-fs-xs);
   line-height: 1.45;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow-wrap: anywhere;
 }
 .store-product-price {
-  margin: auto 0 12px;
+  margin: auto 0 10px;
   color: var(--an-text);
   font-size: var(--an-fs-xl);
   font-weight: 750;
@@ -1097,18 +1098,21 @@
 
 /* Rodapé ------------------------------------------------------------------ */
 .store-footer {
-  margin-top: 80px;
+  margin-top: 56px;
   background: var(--artenos-marrom);
   color: var(--artenos-perola);
 }
+/* Marca à esquerda e as três colunas de links juntas à direita: em tela larga
+   o espaço sobra entre os dois grupos, não entre cada coluna. */
 .store-footer-grid {
   display: grid;
-  grid-template-columns: 2.2fr 1fr 1fr 1fr;
-  gap: 36px;
-  padding-block: 56px 40px;
+  grid-template-columns: minmax(240px, 1fr) repeat(3, minmax(150px, 210px));
+  gap: 24px clamp(24px, 3vw, 56px);
+  padding-block: 40px 28px;
 }
 .store-footer p {
   max-width: 300px;
+  margin: 12px 0;
   color: var(--artenos-pessego);
   font-size: var(--an-fs-sm);
   line-height: 1.6;
@@ -1121,15 +1125,16 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
-.store-footer-grid > div:not(:first-child) a,
+.store-footer-grid > div:not(:first-child) :is(a, button),
 .store-footer-grid > div:not(:first-child) > span {
   display: block;
-  margin: 4px 0;
-  padding-block: 6px;
+  margin: 0;
+  padding-block: 5px;
   color: var(--artenos-pessego);
   font-size: var(--an-fs-sm);
+  line-height: 1.45;
 }
-.store-footer-grid > div:not(:first-child) a:hover {
+.store-footer-grid > div:not(:first-child) :is(a, button):hover {
   color: var(--artenos-perola);
 }
 .store-footer-sound {
@@ -1685,7 +1690,7 @@ div.product-details-description :is(ul, ol) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .store-footer-grid {
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .store-footer-grid > div:first-child {
     grid-column: 1 / -1;
@@ -1832,8 +1837,8 @@ div.product-details-description :is(ul, ol) {
   }
   .store-footer-grid {
     grid-template-columns: 1fr 1fr;
-    gap: 26px;
-    padding-block: 40px 28px;
+    gap: 22px;
+    padding-block: 32px 22px;
   }
   .product-freight-options li {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -2208,8 +2213,16 @@ div.product-details-description :is(ul, ol) {
 }
 
 /* Avaliação no card e no detalhe da peça. */
-.store-product-rating {
-  margin-top: 4px;
+.store-product-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 18px;
+  margin-bottom: 4px;
+}
+.store-product-meta .store-product-rating {
+  flex: none;
 }
 .product-details-rating {
   display: inline-flex;
@@ -2480,15 +2493,15 @@ div.product-details-description :is(ul, ol) {
 }
 
 /* Grade e card de produto padronizados (home, listagem, loja e favoritos) ---
-   Cada card tem no mínimo 272px: ~6 colunas em 1920px, 4 em 1280–1440px,
-   3 no tablet e 2 no celular. :not(.x) só sobe a especificidade para vencer
+   Cada card tem no mínimo 340px: 5 colunas em 1920px, 3 em 1280–1440px,
+   2 no tablet e no celular. :not(.x) só sobe a especificidade para vencer
    as regras antigas de colunas fixas espalhadas pelas páginas. */
 :is(.store-products, .category-grid, .favorites-grid):not(.x) {
-  grid-template-columns: repeat(auto-fill, minmax(var(--an-card-min, 272px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--an-card-min, 340px)), 1fr));
   gap: clamp(12px, 1.2vw, 20px);
 }
 @media (max-width: 1024px) {
-  :is(.store-products, .category-grid, .favorites-grid):not(.x) { --an-card-min: 210px; }
+  :is(.store-products, .category-grid, .favorites-grid):not(.x) { --an-card-min: 262px; }
 }
 @media (max-width: 600px) {
   :is(.store-products, .category-grid, .favorites-grid):not(.x) {
@@ -2499,11 +2512,8 @@ div.product-details-description :is(ul, ol) {
 .store-product h3 {
   min-height: calc(2 * 1.32em);
 }
-.store-product-rating-row {
-  min-height: 18px;
-}
 .store-product-summary:not(.x) {
-  min-height: calc(2 * 1.45em);
+  min-height: 1.45em;
 }
 .store-product-actions:not(.x) {
   display: flex;
@@ -2736,5 +2746,93 @@ div.product-details-description :is(ul, ol) {
   }
   .product-details-modal .product-shipping-grid > div {
     padding: 10px;
+  }
+}
+
+/* Cabeçalho: busca e links da navegação centralizados na página. As laterais
+   (logo/ações em cima, CEP/vender embaixo) ficam com o que sobra, em partes iguais. */
+@media (min-width: 761px) {
+  .store-header-main,
+  .store-nav {
+    display: grid;
+    grid-template-columns: minmax(max-content, 1fr) auto minmax(max-content, 1fr);
+  }
+  .store-header-main .store-logo,
+  .store-nav .store-cep-wrap {
+    justify-self: start;
+  }
+  .store-search-desktop {
+    width: clamp(420px, 44vw, 880px);
+    max-width: none;
+  }
+  .store-header-actions,
+  .store-nav-sell {
+    grid-column: 3;
+    justify-self: end;
+    margin-left: 0;
+  }
+  .store-nav-links {
+    grid-column: 2;
+  }
+}
+@media (min-width: 761px) and (max-width: 1024px) {
+  .store-search-desktop {
+    width: clamp(300px, 40vw, 420px);
+  }
+}
+
+/* Mais vendida no herói: ocupa o quadro da peça, com etiqueta e abre o detalhe. */
+.store-hero-bestseller {
+  position: absolute;
+  right: 7%;
+  bottom: 8%;
+  z-index: 2;
+  width: 30%;
+  aspect-ratio: 4 / 5;
+  padding: 0;
+  overflow: visible;
+  border: 6px solid var(--artenos-perola);
+  border-radius: 18px 6px 18px 6px;
+  background: var(--artenos-perola);
+  box-shadow: var(--an-shadow-lg);
+  transform: rotate(3deg);
+  cursor: pointer;
+  transition: transform var(--an-dur-base) var(--an-ease-out);
+}
+.store-hero-bestseller:hover {
+  transform: rotate(1deg) scale(1.03);
+}
+.store-hero-bestseller:focus-visible {
+  outline: 3px solid var(--artenos-pessego);
+  outline-offset: 4px;
+}
+.store-hero-bestseller img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px 2px 12px 2px;
+  object-fit: cover;
+}
+.store-hero-bestseller-tag {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--an-r-pill);
+  background: var(--artenos-musgo);
+  color: #fff;
+  font-size: var(--an-fs-xs);
+  font-weight: 750;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgb(43 33 24 / 0.22);
+  transform: translateX(-50%) rotate(-3deg);
+}
+/* Celular: a nota vira "★ 4,6 (7)" para não cortar o nome da loja. */
+@media (max-width: 600px) {
+  .store-product-meta .an-stars svg:not(:first-of-type) {
+    display: none;
   }
 }

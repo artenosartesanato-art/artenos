@@ -57,30 +57,33 @@ export function ShopsDirectory({ initial }: { initial: Shop[] | null }) {
   return (
     <div className="store-page shops-page">
       <main id="conteudo" tabIndex={-1} className="store-container shops-main">
-        <header className="shops-intro">
-          <p className="store-eyebrow">Quem faz a Artenós</p>
-          <h1>Lojas e artesãs</h1>
-          <p>Conheça as lojas aprovadas, suas técnicas e as histórias por trás de cada peça.</p>
-        </header>
-        <div className="shops-filters">
-        <label className="shops-search">
-          <Search size={18} />
-          <span className="an-visually-hidden">Filtrar lojas</span>
-          <input className="an-input" type="search" value={query} onChange={(event) => setQuery(event.target.value)}
-            placeholder="Filtrar por loja, técnica ou cidade" />
-        </label>
-        {states.length > 1 && (
-          <label className="shops-state">
-            <MapPin size={16} />
-            <span className="an-visually-hidden">Estado</span>
-            <select className="an-input" value={uf} onChange={(event) => setUf(event.target.value)}>
-              <option value="">Todos os estados</option>
-              {states.map(([state, count]) => <option key={state} value={state}>{state} ({count})</option>)}
-            </select>
-          </label>
-        )}
+        {/* Título à esquerda e busca no centro da página (no celular, um embaixo do outro). */}
+        <div className="shops-head">
+          <header className="shops-intro">
+            <p className="store-eyebrow">Quem faz a Artenós</p>
+            <h1>Lojas e artesãs</h1>
+            <p>Conheça as lojas aprovadas, suas técnicas e as histórias por trás de cada peça.</p>
+          </header>
+          <div className="shops-filters">
+            <label className="shops-search">
+              <Search size={18} />
+              <span className="an-visually-hidden">Filtrar lojas</span>
+              <input className="an-input" type="search" value={query} onChange={(event) => setQuery(event.target.value)}
+                placeholder="Filtrar por loja, técnica ou cidade" />
+            </label>
+            {states.length > 1 && (
+              <label className="shops-state">
+                <MapPin size={16} />
+                <span className="an-visually-hidden">Estado</span>
+                <select className="an-input" value={uf} onChange={(event) => setUf(event.target.value)}>
+                  <option value="">Todos os estados</option>
+                  {states.map(([state, count]) => <option key={state} value={state}>{state} ({count})</option>)}
+                </select>
+              </label>
+            )}
+            {!loading && !error && <p className="shops-count" aria-live="polite">{visible.length} {visible.length === 1 ? "loja encontrada" : "lojas encontradas"}</p>}
+          </div>
         </div>
-        {!loading && !error && <p className="shops-count" aria-live="polite">{visible.length} {visible.length === 1 ? "loja" : "lojas"}</p>}
         {loading ? (
           <div className="shops-grid" aria-label="Carregando lojas" role="status">
             {Array.from({ length: 6 }, (_, index) => <span key={index} className="an-skeleton shops-skeleton" />)}
