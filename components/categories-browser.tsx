@@ -26,7 +26,6 @@ type Filters = {
 };
 export const PAGE_SIZE = 12;
 type ShopMatch = { id: string; store_name: string; specialty: string | null; city: string | null; state: string | null };
-const MOBILE_CHIPS = 6;
 const fold = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
 const SORTS: Record<Sort, string> = { newest: "Mais recentes", price_asc: "Menor preço", price_desc: "Maior preço" };
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
@@ -112,6 +111,17 @@ function FilterPanel({ categories, filters, onChange, onClear, idPrefix }: {
       <form className="category-filter-block" onSubmit={applyPrices} noValidate>
         <fieldset>
           <legend>Faixa de preço</legend>
+          <div className="category-price-presets" role="group" aria-label="Faixas prontas">
+            {BUDGETS.map((budget) => {
+              const active = filters.min === budget.min && filters.max === budget.max;
+              return (
+                <button type="button" key={budget.key} aria-pressed={active}
+                  onClick={() => onChange(active ? { min: null, max: null } : { min: budget.min, max: budget.max })}>
+                  {budget.label}
+                </button>
+              );
+            })}
+          </div>
           <div className="category-price-inputs">
             <label className="an-field">
               <span>Mínimo (R$)</span>
@@ -164,7 +174,6 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
   const [attempt, setAttempt] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [panelKey, setPanelKey] = useState(0);
-  const [allChips, setAllChips] = useState(false);
   const [shops, setShops] = useState<ShopMatch[] | null>(null);
   const productRequest = useRef(0);
   const resultsHeading = useRef<HTMLHeadingElement>(null);
@@ -313,37 +322,6 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
           <h1>{filters.query ? `Resultados para “${filters.query}”` : selectedCategory?.name || "Todas as peças"}</h1>
           <p>Peças publicadas por lojas aprovadas na Artenós. Use os filtros para encontrar pronta entrega, faixas de preço e técnicas.</p>
         </header>
-
-        <nav className={`category-chips${allChips ? " is-expanded" : ""}`} aria-label="Categorias" id="chips-categorias">
-          <button type="button" aria-pressed={!filters.categoryId} onClick={() => update({ categoryId: null })}>Todas</button>
-          {categories.map((category, index) => (
-            <button type="button" key={category.id} aria-pressed={filters.categoryId === category.id}
-              className={index >= MOBILE_CHIPS - 1 && filters.categoryId !== category.id ? "is-extra" : undefined}
-              onClick={() => update({ categoryId: category.id })}>
-              {category.name}
-              <small aria-hidden="true">{category.product_count}</small>
-            </button>
-          ))}
-          {categories.length >= MOBILE_CHIPS && (
-            <button type="button" className="category-chips-more" aria-expanded={allChips} aria-controls="chips-categorias"
-              onClick={() => setAllChips((value) => !value)}>
-              {allChips ? "Menos categorias" : `+ ${categories.length - MOBILE_CHIPS + 1} categorias`}
-            </button>
-          )}
-        </nav>
-
-        <div className="category-budgets" role="group" aria-label="Orçamento">
-          <span aria-hidden="true">Orçamento</span>
-          {BUDGETS.map((budget) => {
-            const active = filters.min === budget.min && filters.max === budget.max;
-            return (
-              <button type="button" key={budget.key} aria-pressed={active}
-                onClick={() => { setPanelKey((value) => value + 1); update(active ? { min: null, max: null } : { min: budget.min, max: budget.max }); }}>
-                {budget.label}
-              </button>
-            );
-          })}
-        </div>
 
         <div className="category-layout">
           <aside className="category-filters" aria-labelledby="filtros-titulo">
