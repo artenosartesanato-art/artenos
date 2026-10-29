@@ -18,7 +18,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import { useMarketplace } from "@/components/marketplace-state";
 import { Dialog } from "@/components/ui/dialog";
 import { SoundToggle } from "@/components/sound-toggle";
-import { accessHref, messagesHref } from "@/lib/navigation";
+import { accessHref, isNavActive, messagesHref } from "@/lib/navigation";
 import { endSession } from "@/lib/session";
 import { toast } from "sonner";
 import { useHeaderSearch } from "@/components/header-search";
@@ -169,7 +169,7 @@ export function CustomerHeader() {
     if (!runHandler(query)) router.push(query ? `/categorias?busca=${encodeURIComponent(query)}` : "/categorias");
   }
 
-  const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  const isActive = (href: string) => isNavActive(href, pathname);
   // Quem tem loja responde tudo pelo painel: o link de mensagens vai para lá.
   const navLinks = NAV_LINKS.map((link) => link.href === "/mensagens"
     ? { ...link, href: messagesHref(sellerPanelAvailable) } : link);
