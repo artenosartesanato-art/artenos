@@ -1153,17 +1153,19 @@
 }
 
 /* Diálogo de produto ------------------------------------------------------- */
-.product-details-modal {
+.product-details-modal.an-dialog--wide {
   display: grid;
-  grid-template-columns: minmax(260px, 46%) 1fr;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  align-items: start;
+  width: min(1160px, 100%);
   padding: 0;
 }
 .product-details-image {
-  position: sticky;
-  top: 0;
-  align-self: start;
-  max-height: calc(100dvh - 32px);
+  position: relative;
+  aspect-ratio: 4 / 5;
+  max-height: min(72dvh, 720px);
   overflow: hidden;
+  border-radius: var(--an-r-lg);
   background: var(--artenos-perola);
 }
 .product-details-zoom {
@@ -1179,8 +1181,6 @@
   display: block;
   width: 100%;
   height: 100%;
-  min-height: 420px;
-  max-height: calc(100dvh - 32px);
   object-fit: cover;
   transition: transform var(--an-dur-slow) var(--an-ease-out);
 }
@@ -1192,7 +1192,8 @@
 }
 .product-details-noimage {
   display: grid;
-  min-height: 360px;
+  height: 100%;
+  min-height: 300px;
   place-content: center;
   justify-items: center;
   gap: 10px;
@@ -1257,6 +1258,7 @@
 }
 .product-details-actions {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 8px;
   margin-top: 12px;
 }
@@ -1695,17 +1697,6 @@ div.product-details-description :is(ul, ol) {
     min-height: 260px;
     border-radius: 120px 0 0 0;
   }
-  .product-details-modal {
-    grid-template-columns: 1fr;
-  }
-  .product-details-image {
-    position: relative;
-    max-height: none;
-  }
-  .product-details-image img {
-    min-height: 0;
-    max-height: 46dvh;
-  }
 }
 @media (max-width: 760px) {
   .store-container,
@@ -1844,32 +1835,11 @@ div.product-details-description :is(ul, ol) {
     gap: 26px;
     padding-block: 40px 28px;
   }
-  .product-details-copy {
-    padding: 22px 18px 24px;
-  }
-  .product-details-image img {
-    max-height: 34dvh;
-  }
-  .product-details-actions {
-    position: sticky;
-    bottom: 0;
-    z-index: 2;
-    margin: 12px -18px 0;
-    padding: 12px 18px calc(12px + env(safe-area-inset-bottom));
-    border-top: 1px solid var(--an-line);
-    background: var(--an-surface);
-  }
   .product-freight-options li {
     grid-template-columns: minmax(0, 1fr) auto;
   }
   .product-freight-options li > span:nth-child(2) {
     grid-row: 2;
-  }
-  .product-details-fav {
-    margin-left: auto;
-  }
-  .product-shipping-grid {
-    grid-template-columns: 1fr;
   }
 }
 @media (max-width: 359px) {
@@ -2612,5 +2582,159 @@ div.product-details-description :is(ul, ol) {
 @media (max-width: 400px) {
   .store-product-actions .store-product-message {
     display: none;
+  }
+}
+
+/* Detalhe da peça: duas colunas (foto + compra segura + envio + loja | compra e texto). */
+.pd-col--aside {
+  display: grid;
+  gap: 16px;
+  padding: 24px 0 28px 24px;
+}
+.pd-col--aside .product-purchase-info,
+.pd-col--aside .product-shipping-details {
+  margin-top: 0;
+}
+.pd-col--aside .product-shipping-details {
+  padding: 16px;
+  border: 1px solid var(--an-line);
+  border-radius: var(--an-r-md);
+}
+.pd-col--aside .product-shipping-details h3 {
+  font-size: var(--an-fs-lg);
+}
+.pd-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.pd-thumbs button {
+  display: block;
+  width: 64px;
+  aspect-ratio: 4 / 5;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid transparent;
+  border-radius: var(--an-r-sm);
+  background: var(--artenos-perola);
+  cursor: pointer;
+}
+.pd-thumbs button[aria-pressed="true"] {
+  border-color: var(--artenos-musgo);
+}
+.pd-thumbs img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pd-store {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--an-line);
+  border-radius: var(--an-r-md);
+  background: var(--an-surface-soft);
+}
+.pd-store-avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--artenos-pessego);
+  color: var(--artenos-marrom);
+  font: 600 var(--an-fs-lg) / 1 var(--font-display);
+}
+.pd-store > div {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  min-width: 0;
+  font-size: var(--an-fs-sm);
+}
+.pd-store strong {
+  overflow-wrap: anywhere;
+}
+.pd-store-location {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--an-text-muted);
+}
+.pd-store .product-details-store-link {
+  min-height: 40px;
+  margin-top: 0;
+}
+.pd-buy .product-details-buy-now {
+  width: 100%;
+}
+.product-details-actions .an-icon-btn {
+  width: 52px;
+  height: 52px;
+  border: 1px solid var(--an-line-strong);
+  border-radius: var(--an-r-md);
+}
+
+/* Celular e tablet em pé: uma coluna na ordem de leitura e barra de compra fixa
+   no rodapé. As colunas viram "contents" e o diálogo vira flex, para a barra
+   grudar no fim da área rolável inteira (num item de grid ela ficaria presa à
+   própria linha). */
+@media (max-width: 860px) {
+  .product-details-modal.an-dialog--wide {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .product-details-modal :is(.pd-col, .pd-buy) {
+    display: contents;
+  }
+  .product-details-modal .pd-block,
+  .product-details-modal .pd-buy > * {
+    margin-inline: 18px;
+  }
+  .product-details-modal .pd-gallery { order: 1; margin-inline: 0; }
+  .product-details-modal .pd-head { order: 2; margin-top: 20px; }
+  .product-details-modal .pd-buy > * { order: 3; }
+  .product-details-modal .pd-about { order: 4; }
+  .product-details-modal .pd-info { order: 5; margin-top: 24px; }
+  .product-details-modal .pd-shipping { order: 6; margin-top: 16px; }
+  .product-details-modal .pd-store { order: 7; margin-top: 16px; }
+  .product-details-modal .pd-reviews { order: 8; margin-bottom: 20px; }
+  .product-details-modal .pd-buy > .an-stepper {
+    align-self: flex-start;
+  }
+  .product-details-modal .product-details-image {
+    max-height: 52dvh;
+    margin-inline: auto;
+    border-radius: 0;
+  }
+  .product-details-modal .pd-thumbs {
+    padding-inline: 18px;
+  }
+  .product-details-modal .product-details-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    order: 9;
+    margin: 0;
+    padding: 12px 18px calc(12px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--an-line);
+    background: var(--an-surface);
+    box-shadow: 0 -6px 18px rgb(43 33 24 / 0.08);
+  }
+}
+@media (max-width: 420px) {
+  .product-details-modal .product-details-buy-now {
+    padding-inline: 12px;
+    font-size: var(--an-fs-sm);
+  }
+  .product-details-modal .product-shipping-grid > div {
+    padding: 10px;
   }
 }
