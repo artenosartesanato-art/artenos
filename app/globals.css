@@ -1524,10 +1524,6 @@ img {
 .access-page .access-shell {
   background: var(--an-bg);
 }
-/* No acesso o painel da marca encosta no rodapé, sem a faixa vazia entre eles. */
-.an-site:has(.access-page) .store-footer {
-  margin-top: 0;
-}
 .an-state--page {
   margin-block: clamp(32px, 8vh, 80px);
 }

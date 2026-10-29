@@ -83,7 +83,7 @@ function CategoryEditor({ draft, onClose, onSaved }: { draft: Draft; onClose: ()
             <input type="file" accept="image/jpeg,image/png,image/webp" className="an-visually-hidden"
               onChange={(event) => pick(event.target.files?.[0])} />
           </label>
-          <small>Foto real da técnica (ex.: peças de crochê). JPG, PNG ou WebP até 5 MB; aparece quadrada na vitrine.</small>
+          <small>Foto real da técnica (ex.: peças de crochê). JPG, PNG ou WebP até 5 MB. Na página inicial aparece num bloco largo (cerca de 2,3 × 1), cortada pelo centro; sem foto, a categoria usa um padrão e o ícone da técnica.</small>
           {shownImage && (
             <button type="button" className="adm-link-btn" onClick={() => { setFile(null); setPreview(null); setForm({ ...form, imageUrl: "" }); }}>
               Remover foto
@@ -151,7 +151,7 @@ export default function CategoriesAdminPage() {
           id: null, name: "", slug: "", imageUrl: "", sortOrder: String(nextOrder), active: true, slugTouched: false,
         })}><Plus size={15} /> Nova categoria</button>} />
       {withoutPhoto > 0 && (
-        <p className="adm-note">{withoutPhoto} {withoutPhoto === 1 ? "categoria ativa está" : "categorias ativas estão"} sem foto e {withoutPhoto === 1 ? "aparece" : "aparecem"} com o ícone na vitrine.</p>
+        <p className="adm-note">{withoutPhoto} {withoutPhoto === 1 ? "categoria ativa está" : "categorias ativas estão"} sem foto e {withoutPhoto === 1 ? "aparece" : "aparecem"} com padrão e ícone na vitrine.</p>
       )}
       <LoadState loading={loading} error={error} onRetry={() => void load()}>
         {rows.length ? (

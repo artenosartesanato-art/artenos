@@ -94,6 +94,11 @@ export const SlidersHorizontal = icon("sliders");
 export const Sparkles = icon("stars");
 export const Star = icon("star-fill");
 export const TrendingUp = icon("graph-up-arrow");
+export const ArrowLeftRight = icon("arrow-left-right");
+export const BagCheck = icon("bag-check");
+export const HelpCircle = icon("question-circle");
+export const Phone = icon("telephone");
+export const Whatsapp = icon("whatsapp");
 export const StarHalf = icon("star-half");
 export const StarEmpty = icon("star");
 export const Store = icon("shop");
@@ -105,3 +110,13 @@ export const UserRound = icon("person");
 export const UserRoundCheck = icon("person-check");
 export const X = icon("x-lg");
 export const XCircle = icon("x-circle");
+
+/** Ícone do sprite escolhido por nome em tempo de execução (ex.: o ícone de cada categoria). */
+export function SpriteIcon({ name, size = 24, className = "", ...props }: IconProps & { name: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 16 16" fill="currentColor"
+      aria-hidden="true" focusable="false" className={`bi bi-${name} ${className}`.trim()} {...props}>
+      <use href={`/icons/bootstrap-icons.svg#${name}`} />
+    </svg>
+  );
+}
