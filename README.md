@@ -3,6 +3,8 @@
 
 # Conectar a Artenós ao Supabase
 
+> **Atualização de outubro/2026:** ordem das migrações em [`docs/MIGRACOES-2026-10.md`](docs/MIGRACOES-2026-10.md).
+
 > **E-mails (esqueci minha senha, comprovantes):** configuração pelo Gmail em [`docs/EMAIL-GMAIL.md`](docs/EMAIL-GMAIL.md).
 
 O projeto entregue não está conectado a nenhum banco. A integração fica isolada em `lib/supabase.ts`.
