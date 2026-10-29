@@ -6,6 +6,7 @@ import { AlertTriangle, Eye, EyeOff, Loader2, LockKeyhole, ShieldCheck } from "@
 import { getSupabase } from "@/lib/supabase";
 import { validateNewPassword, type FieldErrors } from "@/lib/registration-validation";
 import "../storefront.css";
+import { recordAccess } from "@/lib/access-log";
 
 type Stage = "checking" | "ready" | "invalid" | "done";
 
@@ -53,6 +54,7 @@ export default function ResetPasswordPage() {
         setErrors({ _form: UPDATE_ERRORS[error.code ?? ""] ?? "Não foi possível salvar a nova senha. Tente novamente." });
         return;
       }
+      void recordAccess("password_reset");
       setStage("done");
     } catch {
       setErrors({ _form: "Não foi possível conectar agora. Confira sua internet e tente novamente." });

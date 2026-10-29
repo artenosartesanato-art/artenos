@@ -44,6 +44,7 @@ export const CircleSlash2 = icon("slash-circle");
 export const ClipboardList = icon("clipboard-check");
 export const Clock3 = icon("clock");
 export const CreditCard = icon("credit-card");
+export const Download = icon("download");
 export const Edit3 = icon("pencil-square");
 export const ExternalLink = icon("box-arrow-up-right");
 export const Eye = icon("eye");

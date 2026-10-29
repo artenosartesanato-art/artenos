@@ -1598,3 +1598,44 @@ img {
   background: var(--an-surface-soft);
   font-size: var(--an-fs-sm);
 }
+
+/* Aviso de cookies. */
+.cookie-banner {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  left: 16px;
+  z-index: 60;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px 18px;
+  border: 1px solid var(--an-line);
+  border-radius: var(--an-r-lg, 16px);
+  background: var(--an-surface);
+  box-shadow: var(--an-shadow-lg);
+  font-size: var(--an-fs-sm);
+}
+.cookie-banner p {
+  flex: 1 1 420px;
+  margin: 0;
+  line-height: 1.5;
+}
+.cookie-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.store-footer-link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}

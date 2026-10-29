@@ -225,6 +225,11 @@ async function validateCep(value: string) {
   }
 }
 
+/** Token do Turnstile (anti-robô), quando o formulário tem o widget. */
+export function captchaFrom(values: Record<string, unknown>) {
+  return text(values["cf-turnstile-response"]) || undefined;
+}
+
 export async function registerWithSupabase(values: Record<string, unknown>) {
   const type = text(values.type) as "client" | "artisan";
   const document = digits(values.document);
@@ -283,7 +288,7 @@ export async function registerWithSupabase(values: Record<string, unknown>) {
     const { data, error } = await getSupabase().auth.signUp({
       email,
       password,
-      options: { data: metadata },
+      options: { data: metadata, captchaToken: captchaFrom(values) },
     });
     if (error) throw new Error(friendlyAuthError(error, "signup"));
     if (
@@ -317,6 +322,7 @@ export async function loginWithSupabase(values: Record<string, unknown>) {
     const result = await getSupabase().auth.signInWithPassword({
       email: text(values.email).toLowerCase(),
       password: text(values.password),
+      options: { captchaToken: captchaFrom(values) },
     });
     if (result.error) throw new Error(friendlyAuthError(result.error, "login"));
     data = result.data;

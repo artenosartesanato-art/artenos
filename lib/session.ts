@@ -163,6 +163,8 @@ export function clearExpectedSignOut() {
 export async function endSession(scope: "local" | "global" | "others" = "local") {
   const { getSupabase } = await import("@/lib/supabase");
   if (scope !== "others") {
+    // Registro de saída (Marco Civil): enviado antes de o token deixar de valer.
+    await import("@/lib/access-log").then(({ recordAccess }) => recordAccess("logout")).catch(() => null);
     try { window.sessionStorage.setItem(SIGNING_OUT_KEY, "1"); } catch { /* sem armazenamento */ }
   }
   const { error } = await getSupabase().auth.signOut({ scope });
