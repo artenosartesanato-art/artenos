@@ -16,29 +16,7 @@
   line-height: 1.6;
 }
 .category-layout {
-  display: grid;
-  grid-template-columns: 248px minmax(0, 1fr);
-  gap: 28px;
-  align-items: start;
   margin-top: 24px;
-}
-.category-filters {
-  position: sticky;
-  top: 150px;
-  padding: 20px;
-  border-radius: var(--an-r-lg);
-  background: var(--an-surface);
-  box-shadow: var(--an-shadow-sm);
-}
-.category-filters h2 {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  margin: 0 0 6px;
-  font-size: var(--an-fs-xs);
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
 }
 .category-filter-block {
   min-width: 0;
@@ -59,36 +37,11 @@
   font-size: var(--an-fs-sm);
   font-weight: 750;
 }
-.category-option {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 40px;
-  padding: 0 8px;
-  border-radius: var(--an-r-sm);
-  font-size: var(--an-fs-sm);
-  cursor: pointer;
-}
-.category-option:hover {
-  background: var(--artenos-perola);
-}
-.category-option:has(input:checked) {
-  background: var(--an-sucesso-fundo);
-  font-weight: 700;
-}
-.category-option input,
 .category-check input {
   width: 18px;
   height: 18px;
   margin: 0;
   accent-color: var(--artenos-musgo);
-}
-.category-option span {
-  flex: 1;
-}
-.category-option small {
-  color: var(--an-text-muted);
-  font-size: var(--an-fs-xs);
 }
 .category-price-inputs {
   display: grid;
@@ -112,17 +65,6 @@
   min-height: 40px;
   font-size: var(--an-fs-sm);
   cursor: pointer;
-}
-.category-clear {
-  min-height: 44px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--an-text);
-  font-size: var(--an-fs-sm);
-  font-weight: 650;
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 .category-results {
   min-width: 0;
@@ -148,7 +90,8 @@
   gap: 10px;
 }
 .category-filter-button {
-  display: none;
+  display: inline-flex;
+  min-height: 44px;
 }
 .category-sort {
   display: flex;
@@ -213,7 +156,24 @@
   font: 500 var(--an-fs-2xl) / 1.15 var(--font-display);
 }
 .category-filter-drawer {
-  width: min(380px, 92vw);
+  width: min(360px, 100vw);
+}
+.category-filter-sheet {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100%;
+}
+.category-filter-sheet .an-drawer-body {
+  overflow-y: auto;
+}
+.category-filter-footer {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+}
+@media (max-width: 600px) {
+  .category-filter-drawer {
+    width: 100vw;
+  }
 }
 .category-filter-drawer .category-filter-block:first-child {
   padding-top: 0;
@@ -222,17 +182,6 @@
 @media (max-width: 1180px) {
   .category-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-@media (max-width: 900px) {
-  .category-layout {
-    display: block;
-  }
-  .category-filters {
-    display: none;
-  }
-  .category-filter-button {
-    display: inline-flex;
   }
 }
 @media (max-width: 760px) {
@@ -327,4 +276,29 @@
 .category-shop-matches small {
   color: var(--an-text-muted);
   font-size: var(--an-fs-xs);
+}
+
+/* Caminho: Início › Categorias › Crochê e Tricô. */
+.category-breadcrumb ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin: 0 0 14px;
+  padding: 0;
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-xs);
+  list-style: none;
+}
+.category-breadcrumb li + li::before {
+  content: "›";
+  margin-right: 8px;
+}
+.category-breadcrumb a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.category-breadcrumb [aria-current="page"] {
+  color: var(--an-text);
+  font-weight: 650;
 }

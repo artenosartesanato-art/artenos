@@ -10,6 +10,7 @@ import { AVAILABILITY_LABEL, availabilityFor, type Availability } from "@/lib/av
 import { plainSummary } from "@/lib/rich-text";
 import { StarRating } from "@/components/stars";
 import { useMyCustomOrderLabel } from "@/components/my-custom-orders";
+import { useBuyNow } from "@/components/use-buy-now";
 
 export type MarketplaceProduct = {
   id: string;
@@ -65,6 +66,10 @@ export function MarketplaceProductCard({ product, shopName, cartDisabled = false
   const myOrderLabel = useMyCustomOrderLabel(product.id, userId);
   // Só se pergunta sobre peças de outras lojas.
   const ownProduct = Boolean(userId && product.shop_id && product.shop_id === userId);
+  const { buyNow, pendingId } = useBuyNow();
+  const buying = pendingId === product.id;
+  const kind = availabilityFor(product);
+  const buyLabel = cartDisabled ? "Indisponível" : kind === "sold_out" ? "Esgotado" : kind === "made_to_order" ? "Encomendar" : "Comprar";
 
   return (
     <ProductDetailsButton product={fullProduct} cartDisabled={cartDisabled}>
@@ -75,7 +80,7 @@ export function MarketplaceProductCard({ product, shopName, cartDisabled = false
               aria-label={`Ver detalhes de ${product.name}`}>
               {product.image_url ? (
                 <OptimizedImage src={product.image_url} alt="" priority={priority} width={480} height={600}
-                  sizes="(max-width: 640px) 50vw, (max-width: 1100px) 33vw, 300px" />
+                  sizes="(max-width: 600px) 50vw, (max-width: 1024px) 33vw, 340px" />
               ) : (
                 <span className="store-no-image">
                   <Sparkles size={26} />
@@ -104,17 +109,25 @@ export function MarketplaceProductCard({ product, shopName, cartDisabled = false
                 {product.name}
               </button>
             </h3>
-            {Number(product.rating_count) > 0 && (
-              <StarRating className="store-product-rating" avg={product.rating_avg} count={product.rating_count} size={12} />
-            )}
-            {summary && <p className="store-product-summary">{summary}</p>}
+            {/* Linhas reservadas: preço e botões ficam na mesma altura em todos os cards. */}
+            <div className="store-product-rating-row">
+              {Number(product.rating_count) > 0 && (
+                <StarRating className="store-product-rating" avg={product.rating_avg} count={product.rating_count} size={12} />
+              )}
+            </div>
+            <p className="store-product-summary">{summary}</p>
             <p className="store-product-price">{money.format(Number(product.price))}</p>
             <div className="store-product-actions">
-              <button type="button" className="store-product-add" disabled={unavailable || adding}
+              <button type="button" className="store-product-buy" disabled={unavailable || buying || ownProduct}
+                aria-busy={buying} onClick={() => void buyNow(product.id, 1)}
+                aria-label={unavailable ? `${product.name}: ${buyLabel.toLowerCase()}` : `${buyLabel} ${product.name}`}>
+                {buying && <LoaderCircle size={16} className="spin" />}
+                <span>{buying ? "Abrindo…" : buyLabel}</span>
+              </button>
+              <button type="button" className="store-product-cart" disabled={unavailable || adding || ownProduct}
                 aria-busy={adding} onClick={() => void addToCart(fullProduct)}
-                aria-label={unavailable ? `${product.name} indisponível` : `Adicionar ${product.name} ao carrinho`}>
-                {adding ? <LoaderCircle size={17} className="spin" /> : <ShoppingBag size={17} />}
-                <span>{unavailable ? "Indisponível" : adding ? "Adicionando…" : "Adicionar"}</span>
+                aria-label={`Adicionar ${product.name} ao carrinho`} title="Adicionar ao carrinho">
+                {adding ? <LoaderCircle size={17} className="spin" /> : <ShoppingBag size={18} />}
               </button>
               {!ownProduct && <ProductInquiryLink productId={product.id} productName={product.name} compact />}
             </div>

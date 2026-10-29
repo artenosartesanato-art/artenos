@@ -24,6 +24,13 @@
 
 /* 2. Tokens ---------------------------------------------------------------- */
 :root {
+  /* Largura única das páginas (cabeçalho, conteúdo, rodapé e painéis):
+     quase a tela toda, até 1840px, com margem lateral de 16px a 40px. */
+  --an-page-max: 1840px;
+  --an-gutter: clamp(16px, 2.5vw, 40px);
+  --an-page-width: min(var(--an-page-max), calc(100% - 2 * var(--an-gutter)));
+  /* Blocos de leitura (textos longos) e formulários continuam estreitos. */
+  --an-reading-width: 760px;
   /* Paleta oficial da marca (não alterar os valores). */
   --artenos-marrom: #4b3026;
   --artenos-argila: #b26b4f;
@@ -1400,7 +1407,7 @@ img {
   justify-content: center;
 }
 .legal {
-  max-width: 780px;
+  max-width: var(--an-reading-width);
   margin: 0 auto;
   padding: 64px 24px 100px;
   line-height: 1.7;
@@ -1504,6 +1511,10 @@ img {
 }
 .access-page .access-shell {
   background: var(--an-bg);
+}
+/* No acesso o painel da marca encosta no rodapé, sem a faixa vazia entre eles. */
+.an-site:has(.access-page) .store-footer {
+  margin-top: 0;
 }
 .an-state--page {
   margin-block: clamp(32px, 8vh, 80px);

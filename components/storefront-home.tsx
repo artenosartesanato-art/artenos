@@ -12,6 +12,7 @@ import {
   Truck,
 } from "@/components/icons";
 import { getSupabase } from "@/lib/supabase";
+import { categoryHref } from "@/lib/category-utils";
 import { MarketplaceProductCard, ProductGridSkeleton, type MarketplaceProduct } from "@/components/marketplace-product-card";
 import { budgetHref, loadBudgets, type Budget } from "@/lib/budgets";
 import "@/app/storefront.css";
@@ -283,7 +284,7 @@ export function StorefrontHome({ initial }: { initial: HomeData | null }) {
             <>
             <div id="lista-categorias" className={`store-categories${showAllCategories ? " is-expanded" : ""}`}>
               {categories.map((category) => (
-                <Link key={category.id} prefetch={false} href={`/categorias?categoria=${encodeURIComponent(category.id)}`}>
+                <Link key={category.id} prefetch={false} href={categoryHref(category)}>
                   {category.image_url ? (
                     <OptimizedImage src={category.image_url} alt="" width={240} height={240}
                       sizes="(max-width: 640px) 33vw, 200px" />

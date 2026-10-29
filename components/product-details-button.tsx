@@ -19,9 +19,6 @@ import {
   Truck,
 } from "@/components/icons";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { getCartErrorMessage } from "@/lib/cart";
 import { requestShippingQuotes } from "@/lib/shipping-quote";
 import type { ShippingOption } from "@/lib/cart-groups";
 import { useEffect, useId, useState, type ReactNode } from "react";
@@ -32,6 +29,7 @@ import { useStorefrontActions } from "@/components/storefront-actions";
 import { ProductInquiryLink } from "@/components/product-inquiry-link";
 import { OptimizedImage } from "@/components/optimized-image";
 import { RichText } from "@/components/rich-text";
+import { useBuyNow } from "@/components/use-buy-now";
 import { StarRating } from "@/components/stars";
 import { ReviewsList } from "@/components/reviews-list";
 import { AVAILABILITY_LABEL, availabilityFor, maxQuantityFor, productionLabel, type Availability } from "@/lib/availability";
@@ -50,7 +48,11 @@ type ProductDetails = {
   category_name?: string | null;
   shop_name?: string | null;
   shop_id?: string | null;
+  /** Fotos extras, quando existirem (a primeira continua sendo image_url). */
+  images?: string[] | null;
 };
+
+type StoreSummary = { store_name: string; city: string | null; state: string | null };
 
 type ShippingDetails = {
   origin_cep: string | null;
@@ -83,9 +85,9 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
   cartDisabled?: boolean;
 }) {
   const titleId = useId();
-  const router = useRouter();
-  const { authReady, cep, favoriteIds, pendingFavoriteIds, userId } = useMarketplace();
-  const { addToCart, toggleFavorite, pendingCartIds, requireAuth } = useStorefrontActions();
+  const { cep, favoriteIds, pendingFavoriteIds, userId } = useMarketplace();
+  const { addToCart, toggleFavorite, pendingCartIds } = useStorefrontActions();
+  const { buyNow: startBuyNowFlow, prepare: prepareBuyNow } = useBuyNow();
   const [buying, setBuying] = useState(false);
   const [freight, setFreight] = useState<{ loading: boolean; error: string; options: ShippingOption[] | null }>({ loading: false, error: "", options: null });
   const [open, setOpen] = useState(false);
@@ -97,6 +99,27 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
   const [shipping, setShipping] = useState<ShippingDetails | null>(null);
   const [shippingLoading, setShippingLoading] = useState(false);
   const [shippingError, setShippingError] = useState(false);
+  const [imageIndex, setImageIndex] = useState(0);
+  const [store, setStore] = useState<StoreSummary | null>(null);
+  const [storeRating, setStoreRating] = useState<{ avg: number | null; count: number }>({ avg: null, count: 0 });
+
+  // Cartão da loja: cidade e nota média (só quando o detalhe é aberto).
+  useEffect(() => {
+    if (!open || !product.shop_id) return;
+    let active = true;
+    const supabase = getSupabase();
+    void Promise.all([
+      supabase.rpc("get_public_artisan_store", { p_artisan_id: product.shop_id }),
+      supabase.rpc("get_store_rating", { p_artisan_id: product.shop_id }),
+    ]).then(([storeResponse, ratingResponse]) => {
+      if (!active) return;
+      const row = (Array.isArray(storeResponse.data) ? storeResponse.data[0] : storeResponse.data) as StoreSummary | undefined;
+      if (!storeResponse.error && row) setStore(row);
+      const rating = (Array.isArray(ratingResponse.data) ? ratingResponse.data[0] : ratingResponse.data) as { rating_avg: number | null; rating_count: number } | undefined;
+      if (!ratingResponse.error && rating) setStoreRating({ avg: rating.rating_avg, count: Number(rating.rating_count ?? 0) });
+    }).catch(() => null);
+    return () => { active = false; };
+  }, [open, product.shop_id]);
 
   useEffect(() => {
     if (!open) return;
@@ -128,6 +151,7 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
     setQuantity(1);
     setFreight({ loading: false, error: "", options: null });
     setZoomed(false);
+    setImageIndex(0);
     setEverOpened(true);
     setOpen(true);
   }
@@ -137,36 +161,15 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
     if (ok) setOpen(false);
   }
 
-  /** Guarda a peça para a compra direta (sem mexer no carrinho). */
-  async function startBuyNow() {
-    if (!authReady) {
-      toast.info("Aguarde um instante enquanto verificamos sua conta.");
-      return false;
-    }
-    if (!userId) {
-      requireAuth("cart");
-      return false;
-    }
-    const { error } = await getSupabase().rpc("start_buy_now", { p_product_id: product.id, p_quantity: quantity });
-    if (error) {
-      toast.error(getCartErrorMessage(error));
-      return false;
-    }
-    return true;
-  }
-
   async function buyNow() {
     setBuying(true);
-    const ok = await startBuyNow();
+    await startBuyNowFlow(product.id, quantity, () => setOpen(false));
     setBuying(false);
-    if (!ok) return;
-    setOpen(false);
-    router.push("/comprar-agora");
   }
 
   async function estimateFreight() {
     setFreight({ loading: true, error: "", options: null });
-    if (!(await startBuyNow())) return setFreight({ loading: false, error: "", options: null });
+    if (!(await prepareBuyNow(product.id, quantity))) return setFreight({ loading: false, error: "", options: null });
     try {
       const groups = await requestShippingQuotes(cep, "buy_now");
       const group = groups[0];
@@ -177,6 +180,12 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
     }
   }
 
+  // Galeria: hoje cada peça tem uma foto; com mais de uma (images), aparecem as miniaturas.
+  const gallery = Array.from(new Set([product.image_url, ...(product.images ?? [])].filter((url): url is string => Boolean(url))));
+  const currentImage = gallery[Math.min(imageIndex, gallery.length - 1)] ?? null;
+  const storeLocation = store ? [store.city, store.state].filter(Boolean).join(" · ") : "";
+  const storeInitials = (product.shop_name || store?.store_name || "A").split(/\s+/).filter((word) => word.length > 2).slice(0, 2)
+    .map((word) => word[0]?.toUpperCase()).join("") || "A";
   const availability = availabilityFor(product);
   const maxQuantity = Math.max(1, maxQuantityFor(product));
   const unavailable = availability === "sold_out" || cartDisabled;
@@ -202,91 +211,36 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
     )}
     {everOpened && <Dialog open={open} onClose={() => setOpen(false)} labelledBy={titleId} className="an-dialog--wide product-details-modal"
       closeLabel="Fechar detalhes da peça">
-      <div className={`product-details-image${zoomed ? " is-zoomed" : ""}`}>
-        {product.image_url ? (
-          <button type="button" className="product-details-zoom" onClick={() => setZoomed((value) => !value)}
-            aria-pressed={zoomed} aria-label={zoomed ? "Reduzir imagem" : "Ampliar imagem"}>
-            <OptimizedImage src={product.image_url} alt={product.name} width={720} height={900} quality={80}
-              sizes="(max-width: 760px) 100vw, 460px" priority />
-          </button>
-        ) : (
-          <span className="product-details-noimage"><PackageOpen size={42} /><span>Foto em breve</span></span>
-        )}
-      </div>
-      <div className="product-details-copy">
-        <p className="product-details-shop">
-          <Store size={15} />
-          {product.shop_id && product.shop_name ? (
-            <Link href={`/loja?id=${encodeURIComponent(product.shop_id)}`} onClick={() => setOpen(false)}>
-              {product.shop_name}
-            </Link>
-          ) : (
-            <span>{product.shop_name || "Loja Artenós"}</span>
-          )}
-          {product.category_name && <span className="product-details-category">· {product.category_name}</span>}
-        </p>
-        <h2 id={titleId}>{product.name}</h2>
-        <p className="product-details-price">{money.format(Number(product.price))}</p>
-        {Number(product.rating_count) > 0 && (
-          <a className="product-details-rating" href={`#${titleId}-avaliacoes`}>
-            <StarRating avg={product.rating_avg} count={product.rating_count} />
-          </a>
-        )}
-
-        <ul className="product-details-facts">
-          <li>
-            <span className={`an-badge${unavailable ? " an-badge--muted" : availability === "ready" ? "" : " an-badge--warm"}`}>
-              {cartDisabled ? "Loja em pausa" : AVAILABILITY_LABEL[availability]}
-            </span>
-            <span>{stockLabel}</span>
-          </li>
-          {availability !== "sold_out" && (production || shippingLoading) && (
-            <li>
-              <Clock3 size={16} />
-              <span>{shippingLoading && availability !== "ready" ? "Consultando prazo de produção…" : production}</span>
-            </li>
-          )}
-        </ul>
-
-        <div className="product-details-buy">
-          <div className="an-stepper" role="group" aria-label="Quantidade">
-            <button type="button" onClick={() => { setQuantity((value) => Math.max(1, value - 1)); setFreight({ loading: false, error: "", options: null }); }}
-              disabled={quantity <= 1 || unavailable} aria-label="Diminuir quantidade"><Minus size={14} /></button>
-            <output aria-live="polite" aria-label={`Quantidade: ${quantity}`}>{quantity}</output>
-            <button type="button" onClick={() => { setQuantity((value) => Math.min(maxQuantity, value + 1)); setFreight({ loading: false, error: "", options: null }); }}
-              disabled={quantity >= maxQuantity || unavailable} aria-label="Aumentar quantidade"><Plus size={14} /></button>
+      {/* Duas colunas no desktop; no celular as colunas somem e os blocos seguem a ordem de leitura (order no CSS). */}
+      <div className="pd-col pd-col--aside">
+        <div className="pd-block pd-gallery">
+          <div className={`product-details-image${zoomed ? " is-zoomed" : ""}`}>
+            {currentImage ? (
+              <button type="button" className="product-details-zoom" onClick={() => setZoomed((value) => !value)}
+                aria-pressed={zoomed} aria-label={zoomed ? "Reduzir imagem" : "Ampliar imagem"}>
+                <OptimizedImage src={currentImage} alt={product.name} width={720} height={900} quality={80}
+                  sizes="(max-width: 760px) 100vw, 520px" priority />
+              </button>
+            ) : (
+              <span className="product-details-noimage"><PackageOpen size={42} /><span>Foto em breve</span></span>
+            )}
           </div>
-          <button type="button" className={`an-icon-btn product-details-fav${saved ? " is-saved" : ""}`}
-            onClick={() => void toggleFavorite(product)} disabled={pendingFavoriteIds.has(product.id)}
-            aria-pressed={saved} aria-label={saved ? "Remover dos favoritos" : "Salvar nos favoritos"}>
-            <Heart size={19} fill={saved ? "currentColor" : "none"} />
-          </button>
+          {gallery.length > 1 && (
+            <ul className="pd-thumbs" aria-label="Fotos da peça">
+              {gallery.map((url, index) => (
+                <li key={url}>
+                  <button type="button" onClick={() => { setImageIndex(index); setZoomed(false); }}
+                    aria-pressed={index === imageIndex} aria-label={`Foto ${index + 1} de ${gallery.length}`}>
+                    <OptimizedImage src={url} alt="" width={96} height={120} sizes="72px" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
-        {/* Uma única ação de compra por tela: comprar agora (principal) e carrinho (secundária). */}
-        <div className="product-details-actions">
-          <button type="button" className="an-btn an-btn--lg an-btn--block product-details-buy-now" onClick={() => void buyNow()}
-            disabled={unavailable || buying || ownProduct} aria-busy={buying}>
-            {buying ? <LoaderCircle size={18} className="spin" /> : <ArrowRight size={18} />}
-            {unavailable ? (availability === "sold_out" ? "Esgotado" : "Indisponível")
-              : buying ? "Abrindo…"
-                : `${availability === "made_to_order" ? "Encomendar" : "Comprar agora"} · ${money.format(Number(product.price) * quantity)}`}
-          </button>
-          <button type="button" className="an-btn an-btn--secondary an-btn--block product-details-add" onClick={() => void add()}
-            disabled={unavailable || adding || ownProduct} aria-busy={adding}>
-            {adding ? <LoaderCircle size={18} className="spin" /> : <ShoppingBag size={18} />}
-            {adding ? "Adicionando…" : "Adicionar ao carrinho"}
-          </button>
-        </div>
-        {!ownProduct && (
-          <ProductInquiryLink productId={product.id} productName={product.name} />
-        )}
-        {ownProduct && <p className="product-details-limit" role="status">Esta peça é da sua loja.</p>}
-        {availability === "ready" && quantity >= maxQuantity && (
-          <p className="product-details-limit" role="status">Você selecionou todas as unidades disponíveis.</p>
-        )}
 
         {!unavailable && (
-          <section className="product-purchase-info" aria-label="Frete, pagamento e segurança">
+          <section className="pd-block pd-info product-purchase-info" aria-label="Frete, pagamento e segurança">
             <div className="product-purchase-row">
               <Truck size={16} />
               <div>
@@ -326,23 +280,7 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
           </section>
         )}
 
-        <section className="product-details-section" aria-labelledby={`${titleId}-sobre`}>
-          <h3 id={`${titleId}-sobre`}>Sobre a peça</h3>
-          {product.description?.trim() ? (
-            <RichText className="product-details-description" text={product.description} />
-          ) : (
-            <p className="product-details-description">
-              A loja ainda não publicou a descrição desta peça. Você pode perguntar pelos detalhes pelo botão de mensagem.
-            </p>
-          )}
-        </section>
-
-        <section className="product-details-section" id={`${titleId}-avaliacoes`} aria-labelledby={`${titleId}-avaliacoes-titulo`}>
-          <h3 id={`${titleId}-avaliacoes-titulo`}>Avaliações</h3>
-          <ReviewsList kind="product" id={product.id} storeName={product.shop_name} />
-        </section>
-
-        <section className="product-shipping-details" aria-labelledby={`${titleId}-envio`}>
+        <section className="pd-block pd-shipping product-shipping-details" aria-labelledby={`${titleId}-envio`}>
           <h3 id={`${titleId}-envio`}>Medidas e envio</h3>
           {shippingLoading ? (
             <div className="product-shipping-status" role="status">
@@ -350,7 +288,7 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
             </div>
           ) : shippingError ? (
             <div className="product-shipping-notice is-error" role="alert">
-              Não foi possível consultar os dados de envio agora. O frete continua sendo calculado no carrinho.
+              Não foi possível consultar os dados de envio agora. O frete é calculado antes do pagamento.
             </div>
           ) : shipping ? (
             <>
@@ -369,14 +307,110 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
           ) : (
             <div className="product-shipping-notice">As informações de envio desta peça ainda não foram cadastradas.</div>
           )}
-          <p className="product-details-freight"><Truck size={16} /> O frete final é confirmado para o seu CEP antes do pagamento.</p>
         </section>
 
         {product.shop_id && (
-          <Link className="product-details-store-link" href={`/loja?id=${encodeURIComponent(product.shop_id)}`} onClick={() => setOpen(false)}>
-            Conhecer a loja e outras peças <ArrowRight size={16} />
-          </Link>
+          <section className="pd-block pd-store" aria-label="Sobre a loja">
+            <span className="pd-store-avatar" aria-hidden="true">{storeInitials}</span>
+            <div>
+              <strong>{product.shop_name || store?.store_name || "Loja Artenós"}</strong>
+              {storeLocation && <span className="pd-store-location"><MapPin size={13} /> {storeLocation}</span>}
+              {storeRating.count > 0 && <StarRating avg={storeRating.avg} count={storeRating.count} size={12} />}
+              <Link className="product-details-store-link" href={`/loja?id=${encodeURIComponent(product.shop_id)}`} onClick={() => setOpen(false)}>
+                Conhecer a loja e outras peças <ArrowRight size={16} />
+              </Link>
+            </div>
+          </section>
         )}
+      </div>
+
+      <div className="pd-col pd-col--main product-details-copy">
+        <div className="pd-block pd-head">
+          <p className="product-details-shop">
+            <Store size={15} />
+            {product.shop_id && product.shop_name ? (
+              <Link href={`/loja?id=${encodeURIComponent(product.shop_id)}`} onClick={() => setOpen(false)}>
+                {product.shop_name}
+              </Link>
+            ) : (
+              <span>{product.shop_name || "Loja Artenós"}</span>
+            )}
+            {product.category_name && <span className="product-details-category">· {product.category_name}</span>}
+          </p>
+          <h2 id={titleId}>{product.name}</h2>
+          <p className="product-details-price">{money.format(Number(product.price))}</p>
+          {Number(product.rating_count) > 0 && (
+            <a className="product-details-rating" href={`#${titleId}-avaliacoes`}>
+              <StarRating avg={product.rating_avg} count={product.rating_count} />
+            </a>
+          )}
+          <ul className="product-details-facts">
+            <li>
+              <span className={`an-badge${unavailable ? " an-badge--muted" : availability === "ready" ? "" : " an-badge--warm"}`}>
+                {cartDisabled ? "Loja em pausa" : AVAILABILITY_LABEL[availability]}
+              </span>
+              <span>{stockLabel}</span>
+            </li>
+            {availability !== "sold_out" && (production || shippingLoading) && (
+              <li>
+                <Clock3 size={16} />
+                <span>{shippingLoading && availability !== "ready" ? "Consultando prazo de produção…" : production}</span>
+              </li>
+            )}
+          </ul>
+        </div>
+
+        <div className="pd-block pd-buy">
+          <div className="an-stepper" role="group" aria-label="Quantidade">
+            <button type="button" onClick={() => { setQuantity((value) => Math.max(1, value - 1)); setFreight({ loading: false, error: "", options: null }); }}
+              disabled={quantity <= 1 || unavailable} aria-label="Diminuir quantidade"><Minus size={14} /></button>
+            <output aria-live="polite" aria-label={`Quantidade: ${quantity}`}>{quantity}</output>
+            <button type="button" onClick={() => { setQuantity((value) => Math.min(maxQuantity, value + 1)); setFreight({ loading: false, error: "", options: null }); }}
+              disabled={quantity >= maxQuantity || unavailable} aria-label="Aumentar quantidade"><Plus size={14} /></button>
+          </div>
+          {/* Uma ação de compra por tela: "Comprar agora" principal; carrinho e favorito como ícones. */}
+          <div className="product-details-actions">
+            <button type="button" className="an-btn an-btn--lg product-details-buy-now" onClick={() => void buyNow()}
+              disabled={unavailable || buying || ownProduct} aria-busy={buying}>
+              {buying ? <LoaderCircle size={18} className="spin" /> : <ArrowRight size={18} />}
+              {unavailable ? (availability === "sold_out" ? "Esgotado" : "Indisponível")
+                : buying ? "Abrindo…"
+                  : `${availability === "made_to_order" ? "Encomendar" : "Comprar agora"} · ${money.format(Number(product.price) * quantity)}`}
+            </button>
+            <button type="button" className="an-icon-btn product-details-cart" onClick={() => void add()}
+              disabled={unavailable || adding || ownProduct} aria-busy={adding} aria-label="Adicionar ao carrinho" title="Adicionar ao carrinho">
+              {adding ? <LoaderCircle size={19} className="spin" /> : <ShoppingBag size={19} />}
+            </button>
+            <button type="button" className={`an-icon-btn product-details-fav${saved ? " is-saved" : ""}`}
+              onClick={() => void toggleFavorite(product)} disabled={pendingFavoriteIds.has(product.id)}
+              aria-pressed={saved} aria-label={saved ? "Remover dos favoritos" : "Salvar nos favoritos"} title="Favoritar">
+              <Heart size={19} fill={saved ? "currentColor" : "none"} />
+            </button>
+          </div>
+          {!ownProduct && (
+            <ProductInquiryLink productId={product.id} productName={product.name} />
+          )}
+          {ownProduct && <p className="product-details-limit" role="status">Esta peça é da sua loja.</p>}
+          {availability === "ready" && quantity >= maxQuantity && (
+            <p className="product-details-limit" role="status">Você selecionou todas as unidades disponíveis.</p>
+          )}
+        </div>
+
+        <section className="pd-block pd-about product-details-section" aria-labelledby={`${titleId}-sobre`}>
+          <h3 id={`${titleId}-sobre`}>Sobre a peça</h3>
+          {product.description?.trim() ? (
+            <RichText className="product-details-description" text={product.description} />
+          ) : (
+            <p className="product-details-description">
+              A loja ainda não publicou a descrição desta peça. Você pode perguntar pelos detalhes pelo botão de mensagem.
+            </p>
+          )}
+        </section>
+
+        <section className="pd-block pd-reviews product-details-section" id={`${titleId}-avaliacoes`} aria-labelledby={`${titleId}-avaliacoes-titulo`}>
+          <h3 id={`${titleId}-avaliacoes-titulo`}>Avaliações</h3>
+          <ReviewsList kind="product" id={product.id} storeName={product.shop_name} />
+        </section>
       </div>
     </Dialog>}
   </>;
