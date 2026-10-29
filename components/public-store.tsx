@@ -144,7 +144,7 @@ function PublicStoreContent({ initial }: { initial: PublicStoreInitial | null })
               <div className="public-shop-cover">
                 {coverUrl
                   ? <OptimizedImage src={coverUrl} alt="" width={1600} height={600} priority
-                    sizes="(max-width: 1280px) 100vw, 1240px" />
+                    sizes="(max-width: 1920px) 100vw, 1840px" />
                   : <Sparkles size={40} aria-hidden="true" />}
                 {store.vacation_mode && <span className="an-badge an-badge--warm public-shop-pause">Loja em pausa: compras temporariamente desativadas</span>}
               </div>

@@ -41,7 +41,7 @@
   outline: none;
 }
 .store-container {
-  width: min(1240px, calc(100% - 48px));
+  width: var(--an-page-width);
   margin-inline: auto;
 }
 
@@ -72,7 +72,8 @@
 }
 .store-search-desktop {
   flex: 1;
-  max-width: 640px;
+  /* Cresce com a tela larga, sem virar uma barra infinita. */
+  max-width: clamp(640px, 48vw, 920px);
 }
 .store-search-mobile {
   display: none;
@@ -355,7 +356,7 @@
   flex-wrap: wrap;
 }
 .store-hero {
-  width: min(1240px, calc(100% - 48px));
+  width: var(--an-page-width);
   margin: 28px auto 0;
   overflow: hidden;
   border-radius: var(--an-r-xl) var(--an-r-xl) 96px var(--an-r-xl);

@@ -1,5 +1,5 @@
 .privacy {
-  max-width: 860px;
+  max-width: var(--an-reading-width);
   padding-top: 36px;
   padding-bottom: 56px;
 }

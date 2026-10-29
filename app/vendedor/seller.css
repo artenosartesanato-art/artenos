@@ -15,9 +15,9 @@
 .seller-shell input {
   font: inherit;
 }
-/* Mesma largura do cabeçalho único (.store-container). */
+/* Mesma largura do cabeçalho único (--an-page-width em globals.css). */
 .seller-container {
-  width: min(1240px, calc(100% - 48px));
+  width: var(--an-page-width);
   margin-inline: auto;
 }
 .seller-avatar {

@@ -30,7 +30,7 @@
 }
 .help-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-columns: minmax(0, 1fr) clamp(340px, 26vw, 440px);
   gap: 28px;
   align-items: start;
   margin-top: 28px;
@@ -53,6 +53,7 @@
   cursor: pointer;
 }
 .help-faq details p {
+  max-width: var(--an-reading-width);
   margin: 0 0 12px;
   color: var(--an-text-muted);
   line-height: 1.6;

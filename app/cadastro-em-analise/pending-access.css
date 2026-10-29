@@ -11,7 +11,7 @@
 
 /* Barra da conta abaixo do cabeçalho único. */
 .pending-header {
-  width: min(1240px, calc(100% - 48px));
+  width: var(--an-page-width);
   margin: 18px auto 0;
   display: flex;
   align-items: center;
@@ -69,7 +69,7 @@
 }
 
 .pending-main {
-  width: min(1240px, calc(100% - 48px));
+  width: var(--an-page-width);
   margin: 0 auto;
   padding: 76px 0 90px;
 }
