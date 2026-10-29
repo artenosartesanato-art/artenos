@@ -210,3 +210,23 @@
     align-items: stretch;
   }
 }
+.public-shop-stats dd a {
+  color: inherit;
+  text-decoration: none;
+}
+.public-shop-reviews {
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) 2fr;
+  gap: 32px;
+  margin-top: 44px;
+}
+.public-shop-reviews h2 {
+  margin: 0 0 8px;
+  font: 500 var(--an-fs-3xl) / 1.1 var(--font-display);
+}
+@media (max-width: 900px) {
+  .public-shop-reviews {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}

@@ -8,6 +8,7 @@ import { ProductInquiryLink } from "@/components/product-inquiry-link";
 import { OptimizedImage } from "@/components/optimized-image";
 import { AVAILABILITY_LABEL, availabilityFor, type Availability } from "@/lib/availability";
 import { plainSummary } from "@/lib/rich-text";
+import { StarRating } from "@/components/stars";
 
 export type MarketplaceProduct = {
   id: string;
@@ -19,6 +20,8 @@ export type MarketplaceProduct = {
   ready_to_ship?: boolean;
   /** Calculado no banco pelo estoque (lib/availability.ts). */
   availability?: Availability | null;
+  rating_avg?: number | string | null;
+  rating_count?: number | null;
   category_name?: string | null;
   shop_name?: string | null;
   /** Presente quando a função do banco devolve a loja (migração opcional). */
@@ -94,6 +97,9 @@ export function MarketplaceProductCard({ product, shopName, cartDisabled = false
                 {product.name}
               </button>
             </h3>
+            {Number(product.rating_count) > 0 && (
+              <StarRating className="store-product-rating" avg={product.rating_avg} count={product.rating_count} size={12} />
+            )}
             {summary && <p className="store-product-summary">{summary}</p>}
             <p className="store-product-price">{money.format(Number(product.price))}</p>
             <div className="store-product-actions">

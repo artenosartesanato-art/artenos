@@ -25,6 +25,7 @@ import "../storefront.css";
 import "./orders.css";
 import { OptimizedImage } from "@/components/optimized-image";
 import { withOrderItemDetails, type OrderItemDetails } from "@/lib/order-items";
+import { OrderReviewPanel, type Reviewable } from "@/components/order-review-panel";
 
 type AccountType = "client" | "artisan";
 type OrderStatus =
@@ -138,6 +139,20 @@ export default function OrdersPage() {
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
   const [expanded, setExpanded] = useState<string | null>(null);
+  // Avaliações dos pedidos entregues (migração 20261029_avaliacoes).
+  const [reviewables, setReviewables] = useState<Reviewable[]>([]);
+  const [reviewTick, setReviewTick] = useState(0);
+  useEffect(() => {
+    if (!authReady || !userId) return;
+    void Promise.resolve(getSupabase().rpc("list_my_reviewables")).then(({ data, error: reviewError }) => {
+      if (!reviewError) setReviewables((data ?? []) as Reviewable[]);
+    });
+  }, [authReady, userId, reviewTick]);
+  // Link do lembrete (/pedidos?avaliar=<pedido>) abre o pedido certo.
+  useEffect(() => {
+    const target = new URLSearchParams(window.location.search).get("avaliar");
+    if (target && /^[0-9a-f-]{36}$/i.test(target)) queueMicrotask(() => setExpanded(target));
+  }, []);
   const orderRequest = useRef(0);
 
   useEffect(() => {
@@ -252,7 +267,9 @@ export default function OrdersPage() {
               <section className="orders-list" aria-label="Pedidos">
                 {filteredOrders.map((order) => (
                   <OrderCard key={order.id} order={order} expanded={expanded === order.id}
-                    onToggle={() => setExpanded(expanded === order.id ? null : order.id)} />
+                    onToggle={() => setExpanded(expanded === order.id ? null : order.id)}
+                    reviews={reviewables.filter((row) => row.order_id === order.id)}
+                    onReviewSaved={() => setReviewTick((value) => value + 1)} />
                 ))}
               </section>
             ) : (
@@ -276,10 +293,14 @@ function OrderCard({
   order,
   expanded,
   onToggle,
+  reviews,
+  onReviewSaved,
 }: {
   order: Order;
   expanded: boolean;
   onToggle: () => void;
+  reviews: Reviewable[];
+  onReviewSaved: () => void;
 }) {
   const { sellerPanelAvailable } = useMarketplace();
   const firstItem = order.items[0];
@@ -442,6 +463,7 @@ function OrderCard({
               <strong>{money.format(Number(order.total_amount || 0))}</strong>
             </div>
           </section>
+          {order.status === "delivered" && <OrderReviewPanel rows={reviews} onSaved={onReviewSaved} />}
         </div>
       )}
     </article>

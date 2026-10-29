@@ -15,7 +15,7 @@ export type Category = { id: string; name: string; slug: string; image_url: stri
 export type Product = MarketplaceProduct & { total_count: number };
 /** Primeira página sem filtros, buscada no servidor (app/categorias/page.tsx). */
 export type CategoriesInitial = { categories: Category[]; products: Product[] };
-type Sort = "newest" | "price_asc" | "price_desc";
+type Sort = "newest" | "rating" | "price_asc" | "price_desc";
 type Filters = {
   query: string;
   categoryId: string | null;
@@ -27,7 +27,7 @@ type Filters = {
 export const PAGE_SIZE = 12;
 type ShopMatch = { id: string; store_name: string; specialty: string | null; city: string | null; state: string | null };
 const fold = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
-const SORTS: Record<Sort, string> = { newest: "Mais recentes", price_asc: "Menor preço", price_desc: "Maior preço" };
+const SORTS: Record<Sort, string> = { newest: "Mais recentes", rating: "Mais bem avaliados", price_asc: "Menor preço", price_desc: "Maior preço" };
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 const emptyFilters: Filters = { query: "", categoryId: null, min: null, max: null, readyOnly: false, sort: "newest" };
 
@@ -46,7 +46,7 @@ function readFilters(): Filters {
     min: number(params.get("min")),
     max: number(params.get("max")),
     readyOnly: params.get("pronta") === "1",
-    sort: sort === "price_asc" || sort === "price_desc" ? sort : "newest",
+    sort: sort === "price_asc" || sort === "price_desc" || sort === "rating" ? sort : "newest",
   };
 }
 

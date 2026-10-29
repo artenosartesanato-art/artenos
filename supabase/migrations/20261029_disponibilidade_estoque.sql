@@ -174,7 +174,8 @@ revoke all on function public.list_cart() from public, anon;
 grant execute on function public.list_cart() to authenticated;
 
 -- Para listas que vêm de funções sem a coluna availability (loja pública, favoritos).
-create or replace function public.get_products_availability(p_ids uuid[])
+drop function if exists public.get_products_availability(uuid[]);
+create function public.get_products_availability(p_ids uuid[])
 returns table (id uuid, availability text, stock integer, max_quantity integer)
 language sql stable security definer set search_path = '' as $$
   select product.id, product.availability, product.stock, public.product_max_quantity(product)

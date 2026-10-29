@@ -32,6 +32,8 @@ import { useStorefrontActions } from "@/components/storefront-actions";
 import { ProductInquiryLink } from "@/components/product-inquiry-link";
 import { OptimizedImage } from "@/components/optimized-image";
 import { RichText } from "@/components/rich-text";
+import { StarRating } from "@/components/stars";
+import { ReviewsList } from "@/components/reviews-list";
 import { AVAILABILITY_LABEL, availabilityFor, maxQuantityFor, productionLabel, type Availability } from "@/lib/availability";
 
 type ProductDetails = {
@@ -43,6 +45,8 @@ type ProductDetails = {
   stock?: number | null;
   ready_to_ship?: boolean;
   availability?: Availability | null;
+  rating_avg?: number | string | null;
+  rating_count?: number | null;
   category_name?: string | null;
   shop_name?: string | null;
   shop_id?: string | null;
@@ -223,6 +227,11 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
         </p>
         <h2 id={titleId}>{product.name}</h2>
         <p className="product-details-price">{money.format(Number(product.price))}</p>
+        {Number(product.rating_count) > 0 && (
+          <a className="product-details-rating" href={`#${titleId}-avaliacoes`}>
+            <StarRating avg={product.rating_avg} count={product.rating_count} />
+          </a>
+        )}
 
         <ul className="product-details-facts">
           <li>
@@ -326,6 +335,11 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
               A loja ainda não publicou a descrição desta peça. Você pode perguntar pelos detalhes pelo botão de mensagem.
             </p>
           )}
+        </section>
+
+        <section className="product-details-section" id={`${titleId}-avaliacoes`} aria-labelledby={`${titleId}-avaliacoes-titulo`}>
+          <h3 id={`${titleId}-avaliacoes-titulo`}>Avaliações</h3>
+          <ReviewsList kind="product" id={product.id} storeName={product.shop_name} />
         </section>
 
         <section className="product-shipping-details" aria-labelledby={`${titleId}-envio`}>
