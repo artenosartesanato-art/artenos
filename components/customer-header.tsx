@@ -23,6 +23,7 @@ import { endSession } from "@/lib/session";
 import { toast } from "sonner";
 import { useHeaderSearch } from "@/components/header-search";
 import { NotificationBell } from "@/components/notifications";
+import { CategoriesMenu, CategoriesSheet } from "@/components/categories-menu";
 
 const NAV_LINKS = [
   { href: "/categorias", label: "Categorias" },
@@ -138,6 +139,7 @@ export function CustomerHeader() {
   const { authReady, userId, displayName, avatarUrl, sellerPanelAvailable, cartCount, cartPulse } = useMarketplace();
   const userSignedIn = authReady && !!userId;
   const [menuOpen, setMenuOpen] = useState(false);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [pulsing, setPulsing] = useState(false);
   const { value: search, setValue: setSearch, runHandler } = useHeaderSearch();
   const headerRef = useRef<HTMLElement>(null);
@@ -235,7 +237,9 @@ export function CustomerHeader() {
       <nav className="store-nav store-container" aria-label="Navegação principal">
         <CepControl />
         <div className="store-nav-links">
-          {navLinks.map((link) => (
+          {navLinks.map((link) => link.href === "/categorias" ? (
+            <CategoriesMenu key={link.href} active={isActive(link.href)} />
+          ) : (
             <Link key={link.href} href={link.href} aria-current={isActive(link.href) ? "page" : undefined}>
               {link.label}
             </Link>
@@ -243,11 +247,12 @@ export function CustomerHeader() {
         </div>
         {!sellerPanelAvailable && (
           <Link className="store-nav-sell" href={userSignedIn ? "/como-funciona#vender" : "/acesso?aba=artesa"}>
-            <Store size={16} /> Venda na Artenós
+            <Store size={16} /> <span className="store-nav-sell-label">Venda na Artenós</span>
           </Link>
         )}
       </nav>
 
+      <CategoriesSheet open={categoriesOpen} onClose={() => setCategoriesOpen(false)} />
       <Dialog open={menuOpen} onClose={() => setMenuOpen(false)} variant="drawer-left" label="Menu"
         className="store-menu-drawer" closeLabel="Fechar menu">
         <div className="store-menu-head">
@@ -259,9 +264,17 @@ export function CustomerHeader() {
               <li><Link href="/" onClick={() => setMenuOpen(false)} aria-current={pathname === "/" ? "page" : undefined}>Início</Link></li>
               {navLinks.map((link) => (
                 <li key={link.href}>
-                  <Link href={link.href} onClick={() => setMenuOpen(false)} aria-current={isActive(link.href) ? "page" : undefined}>
-                    {link.label}
-                  </Link>
+                  {link.href === "/categorias" ? (
+                    <button type="button" className="store-menu-categories" aria-haspopup="dialog"
+                      aria-current={isActive(link.href) ? "page" : undefined}
+                      onClick={() => { setMenuOpen(false); setCategoriesOpen(true); }}>
+                      {link.label} <ChevronDown size={14} />
+                    </button>
+                  ) : (
+                    <Link href={link.href} onClick={() => setMenuOpen(false)} aria-current={isActive(link.href) ? "page" : undefined}>
+                      {link.label}
+                    </Link>
+                  )}
                 </li>
               ))}
               <li><Link href="/carrinho" onClick={() => setMenuOpen(false)}>Carrinho{cartCount > 0 ? ` (${cartCount})` : ""}</Link></li>

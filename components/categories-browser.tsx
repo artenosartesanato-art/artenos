@@ -7,6 +7,8 @@ import { Dialog } from "@/components/ui/dialog";
 import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
 import { BUDGETS } from "@/lib/budgets";
+import { CATALOG_URL_EVENT, catalogHref, EMPTY_FILTERS, parseCatalogQuery, sameFilters, type CatalogFilters, type CatalogSort } from "@/lib/catalog-filters";
+import { findCategory, primeStorefrontCategories, useStorefrontCategories } from "@/lib/storefront-categories";
 import { MarketplaceProductCard, ProductGridSkeleton, type MarketplaceProduct } from "@/components/marketplace-product-card";
 import "@/app/storefront.css";
 import "@/app/categorias/categories.css";
@@ -15,55 +17,21 @@ export type Category = { id: string; name: string; slug: string; image_url: stri
 export type Product = MarketplaceProduct & { total_count: number };
 /** Primeira página sem filtros, buscada no servidor (app/categorias/page.tsx). */
 export type CategoriesInitial = { categories: Category[]; products: Product[] };
-type Sort = "newest" | "rating" | "price_asc" | "price_desc";
-type Filters = {
-  query: string;
-  categoryId: string | null;
-  min: number | null;
-  max: number | null;
-  readyOnly: boolean;
-  /** Só peças sob encomenda (substitui a antiga tela /sob-encomenda). */
-  madeToOrderOnly: boolean;
-  sort: Sort;
-};
+type Sort = CatalogSort;
+type Filters = CatalogFilters;
 export const PAGE_SIZE = 12;
 type ShopMatch = { id: string; store_name: string; specialty: string | null; city: string | null; state: string | null };
 const fold = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
 const SORTS: Record<Sort, string> = { newest: "Mais recentes", rating: "Mais bem avaliados", price_asc: "Menor preço", price_desc: "Maior preço" };
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
-const emptyFilters: Filters = { query: "", categoryId: null, min: null, max: null, readyOnly: false, madeToOrderOnly: false, sort: "newest" };
+const emptyFilters = EMPTY_FILTERS;
 
-function readFilters(): Filters {
-  const params = new URLSearchParams(window.location.search);
-  const category = params.get("categoria");
-  const number = (value: string | null) => {
-    if (value === null || value === "") return null;
-    const parsed = Number(value);
-    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
-  };
-  const sort = params.get("ordem");
-  return {
-    query: (params.get("busca") || "").trim().slice(0, 100),
-    categoryId: category && /^[0-9a-f-]{36}$/i.test(category) ? category : null,
-    min: number(params.get("min")),
-    max: number(params.get("max")),
-    readyOnly: params.get("pronta") === "1",
-    madeToOrderOnly: params.get("encomenda") === "1" && params.get("pronta") !== "1",
-    sort: sort === "price_asc" || sort === "price_desc" || sort === "rating" ? sort : "newest",
-  };
-}
-
-function writeFilters(filters: Filters) {
-  const params = new URLSearchParams();
-  if (filters.query) params.set("busca", filters.query);
-  if (filters.categoryId) params.set("categoria", filters.categoryId);
-  if (filters.min !== null) params.set("min", String(filters.min));
-  if (filters.max !== null) params.set("max", String(filters.max));
-  if (filters.readyOnly) params.set("pronta", "1");
-  if (filters.madeToOrderOnly) params.set("encomenda", "1");
-  if (filters.sort !== "newest") params.set("ordem", filters.sort);
-  const query = params.toString();
-  window.history.replaceState(null, "", query ? `/categorias?${query}` : "/categorias");
+/** Grava os filtros no endereço. A primeira gravação substitui; as seguintes viram passos do Voltar. */
+function writeFilters(filters: Filters, categorySlug: string | null, push: boolean) {
+  const href = catalogHref(filters, categorySlug);
+  if (href === window.location.pathname + window.location.search) return;
+  if (push) window.history.pushState(null, "", href);
+  else window.history.replaceState(null, "", href);
 }
 
 function FilterPanel({ categories, filters, onChange, onClear, idPrefix }: {
@@ -99,14 +67,14 @@ function FilterPanel({ categories, filters, onChange, onClear, idPrefix }: {
       <fieldset className="category-filter-block">
         <legend>Categoria</legend>
         <label className="category-option">
-          <input type="radio" name={`${idPrefix}-categoria`} checked={!filters.categoryId}
-            onChange={() => onChange({ categoryId: null })} />
+          <input type="radio" name={`${idPrefix}-categoria`} checked={!filters.category}
+            onChange={() => onChange({ category: null })} />
           <span>Todas as peças</span>
         </label>
         {categories.map((category) => (
           <label className="category-option" key={category.id}>
-            <input type="radio" name={`${idPrefix}-categoria`} checked={filters.categoryId === category.id}
-              onChange={() => onChange({ categoryId: category.id })} />
+            <input type="radio" name={`${idPrefix}-categoria`} checked={filters.category === category.slug || filters.category === category.id}
+              onChange={() => onChange({ category: category.slug || category.id })} />
             <span>{category.name}</span>
             <small aria-label={`${category.product_count} peças`}>{category.product_count}</small>
           </label>
@@ -167,16 +135,17 @@ function FilterPanel({ categories, filters, onChange, onClear, idPrefix }: {
 // Só enviado quando o filtro está ligado: funciona antes e depois da migração 20261029_status_encomenda.
 const availabilityParam = (filters: Filters) => (filters.madeToOrderOnly ? { p_availability: "made_to_order" } : {});
 
-const sameFilters = (a: Filters, b: Filters) =>
-  a.query === b.query && a.categoryId === b.categoryId && a.min === b.min && a.max === b.max &&
-  a.readyOnly === b.readyOnly && a.madeToOrderOnly === b.madeToOrderOnly && a.sort === b.sort;
-
 export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | null }) {
   // Os dados do servidor valem só para a visão sem filtros e só uma vez.
   const initialUnused = useRef(Boolean(initial));
   const [ready, setReady] = useState(false);
   const [filters, setFilters] = useState<Filters>(emptyFilters);
-  const [categories, setCategories] = useState<Category[]>(initial?.categories ?? []);
+  if (initial?.categories.length) primeStorefrontCategories(initial.categories);
+  const { categories: loadedCategories, failed: categoriesFailed } = useStorefrontCategories();
+  const categories = useMemo(() => (loadedCategories ?? initial?.categories ?? []) as Category[], [loadedCategories, initial]);
+  // Primeira gravação no endereço substitui; mudanças vindas do Voltar/menu não gravam de novo.
+  const urlWrites = useRef(0);
+  const fromHistory = useRef(false);
   const [products, setProducts] = useState<Product[]>(initial?.products ?? []);
   const [featuredFallback, setFeaturedFallback] = useState<Product[]>([]);
   const [total, setTotal] = useState(Number(initial?.products[0]?.total_count || 0));
@@ -198,29 +167,41 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
   const [, setSearchInput] = useHeaderSearchControl(search);
 
   useEffect(() => {
-    const fromUrl = readFilters();
+    const fromUrl = parseCatalogQuery(window.location.search);
     queueMicrotask(() => {
       setFilters(fromUrl);
       setSearchInput(fromUrl.query);
       setReady(true);
     });
-    // Categorias já vieram do servidor.
-    if (initialUnused.current) return;
-    let active = true;
-    void Promise.resolve(getSupabase().rpc("list_storefront_categories_with_products"))
-      .then(({ data, error: categoryError }) => {
-        if (!active) return;
-        if (categoryError) throw categoryError;
-        setCategories((data || []) as Category[]);
-      })
-      .catch(() => { if (active) setError("Não foi possível carregar as categorias."); });
-    return () => { active = false; };
+    // Voltar/avançar do navegador e o menu de categorias (mesma página) mudam o endereço: relê.
+    const reread = () => {
+      const next = parseCatalogQuery(window.location.search);
+      fromHistory.current = true;
+      setFilters((current) => (sameFilters(current, next) ? current : next));
+      setSearchInput(next.query);
+    };
+    window.addEventListener("popstate", reread);
+    window.addEventListener(CATALOG_URL_EVENT, reread);
+    return () => {
+      window.removeEventListener("popstate", reread);
+      window.removeEventListener(CATALOG_URL_EVENT, reread);
+    };
   }, [setSearchInput]);
 
   useEffect(() => {
-    if (!ready) return;
+    if (categoriesFailed) queueMicrotask(() => setError("Não foi possível carregar as categorias."));
+  }, [categoriesFailed]);
+
+  const selectedCategory = findCategory(categories, filters.category);
+  // Categoria pelo nome só é resolvida depois que a lista chega.
+  const categoryPending = Boolean(filters.category && !selectedCategory && !loadedCategories && !categoriesFailed);
+  const categoryId = selectedCategory?.id ?? null;
+
+  useEffect(() => {
+    if (!ready || categoryPending) return;
     const request = ++productRequest.current;
-    writeFilters(filters);
+    writeFilters(filters, selectedCategory?.slug ?? null, urlWrites.current++ > 0 && !fromHistory.current);
+    fromHistory.current = false;
     const useServerData = initialUnused.current && sameFilters(filters, emptyFilters);
     initialUnused.current = false;
     if (useServerData) return;
@@ -231,7 +212,7 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
     });
     const supabase = getSupabase();
     void Promise.resolve(supabase.rpc("browse_storefront_products", {
-      p_query: filters.query || null, p_category_id: filters.categoryId, p_min_price: filters.min,
+      p_query: filters.query || null, p_category_id: categoryId, p_min_price: filters.min,
       p_max_price: filters.max, p_ready_only: filters.readyOnly, p_sort: filters.sort,
       p_limit: PAGE_SIZE, p_offset: 0, ...availabilityParam(filters),
     }))
@@ -259,7 +240,8 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
         }
       })
       .finally(() => { if (request === productRequest.current) setLoading(false); });
-  }, [filters, ready, attempt]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- a categoria resolvida já depende de filters.category
+  }, [filters, ready, attempt, categoryId, categoryPending]);
 
   // Busca também por lojas (nome, técnica ou cidade): lista pública, buscada uma vez.
   useEffect(() => {
@@ -293,7 +275,7 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
     setMoreError("");
     try {
       const { data, error: loadError } = await getSupabase().rpc("browse_storefront_products", {
-        p_query: filters.query || null, p_category_id: filters.categoryId, p_min_price: filters.min,
+        p_query: filters.query || null, p_category_id: categoryId, p_min_price: filters.min,
         p_max_price: filters.max, p_ready_only: filters.readyOnly, p_sort: filters.sort,
         p_limit: PAGE_SIZE, p_offset: products.length, ...availabilityParam(filters),
       });
@@ -311,11 +293,10 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
     }
   }
 
-  const selectedCategory = categories.find((category) => category.id === filters.categoryId);
   const activeChips = useMemo(() => {
     const chips: { key: string; label: string; clear: Partial<Filters> }[] = [];
     if (filters.query) chips.push({ key: "q", label: `“${filters.query}”`, clear: { query: "" } });
-    if (selectedCategory) chips.push({ key: "c", label: selectedCategory.name, clear: { categoryId: null } });
+    if (selectedCategory) chips.push({ key: "c", label: selectedCategory.name, clear: { category: null } });
     if (filters.min !== null || filters.max !== null) {
       const label = filters.min !== null && filters.max !== null
         ? `${money.format(filters.min)} a ${money.format(filters.max)}`
@@ -332,6 +313,19 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
     <div className="store-page category-page">
       <main id="conteudo" tabIndex={-1} className="store-container category-main">
         <header className="category-intro">
+          <nav className="category-breadcrumb" aria-label="Você está em">
+            <ol>
+              <li><Link href="/">Início</Link></li>
+              {selectedCategory ? (
+                <>
+                  <li><Link href="/categorias" onClick={(event) => { event.preventDefault(); update({ category: null }); }}>Categorias</Link></li>
+                  <li aria-current="page">{selectedCategory.name}</li>
+                </>
+              ) : (
+                <li aria-current="page">Todas as peças</li>
+              )}
+            </ol>
+          </nav>
           <p className="store-eyebrow">Descubra o feito à mão</p>
           <h1>{filters.query ? `Resultados para “${filters.query}”` : selectedCategory?.name || "Todas as peças"}</h1>
           <p>Peças publicadas por lojas aprovadas na Artenós. Use os filtros para encontrar pronta entrega, faixas de preço e técnicas.</p>

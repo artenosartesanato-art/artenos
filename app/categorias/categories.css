@@ -328,3 +328,28 @@
   color: var(--an-text-muted);
   font-size: var(--an-fs-xs);
 }
+
+/* Caminho: Início › Categorias › Crochê e Tricô. */
+.category-breadcrumb ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin: 0 0 14px;
+  padding: 0;
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-xs);
+  list-style: none;
+}
+.category-breadcrumb li + li::before {
+  content: "›";
+  margin-right: 8px;
+}
+.category-breadcrumb a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.category-breadcrumb [aria-current="page"] {
+  color: var(--an-text);
+  font-weight: 650;
+}
