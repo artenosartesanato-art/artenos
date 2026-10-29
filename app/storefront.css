@@ -2508,3 +2508,109 @@ div.product-details-description :is(ul, ol) {
     white-space: nowrap;
   }
 }
+
+/* Grade e card de produto padronizados (home, listagem, loja e favoritos) ---
+   Cada card tem no mínimo 272px: ~6 colunas em 1920px, 4 em 1280–1440px,
+   3 no tablet e 2 no celular. :not(.x) só sobe a especificidade para vencer
+   as regras antigas de colunas fixas espalhadas pelas páginas. */
+:is(.store-products, .category-grid, .favorites-grid):not(.x) {
+  grid-template-columns: repeat(auto-fill, minmax(var(--an-card-min, 272px), 1fr));
+  gap: clamp(12px, 1.2vw, 20px);
+}
+@media (max-width: 1024px) {
+  :is(.store-products, .category-grid, .favorites-grid):not(.x) { --an-card-min: 210px; }
+}
+@media (max-width: 600px) {
+  :is(.store-products, .category-grid, .favorites-grid):not(.x) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+}
+.store-product h3 {
+  min-height: calc(2 * 1.32em);
+}
+.store-product-rating-row {
+  min-height: 18px;
+}
+.store-product-summary:not(.x) {
+  min-height: calc(2 * 1.45em);
+}
+.store-product-actions:not(.x) {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+.store-product-buy {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--artenos-musgo);
+  border-radius: var(--an-r-md);
+  background: var(--artenos-musgo);
+  color: #fff;
+  font-size: var(--an-fs-sm);
+  font-weight: 750;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--an-dur-fast) ease, transform var(--an-dur-fast) ease;
+}
+.store-product-buy:hover:not(:disabled) {
+  background: var(--an-musgo-escuro);
+}
+.store-product-buy:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.store-product-buy:disabled {
+  border-color: var(--an-line);
+  background: #efe8e1;
+  color: var(--an-text-muted);
+  cursor: not-allowed;
+}
+.store-product-buy[aria-busy="true"] {
+  background: var(--an-musgo-escuro);
+  color: #fff;
+  cursor: progress;
+}
+.store-product-cart {
+  display: grid;
+  flex: 0 0 44px;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--artenos-musgo);
+  border-radius: var(--an-r-md);
+  background: var(--an-surface);
+  color: var(--artenos-musgo);
+  cursor: pointer;
+}
+.store-product-cart:hover:not(:disabled) {
+  background: var(--an-sucesso-fundo);
+}
+.store-product-cart:disabled {
+  border-color: var(--an-line);
+  color: var(--an-text-muted);
+  cursor: not-allowed;
+}
+@media (max-width: 600px) {
+  .store-product-buy {
+    min-height: 40px;
+    padding: 0 8px;
+    font-size: var(--an-fs-xs);
+  }
+  .store-product-cart {
+    flex-basis: 40px;
+    width: 40px;
+    height: 40px;
+  }
+}
+/* Telas bem estreitas: a mensagem fica só no detalhe da peça. */
+@media (max-width: 400px) {
+  .store-product-actions .store-product-message {
+    display: none;
+  }
+}

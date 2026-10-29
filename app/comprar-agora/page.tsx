@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { AlertTriangle, ArrowRight, Clock3, LoaderCircle, LockKeyhole, MapPin, PackageOpen, RefreshCw, ShieldCheck, Sparkles, Store, Truck } from "@/components/icons";
 import { getSupabase } from "@/lib/supabase";
 import { getCartErrorMessage } from "@/lib/cart";
+import { toast } from "sonner";
+import { BUY_NOW_KEY, parsePendingBuyNow } from "@/lib/buy-now-intent";
 import { useMarketplace } from "@/components/marketplace-state";
 import { OptimizedImage } from "@/components/optimized-image";
 import { brl, toCents, type ShippingGroup } from "@/lib/cart-groups";
@@ -42,6 +44,16 @@ export default function BuyNowPage() {
   const finishingRef = useRef(false);
 
   const load = useCallback(async () => {
+    // Voltou do login depois de tocar em "Comprar": retoma a peça escolhida.
+    let pending = null;
+    try {
+      pending = parsePendingBuyNow(window.sessionStorage.getItem(BUY_NOW_KEY));
+      window.sessionStorage.removeItem(BUY_NOW_KEY);
+    } catch { /* sem armazenamento */ }
+    if (pending) {
+      const { error: startError } = await getSupabase().rpc("start_buy_now", { p_product_id: pending.productId, p_quantity: pending.quantity });
+      if (startError) toast.error(getCartErrorMessage(startError));
+    }
     const { data, error } = await getSupabase().rpc("get_buy_now");
     if (error) {
       setLoadError("Não foi possível carregar a peça escolhida.");

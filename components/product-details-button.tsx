@@ -19,9 +19,6 @@ import {
   Truck,
 } from "@/components/icons";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { getCartErrorMessage } from "@/lib/cart";
 import { requestShippingQuotes } from "@/lib/shipping-quote";
 import type { ShippingOption } from "@/lib/cart-groups";
 import { useEffect, useId, useState, type ReactNode } from "react";
@@ -32,6 +29,7 @@ import { useStorefrontActions } from "@/components/storefront-actions";
 import { ProductInquiryLink } from "@/components/product-inquiry-link";
 import { OptimizedImage } from "@/components/optimized-image";
 import { RichText } from "@/components/rich-text";
+import { useBuyNow } from "@/components/use-buy-now";
 import { StarRating } from "@/components/stars";
 import { ReviewsList } from "@/components/reviews-list";
 import { AVAILABILITY_LABEL, availabilityFor, maxQuantityFor, productionLabel, type Availability } from "@/lib/availability";
@@ -83,9 +81,9 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
   cartDisabled?: boolean;
 }) {
   const titleId = useId();
-  const router = useRouter();
-  const { authReady, cep, favoriteIds, pendingFavoriteIds, userId } = useMarketplace();
-  const { addToCart, toggleFavorite, pendingCartIds, requireAuth } = useStorefrontActions();
+  const { cep, favoriteIds, pendingFavoriteIds, userId } = useMarketplace();
+  const { addToCart, toggleFavorite, pendingCartIds } = useStorefrontActions();
+  const { buyNow: startBuyNowFlow, prepare: prepareBuyNow } = useBuyNow();
   const [buying, setBuying] = useState(false);
   const [freight, setFreight] = useState<{ loading: boolean; error: string; options: ShippingOption[] | null }>({ loading: false, error: "", options: null });
   const [open, setOpen] = useState(false);
@@ -137,36 +135,15 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
     if (ok) setOpen(false);
   }
 
-  /** Guarda a peça para a compra direta (sem mexer no carrinho). */
-  async function startBuyNow() {
-    if (!authReady) {
-      toast.info("Aguarde um instante enquanto verificamos sua conta.");
-      return false;
-    }
-    if (!userId) {
-      requireAuth("cart");
-      return false;
-    }
-    const { error } = await getSupabase().rpc("start_buy_now", { p_product_id: product.id, p_quantity: quantity });
-    if (error) {
-      toast.error(getCartErrorMessage(error));
-      return false;
-    }
-    return true;
-  }
-
   async function buyNow() {
     setBuying(true);
-    const ok = await startBuyNow();
+    await startBuyNowFlow(product.id, quantity, () => setOpen(false));
     setBuying(false);
-    if (!ok) return;
-    setOpen(false);
-    router.push("/comprar-agora");
   }
 
   async function estimateFreight() {
     setFreight({ loading: true, error: "", options: null });
-    if (!(await startBuyNow())) return setFreight({ loading: false, error: "", options: null });
+    if (!(await prepareBuyNow(product.id, quantity))) return setFreight({ loading: false, error: "", options: null });
     try {
       const groups = await requestShippingQuotes(cep, "buy_now");
       const group = groups[0];
