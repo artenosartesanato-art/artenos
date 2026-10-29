@@ -27,6 +27,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { getSupabase } from "@/lib/supabase";
 import { meaningfulTextError } from "@/lib/text-quality";
+import { findBlockedTerm, moderationError } from "@/lib/moderation";
 import {
   useSellerProfile,
   useSellerProfileActions,
@@ -218,6 +219,8 @@ export default function StorePanelPage() {
       return toast.error("Informe a especialidade da loja.");
     const storyError = meaningfulTextError(form.story, "A história da loja");
     if (storyError) return toast.error(storyError);
+    if (findBlockedTerm(`${form.storeName} ${form.story} ${form.announcement}`))
+      return toast.error("O nome, a história ou o aviso da loja contém termos que não são permitidos na Artenós.");
     if (
       !Number.isInteger(productionDays) ||
       productionDays < 1 ||
@@ -266,9 +269,10 @@ export default function StorePanelPage() {
       });
       setField("shippingOriginCep", shippingOriginCep);
       toast.success("Informações da loja salvas.");
-    } catch {
+    } catch (error) {
       toast.error(
-        "Não foi possível salvar as alterações da loja. Tente novamente; seus textos continuam no formulário.",
+        moderationError(error) ??
+          "Não foi possível salvar as alterações da loja. Tente novamente; seus textos continuam no formulário.",
       );
     } finally {
       setSaving(false);

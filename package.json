@@ -8,7 +8,8 @@
     "build": "next build",
     "lint": "eslint .",
     "test": "node --test tests/unit/*.test.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "moderacao:sql": "node scripts/gerar-termos-moderacao.mjs"
   },
   "dependencies": {
     "@mercadopago/sdk-react": "^1.0.7",

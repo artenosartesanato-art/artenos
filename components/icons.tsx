@@ -50,6 +50,7 @@ export const EyeOff = icon("eye-slash");
 export const FileCheck2 = icon("file-earmark-check");
 export const FileSearch = icon("file-earmark-text");
 export const FileText = icon("file-text");
+export const Flag = icon("flag");
 export const HandCoins = icon("cash-coin");
 export const HandHeart = icon("suit-heart");
 export const Heart = icon("heart");

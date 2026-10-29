@@ -868,7 +868,7 @@
   .messages-main.has-current { padding-top: 12px; }
   .chat-topic-filter select { max-width: 120px; }
   .chat-bubble { max-width: 86%; }
-  .chat-compose-hint { display: none; }
+  .chat-compose-hint:not(.chat-compose-warning) { display: none; }
 }
 @media (max-width: 480px) {
   .chat-app,
@@ -880,6 +880,7 @@
   .chat-context-link { width: 36px; padding: 0; justify-content: center; }
   .chat-context-link span { display: none; }
   .chat-topic-filter { display: none; }
+  .chat-report span { display: none; }
   .chat-composer { padding: 8px 8px 6px; }
   .chat-topic-filter select { max-width: 104px; padding-right: 22px; }
 }
@@ -904,4 +905,48 @@
 .chat-row.has-unread .chat-row-top time {
   color: var(--an-musgo-escuro);
   font-weight: 800;
+}
+
+/* Aviso de termos não permitidos e denúncia da conversa. */
+.chat-compose-warning {
+  color: var(--an-erro);
+  font-size: var(--an-fs-xs);
+  font-weight: 650;
+}
+.chat-report {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--an-line);
+  border-radius: var(--an-r-pill);
+  background: transparent;
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-xs);
+  font-weight: 650;
+  cursor: pointer;
+}
+.chat-report:hover {
+  border-color: var(--artenos-marrom);
+  color: var(--artenos-marrom);
+}
+.chat-report-body {
+  display: grid;
+  gap: 14px;
+  padding: 28px 24px 22px;
+}
+.chat-report-body h2 {
+  margin: 0;
+  font: 500 var(--an-fs-2xl) / 1.15 var(--font-display);
+}
+.chat-report-body p {
+  margin: 0;
+  color: var(--an-text-muted);
+  line-height: 1.55;
+}
+.chat-report-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }

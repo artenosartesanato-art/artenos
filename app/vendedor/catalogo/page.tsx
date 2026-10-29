@@ -19,6 +19,7 @@ import {
 } from "@/components/icons";
 import { toast } from "sonner";
 import { getSupabase } from "@/lib/supabase";
+import { findBlockedTerm, moderationError } from "@/lib/moderation";
 import { useSellerProfile } from "@/components/seller-shell";
 import "./product-catalog.css";
 
@@ -137,6 +138,8 @@ function errorMessage(error: unknown) {
     "volumes",
     "prazo de produção",
   ];
+  const blocked = moderationError(error);
+  if (blocked) return blocked;
   return expected.find((text) => message.includes(text))
     ? message
     : "Não foi possível salvar o produto. Confira os dados e tente novamente.";
@@ -340,6 +343,8 @@ export default function ProductCatalogPage() {
       return toast.error("O nome precisa ter pelo menos 3 caracteres.");
     if (form.description.trim().length < 20)
       return toast.error("A descrição precisa ter pelo menos 20 caracteres.");
+    if (findBlockedTerm(`${form.name} ${form.description}`))
+      return toast.error("O nome ou a descrição contém termos que não são permitidos na Artenós.");
     if (!Number.isFinite(price) || price < 0.01)
       return toast.error("Informe um preço válido.");
     if (!Number.isInteger(stock) || stock < 0)
