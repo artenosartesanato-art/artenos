@@ -105,6 +105,10 @@ Branch: `FEAT/REDESIGN-UX-UI-ARTE-NOSSA` (base `main`).
 
 ## Ações necessárias no Supabase
 
+- Para conferir o que já foi executado: `supabase/verificar_instalacao.sql`
+  (só lê o banco). Mostra uma linha por item com "OK" ou "FALTA" e o script
+  que resolve.
+
 - Painel administrativo completo (visão geral, vendedores, pedidos,
   clientes, categorias, equipe, atividade): executar
   `supabase/painel_admin_completo.sql` depois de `administracao_aprovacao.sql`,
