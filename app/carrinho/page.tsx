@@ -30,6 +30,7 @@ import "./cart.css";
 import { OptimizedImage } from "@/components/optimized-image";
 import { GuestCartView } from "@/components/guest-cart-view";
 import { CartItemNotes } from "@/components/cart-item-notes";
+import { requestShippingQuotes } from "@/lib/shipping-quote";
 
 const formatCep = (cep: string) => cep.replace(/(\d{5})(\d{3})/, "$1-$2");
 const days = (min: number, max: number) => (min === max ? `${max} ${max === 1 ? "dia útil" : "dias úteis"}` : `${min} a ${max} dias úteis`);
@@ -91,23 +92,10 @@ export default function CarrinhoPage() {
     setShippingError("");
     setSelectedShipping({});
     try {
-      const { data: result, error } = await getSupabase().functions.invoke("calculate-shipping", { body: { destinationCep: cep } });
-      const payload = (result ?? {}) as { groups?: ShippingGroup[]; error?: string };
-      if (error || payload.error) {
-        let message = payload.error || error?.message;
-        if (error && "context" in error && error.context instanceof Response) {
-          const details = (await error.context.clone().json().catch(() => null)) as { error?: string } | null;
-          message = details?.error || message;
-        }
-        throw new Error(message || "Não foi possível calcular o frete.");
-      }
-      setShippingGroups(payload.groups ?? []);
+      setShippingGroups(await requestShippingQuotes(cep));
     } catch (error) {
       setShippingGroups([]);
-      const message = error instanceof Error ? error.message : "";
-      setShippingError(/fetch|network|edge function|non-2xx/i.test(message) || !message
-        ? "Não foi possível consultar as transportadoras agora."
-        : message);
+      setShippingError(error instanceof Error ? error.message : "Não foi possível consultar as transportadoras agora.");
     } finally {
       setShippingLoading(false);
     }

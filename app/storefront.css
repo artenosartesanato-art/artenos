@@ -1242,12 +1242,70 @@
   align-items: center;
   gap: 10px;
 }
-.product-details-add {
-  flex: 1;
+.product-details-actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.product-details-buy-now {
   --btn-bg: var(--artenos-musgo);
 }
-.product-details-add:hover {
+.product-details-buy-now:hover {
   --btn-bg: var(--an-musgo-escuro);
+}
+.product-purchase-info {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--an-line);
+  border-radius: var(--an-r-md);
+  background: var(--an-surface-soft);
+}
+.product-purchase-row {
+  display: flex;
+  gap: 10px;
+  font-size: var(--an-fs-sm);
+  line-height: 1.45;
+}
+.product-purchase-row > svg {
+  flex: none;
+  margin-top: 3px;
+  color: var(--artenos-musgo);
+}
+.product-purchase-row strong {
+  display: block;
+  color: var(--an-text);
+}
+.product-purchase-row span {
+  color: var(--an-text-muted);
+}
+.product-freight-calc {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--artenos-marrom);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.product-freight-options {
+  display: grid;
+  gap: 4px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.product-freight-options li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  color: var(--an-text-muted);
+}
+.product-freight-options b {
+  color: var(--an-text);
 }
 .product-details-fav {
   border-color: var(--an-line-strong);
@@ -1779,19 +1837,20 @@ div.product-details-description :is(ul, ol) {
   .product-details-image img {
     max-height: 34dvh;
   }
-  .product-details-buy {
+  .product-details-actions {
     position: sticky;
     bottom: 0;
     z-index: 2;
-    flex-wrap: wrap;
-    margin: 0 -18px;
+    margin: 12px -18px 0;
     padding: 12px 18px calc(12px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--an-line);
     background: var(--an-surface);
   }
-  .product-details-add {
-    order: 3;
-    flex: 1 1 100%;
+  .product-freight-options li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .product-freight-options li > span:nth-child(2) {
+    grid-row: 2;
   }
   .product-details-fav {
     margin-left: auto;
