@@ -3,6 +3,8 @@
 
 # Conectar a Artenós ao Supabase
 
+> **E-mails (esqueci minha senha, comprovantes):** configuração pelo Gmail em [`docs/EMAIL-GMAIL.md`](docs/EMAIL-GMAIL.md).
+
 O projeto entregue não está conectado a nenhum banco. A integração fica isolada em `lib/supabase.ts`.
 
 1. Crie um projeto no Supabase.
