@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { authStorage } from "@/lib/session";
+import { meaningfulTextError } from "@/lib/text-quality";
 
 let client: SupabaseClient | null = null;
 
@@ -258,15 +259,10 @@ export async function registerWithSupabase(values: Record<string, unknown>) {
       "Informe um telefone brasileiro válido, com DDD. Celulares devem começar com 9.",
     );
   if (!(await validateCep(cep))) throw new Error("Informe um CEP válido.");
-  if (
-    type === "artisan" &&
-    (!text(values.storeName) ||
-      !text(values.specialty) ||
-      text(values.story).length < 40)
-  )
-    throw new Error(
-      "Informe a loja, especialidade e uma história com pelo menos 40 caracteres.",
-    );
+  if (type === "artisan" && (!text(values.storeName) || !text(values.specialty)))
+    throw new Error("Informe o nome da loja e a especialidade.");
+  const storyError = type === "artisan" ? meaningfulTextError(text(values.story), "A história da loja") : null;
+  if (storyError) throw new Error(storyError);
   const metadata = {
     account_type: type,
     registration_mode: values.assisted ? "assisted" : "standard",

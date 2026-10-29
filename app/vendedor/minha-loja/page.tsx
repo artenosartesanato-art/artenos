@@ -26,6 +26,7 @@ import {
 import Link from "next/link";
 import { toast } from "sonner";
 import { getSupabase } from "@/lib/supabase";
+import { meaningfulTextError } from "@/lib/text-quality";
 import {
   useSellerProfile,
   useSellerProfileActions,
@@ -215,10 +216,8 @@ export default function StorePanelPage() {
       return toast.error("O nome da loja precisa ter pelo menos 3 caracteres.");
     if (form.specialty.trim().length < 2)
       return toast.error("Informe a especialidade da loja.");
-    if (form.story.trim().length < 40)
-      return toast.error(
-        "A história da loja precisa ter pelo menos 40 caracteres.",
-      );
+    const storyError = meaningfulTextError(form.story, "A história da loja");
+    if (storyError) return toast.error(storyError);
     if (
       !Number.isInteger(productionDays) ||
       productionDays < 1 ||
