@@ -1,5 +1,6 @@
 // Carrinho de quem não entrou na conta: puro (sem React), testável no Node.
 // Vive só na memória da aba; o provedor o leva para a conta ao entrar.
+import { maxQuantityFor, type Availability } from "./availability.ts";
 
 export type GuestProduct = {
   id: string;
@@ -10,6 +11,7 @@ export type GuestProduct = {
   shop_id?: string | null;
   stock?: number | null;
   ready_to_ship?: boolean;
+  availability?: Availability | null;
   category_name?: string | null;
 };
 
@@ -21,10 +23,11 @@ export const MAX_GUEST_LINES = 50;
 export function guestCartAdd(cart: readonly GuestCartLine[], product: GuestProduct, quantity: number): GuestCartLine[] {
   const amount = Math.floor(quantity);
   if (!Number.isFinite(amount) || amount < 1) throw new Error("A quantidade informada não é válida.");
-  if (product.stock === 0) throw new Error("Este produto não está mais disponível.");
+  const max = maxQuantityFor(product);
+  if (max === 0) throw new Error("Peça esgotada no momento.");
   const current = cart.find((line) => line.product.id === product.id);
   const total = (current?.quantity ?? 0) + amount;
-  if (product.stock != null && total > product.stock) {
+  if (total > max) {
     throw new Error(current
       ? "Estoque insuficiente. Você já possui a quantidade máxima disponível no carrinho."
       : "Estoque insuficiente para a quantidade escolhida.");

@@ -7,6 +7,7 @@ import { useMarketplace } from "@/components/marketplace-state";
 import { getSupabase } from "@/lib/supabase";
 import { accessHref } from "@/lib/navigation";
 import { MarketplaceProductCard, ProductGridSkeleton, type MarketplaceProduct } from "@/components/marketplace-product-card";
+import { withAvailability } from "@/lib/product-availability";
 import "../storefront.css";
 import "./favorites.css";
 
@@ -36,8 +37,9 @@ export default function FavoritesPage() {
       .then(({ data, error: favoriteError }) => {
         if (current !== request.current) return;
         if (favoriteError) throw favoriteError;
-        setProducts((data || []) as FavoriteProduct[]);
+        return withAvailability(getSupabase(), (data || []) as FavoriteProduct[]);
       })
+      .then((list) => { if (list && current === request.current) setProducts(list); })
       .catch(() => { if (current === request.current) setError("Não foi possível carregar seus favoritos agora."); })
       .finally(() => { if (current === request.current) setLoading(false); });
   }, [authReady, userId, attempt]);

@@ -12,6 +12,7 @@ import { accessHref, currentPath } from "@/lib/navigation";
 import { useMarketplace } from "@/components/marketplace-state";
 import { confirmFavoriteRemoved, confirmFavoriteSaved } from "@/components/marketplace-feedback";
 import { OptimizedImage } from "@/components/optimized-image";
+import { AVAILABILITY_LABEL, availabilityFor, type Availability } from "@/lib/availability";
 
 export type ActionProduct = {
   id: string;
@@ -21,6 +22,7 @@ export type ActionProduct = {
   shop_name?: string | null;
   stock?: number | null;
   ready_to_ship?: boolean;
+  availability?: Availability | null;
 };
 
 type AddedLine = { product: ActionProduct; quantity: number };
@@ -139,7 +141,7 @@ export function StorefrontActionsProvider({ children }: { children: ReactNode })
                 <p>
                   {added.quantity} × {money.format(Number(added.product.price))}
                   {" · "}
-                  {added.product.ready_to_ship ? "Pronta entrega" : "Feita sob encomenda"}
+                  {AVAILABILITY_LABEL[availabilityFor(added.product)]}
                 </p>
                 <strong>{money.format(lineCents / 100)}</strong>
               </div>

@@ -24,6 +24,7 @@ import { useMarketplace } from "@/components/marketplace-state";
 import { useStorefrontActions } from "@/components/storefront-actions";
 import { ProductInquiryLink } from "@/components/product-inquiry-link";
 import { OptimizedImage } from "@/components/optimized-image";
+import { AVAILABILITY_LABEL, availabilityFor, maxQuantityFor, productionLabel, type Availability } from "@/lib/availability";
 
 type ProductDetails = {
   id: string;
@@ -33,6 +34,7 @@ type ProductDetails = {
   image_url?: string | null;
   stock?: number | null;
   ready_to_ship?: boolean;
+  availability?: Availability | null;
   category_name?: string | null;
   shop_name?: string | null;
   shop_id?: string | null;
@@ -51,7 +53,6 @@ type ShippingDetails = {
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const decimal = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 });
-const MAX_QUANTITY = 99;
 
 function formatCep(value: string | null) {
   const digits = String(value ?? "").replace(/\D/g, "");
@@ -62,12 +63,6 @@ function formatWeight(value: number | null) {
   const grams = Number(value);
   if (!Number.isFinite(grams) || grams <= 0) return null;
   return grams >= 1000 ? `${decimal.format(grams / 1000)} kg` : `${decimal.format(grams)} g`;
-}
-
-function productionLabel(days: number | null | undefined, readyToShip?: boolean) {
-  if (days == null) return readyToShip ? "Pronta para postagem" : null;
-  if (days === 0) return "Pronta para postagem";
-  return `Produzida em até ${days} ${days === 1 ? "dia útil" : "dias"} antes da postagem`;
 }
 
 export function ProductDetailsButton({ product, children, cartDisabled = false }: {
@@ -126,19 +121,21 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
     if (ok) setOpen(false);
   }
 
-  const maxQuantity = Math.max(1, Math.min(MAX_QUANTITY, product.stock ?? MAX_QUANTITY));
-  const unavailable = product.stock === 0 || cartDisabled;
+  const availability = availabilityFor(product);
+  const maxQuantity = Math.max(1, maxQuantityFor(product));
+  const unavailable = availability === "sold_out" || cartDisabled;
   const adding = pendingCartIds.has(product.id);
   const saved = favoriteIds.has(product.id);
   const weight = shipping ? formatWeight(shipping.weight_grams) : null;
   const originCep = shipping ? formatCep(shipping.origin_cep) : null;
   const hasDimensions = Boolean(shipping?.length_cm && shipping?.width_cm && shipping?.height_cm);
-  const production = productionLabel(shipping?.production_time_days, product.ready_to_ship);
-  const stockLabel = product.stock === 0
+  const production = productionLabel(availability, shipping?.production_time_days);
+  // Sob encomenda não mostra unidades: a peça é feita depois do pedido.
+  const stockLabel = availability === "sold_out"
     ? "Esgotado no momento"
-    : product.stock != null
-      ? `${product.stock} ${product.stock === 1 ? "unidade disponível" : "unidades disponíveis"}`
-      : product.ready_to_ship ? "Disponível" : "Produzido a cada pedido";
+    : availability === "ready"
+      ? `${product.stock} ${product.stock === 1 ? "unidade a pronta entrega" : "unidades a pronta entrega"}`
+      : "Feita especialmente para você";
 
   return <>
     {children ? children(openDetails) : (
@@ -176,15 +173,15 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
 
         <ul className="product-details-facts">
           <li>
-            <span className={`an-badge${unavailable ? " an-badge--muted" : product.ready_to_ship ? "" : " an-badge--warm"}`}>
-              {cartDisabled ? "Loja em pausa" : product.stock === 0 ? "Esgotado" : product.ready_to_ship ? "Pronta entrega" : "Feito sob encomenda"}
+            <span className={`an-badge${unavailable ? " an-badge--muted" : availability === "ready" ? "" : " an-badge--warm"}`}>
+              {cartDisabled ? "Loja em pausa" : AVAILABILITY_LABEL[availability]}
             </span>
             <span>{stockLabel}</span>
           </li>
-          {(production || shippingLoading) && (
+          {availability !== "sold_out" && (production || shippingLoading) && (
             <li>
               <Clock3 size={16} />
-              <span>{shippingLoading ? "Consultando prazo de produção…" : production}</span>
+              <span>{shippingLoading && availability !== "ready" ? "Consultando prazo de produção…" : production}</span>
             </li>
           )}
         </ul>
@@ -200,7 +197,7 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
           <button type="button" className="an-btn an-btn--lg product-details-add" onClick={() => void add()}
             disabled={unavailable || adding} aria-busy={adding}>
             {adding ? <LoaderCircle size={18} className="spin" /> : <ShoppingBag size={18} />}
-            {unavailable ? "Indisponível" : adding ? "Adicionando…" : `Adicionar · ${money.format(Number(product.price) * quantity)}`}
+            {unavailable ? (availability === "sold_out" ? "Esgotado" : "Indisponível") : adding ? "Adicionando…" : `Adicionar · ${money.format(Number(product.price) * quantity)}`}
           </button>
           <button type="button" className={`an-icon-btn product-details-fav${saved ? " is-saved" : ""}`}
             onClick={() => void toggleFavorite(product)} disabled={pendingFavoriteIds.has(product.id)}
@@ -211,7 +208,7 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
         {!(userId && product.shop_id === userId) && (
           <ProductInquiryLink productId={product.id} productName={product.name} />
         )}
-        {product.stock != null && product.stock > 0 && quantity >= maxQuantity && (
+        {availability === "ready" && quantity >= maxQuantity && (
           <p className="product-details-limit" role="status">Você selecionou todas as unidades disponíveis.</p>
         )}
 

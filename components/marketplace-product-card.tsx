@@ -6,6 +6,7 @@ import { useMarketplace } from "@/components/marketplace-state";
 import { useStorefrontActions } from "@/components/storefront-actions";
 import { ProductInquiryLink } from "@/components/product-inquiry-link";
 import { OptimizedImage } from "@/components/optimized-image";
+import { AVAILABILITY_LABEL, availabilityFor, type Availability } from "@/lib/availability";
 
 export type MarketplaceProduct = {
   id: string;
@@ -15,6 +16,8 @@ export type MarketplaceProduct = {
   image_url?: string | null;
   stock?: number | null;
   ready_to_ship?: boolean;
+  /** Calculado no banco pelo estoque (lib/availability.ts). */
+  availability?: Availability | null;
   category_name?: string | null;
   shop_name?: string | null;
   /** Presente quando a função do banco devolve a loja (migração opcional). */
@@ -23,11 +26,11 @@ export type MarketplaceProduct = {
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
-export function availabilityOf(product: Pick<MarketplaceProduct, "stock" | "ready_to_ship">, paused = false) {
-  if (paused) return { label: "Loja em pausa", tone: "muted" as const };
-  if (product.stock === 0) return { label: "Esgotado", tone: "muted" as const };
-  if (product.ready_to_ship) return { label: "Pronta entrega", tone: "moss" as const };
-  return { label: "Feito sob encomenda", tone: "warm" as const };
+export function availabilityOf(product: Pick<MarketplaceProduct, "stock" | "ready_to_ship" | "availability">, paused = false) {
+  if (paused) return { label: "Loja em pausa", tone: "muted" as const, unavailable: true };
+  const availability = availabilityFor(product);
+  const tone = availability === "ready" ? "moss" as const : availability === "made_to_order" ? "warm" as const : "muted" as const;
+  return { label: AVAILABILITY_LABEL[availability], tone, unavailable: availability === "sold_out" };
 }
 
 export function MarketplaceProductCard({ product, shopName, cartDisabled = false, priority = false }: {
@@ -50,8 +53,8 @@ export function MarketplaceProductCard({ product, shopName, cartDisabled = false
   const saved = favoriteIds.has(product.id);
   const favoritePending = pendingFavoriteIds.has(product.id);
   const adding = pendingCartIds.has(product.id);
-  const unavailable = product.stock === 0 || cartDisabled;
   const availability = availabilityOf(product, cartDisabled);
+  const unavailable = availability.unavailable;
   // Só se pergunta sobre peças de outras lojas.
   const ownProduct = Boolean(userId && product.shop_id && product.shop_id === userId);
 

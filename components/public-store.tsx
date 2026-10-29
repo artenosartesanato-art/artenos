@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, Clock3, MapPin, PackageOpen, RefreshCw, Sparkles, Store } from "@/components/icons";
 import { getSupabase } from "@/lib/supabase";
+import { computeAvailability } from "@/lib/availability";
 import { MarketplaceProductCard, ProductGridSkeleton, type MarketplaceProduct } from "@/components/marketplace-product-card";
 import "@/app/storefront.css";
 import "@/app/loja/public-store.css";
@@ -161,7 +162,8 @@ function PublicStoreContent({ initial }: { initial: PublicStoreInitial | null })
               {products.length ? (
                 <div className="store-products">
                   {products.map((product, index) => (
-                    <MarketplaceProductCard key={product.id} product={{ ...product, shop_id: store.artisan_id }}
+                    <MarketplaceProductCard key={product.id} product={{ ...product, shop_id: store.artisan_id,
+                      availability: product.availability ?? computeAvailability(product.stock, store.accepts_custom_orders) }}
                       shopName={store.store_name} cartDisabled={store.vacation_mode} priority={index < 2} />
                   ))}
                 </div>

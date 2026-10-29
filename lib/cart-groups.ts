@@ -15,7 +15,16 @@ export type CartItem = {
   /** Opcionais: presentes após a migração 20261028_carrinho_imagem_loja.sql. */
   image_url?: string | null;
   artisan_id?: string | null;
+  /** Presentes após a migração 20261029_disponibilidade_estoque.sql. */
+  availability?: "ready" | "made_to_order" | "sold_out" | null;
+  max_quantity?: number | null;
 };
+
+/** Quantidade máxima do item (sob encomenda não depende do estoque). */
+export function cartItemLimit(item: Pick<CartItem, "stock" | "max_quantity">) {
+  if (item.max_quantity != null) return item.max_quantity;
+  return item.stock ?? 99;
+}
 
 export type ShippingOption = {
   id: string;

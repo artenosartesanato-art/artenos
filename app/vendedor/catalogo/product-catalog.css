@@ -249,7 +249,8 @@
   color: var(--an-argila-texto);
   font-size: 9px;
 }
-.catalog-ready {
+.catalog-ready,
+.catalog-made-to-order {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -771,4 +772,24 @@
   .catalog-modal form > footer button {
     padding: 0 10px;
   }
+}
+
+.catalog-made-to-order {
+  color: var(--an-argila-texto, var(--an-text-muted));
+}
+.catalog-availability-note {
+  display: flex;
+  gap: 8px;
+  margin: 4px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--an-r-md);
+  background: var(--an-surface-warm);
+  color: var(--an-text);
+  font-size: var(--an-fs-sm);
+  line-height: 1.5;
+}
+.catalog-availability-note svg {
+  flex: none;
+  margin-top: 3px;
+  color: var(--artenos-musgo);
 }

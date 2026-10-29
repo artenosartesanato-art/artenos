@@ -73,7 +73,6 @@ type ProductForm = {
   lengthCm: string;
   packageCount: string;
   productionTimeDays: string;
-  readyToShip: boolean;
   active: boolean;
   imageUrl: string;
 };
@@ -97,7 +96,6 @@ const EMPTY_FORM: ProductForm = {
   lengthCm: "",
   packageCount: "1",
   productionTimeDays: "",
-  readyToShip: false,
   active: false,
   imageUrl: "",
 };
@@ -307,7 +305,6 @@ export default function ProductCatalogPage() {
       lengthCm: String(product.shipping_length_cm ?? ""),
       packageCount: String(product.shipping_package_count ?? 1),
       productionTimeDays: String(product.production_time_days ?? ""),
-      readyToShip: product.ready_to_ship,
       active: product.active,
       imageUrl: product.image_url || "",
     });
@@ -406,7 +403,8 @@ export default function ProductCatalogPage() {
         p_price: price,
         p_category_id: form.categoryId || null,
         p_stock: stock,
-        p_ready_to_ship: form.readyToShip,
+        // Calculado no banco pelo estoque; enviado só por compatibilidade.
+        p_ready_to_ship: stock > 0,
         p_image_url: finalImageUrl,
         // Um produto novo nasce como rascunho para que os dados logísticos
         // sejam persistidos antes de qualquer publicação na vitrine.
@@ -665,11 +663,10 @@ export default function ProductCatalogPage() {
                         : "Sem estoque"}
                     </span>
                   </div>
-                  {product.ready_to_ship && (
-                    <div className="catalog-ready">
-                      <PackageCheck size={14} /> Pronto para envio
-                    </div>
-                  )}
+                  <div className={product.stock > 0 ? "catalog-ready" : "catalog-made-to-order"}>
+                    <PackageCheck size={14} />{" "}
+                    {product.stock > 0 ? "Pronta entrega" : "Sob encomenda / esgotado"}
+                  </div>
                   {!product.shipping_data_complete && (
                     <div className="catalog-shipping-missing">
                       Dados de frete pendentes
@@ -943,31 +940,13 @@ export default function ProductCatalogPage() {
                       a cada volume na cotação.
                     </small>
                   </section>
+                  <p className="catalog-availability-note" role="note">
+                    <PackageCheck size={15} />
+                    {Number(form.stock) > 0
+                      ? "Com estoque, a peça aparece como Pronta entrega. Quando as unidades acabarem, ela passa sozinha para Sob encomenda (ou Esgotado, se a loja não aceitar encomendas)."
+                      : "Sem estoque, a peça aparece como Sob encomenda se a loja aceitar encomendas; se não aceitar, como Esgotado. Informe o estoque para vender a pronta entrega."}
+                  </p>
                   <div className="catalog-form-toggles">
-                    <label>
-                      <span>
-                        <strong>Pronto para envio</strong>
-                        <small>
-                          A peça já está produzida e pode ser enviada.
-                        </small>
-                      </span>
-                      <input
-                        type="checkbox"
-                        checked={form.readyToShip}
-                        onChange={(event) => {
-                          const checked = event.target.checked;
-                          setForm((previous) => ({
-                            ...previous,
-                            readyToShip: checked,
-                            productionTimeDays: checked
-                              ? "0"
-                              : previous.productionTimeDays === "0"
-                                ? ""
-                                : previous.productionTimeDays,
-                          }));
-                        }}
-                      />
-                    </label>
                     <label>
                       <span>
                         <strong>Publicar na vitrine</strong>
