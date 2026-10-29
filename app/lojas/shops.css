@@ -1,17 +1,13 @@
 .shops-main {
   padding-block: 36px 40px;
 }
-/* Título à esquerda, busca no centro da página; a terceira coluna só equilibra. */
+/* Título à esquerda, busca no centro da página (sem bloco de fundo); a terceira coluna só equilibra. */
 .shops-head {
   display: grid;
   grid-template-columns: minmax(300px, 1fr) minmax(0, 680px) minmax(300px, 1fr);
   align-items: center;
   gap: 20px 32px;
   margin-bottom: 28px;
-  padding: 28px clamp(20px, 2.5vw, 36px);
-  border: 1px solid var(--an-line);
-  border-radius: var(--an-r-xl);
-  background: var(--an-surface);
 }
 .shops-intro {
   max-width: 460px;
@@ -179,10 +175,5 @@
   }
   .shops-count {
     text-align: left;
-  }
-}
-@media (max-width: 600px) {
-  .shops-head {
-    padding: 20px 16px;
   }
 }
