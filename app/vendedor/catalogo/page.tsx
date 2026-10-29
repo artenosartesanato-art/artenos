@@ -20,6 +20,8 @@ import {
 import { toast } from "sonner";
 import { getSupabase } from "@/lib/supabase";
 import { findBlockedTerm, moderationError } from "@/lib/moderation";
+import { DescriptionEditor } from "@/components/description-editor";
+import { plainSummary } from "@/lib/rich-text";
 import { useSellerProfile } from "@/components/seller-shell";
 import "./product-catalog.css";
 
@@ -659,7 +661,7 @@ export default function ProductCatalogPage() {
                 <div className="catalog-product-body">
                   <small>{product.category_name || "Sem categoria"}</small>
                   <h2>{product.name}</h2>
-                  <p>{product.description}</p>
+                  <p>{plainSummary(product.description, 140)}</p>
                   <div className="catalog-product-data">
                     <strong>{money.format(Number(product.price))}</strong>
                     <span>
@@ -748,21 +750,11 @@ export default function ProductCatalogPage() {
                     />
                     <small>{form.name.length}/120</small>
                   </label>
-                  <label>
-                    <span>Descrição</span>
-                    <textarea
-                      value={form.description}
-                      onChange={(event) =>
-                        setField("description", event.target.value)
-                      }
-                      minLength={20}
-                      maxLength={2000}
-                      rows={7}
-                      placeholder="Conte os materiais, medidas, técnica e detalhes da peça"
-                      required
-                    />
-                    <small>{form.description.length}/2000</small>
-                  </label>
+                  <DescriptionEditor
+                    value={form.description}
+                    onChange={(value) => setField("description", value)}
+                    placeholder="Conte os materiais, medidas, técnica e detalhes da peça"
+                  />
                   <div className="catalog-fields-row">
                     <label>
                       <span>Preço</span>

@@ -89,9 +89,19 @@ begin
 end $$;
 
 -- Pagamento aprovado: pedido criado com o item sob encomenda marcado.
+-- (Com 20261029_descricao_observacoes.sql, as observações seguem junto.)
 do $$
-declare c uuid;
+declare c uuid; failed boolean := false;
 begin
+  if to_regprocedure('public.set_cart_item_notes(uuid,text)') is not null then
+    execute 'select public.set_cart_item_notes((select id from public.cart_items where product_id = $1), $2)'
+      using '00000000-0000-0000-0000-000000000002'::uuid, 'Escrever "Ana" na tampa';
+    begin
+      execute 'select public.set_cart_item_notes((select id from public.cart_items where product_id = $1), $2)'
+        using '00000000-0000-0000-0000-000000000001'::uuid, 'não vale';
+    exception when others then failed := true; end;
+    assert failed, 'observação só em peça sob encomenda';
+  end if;
   c := public.create_checkout_from_cart();
   perform public.begin_checkout_payment(c);
   perform public.finalize_checkout(c, 'mp-teste-1', 'pix', 0, 10, 0);
@@ -99,6 +109,10 @@ begin
           where o.checkout_id = c and oi.product_id = '00000000-0000-0000-0000-000000000002'), 'order_items.made_to_order';
   assert not (select made_to_order from public.order_items oi join public.orders o on o.id = oi.order_id
           where o.checkout_id = c and oi.product_id = '00000000-0000-0000-0000-000000000001'), 'pronta entrega não é encomenda';
+  if to_regprocedure('public.set_cart_item_notes(uuid,text)') is not null then
+    assert (select oi.customer_notes from public.order_items oi join public.orders o on o.id = oi.order_id
+            where o.checkout_id = c and oi.product_id = '00000000-0000-0000-0000-000000000002') = 'Escrever "Ana" na tampa', 'observação no pedido';
+  end if;
 end $$;
 
 select 'ok: disponibilidade_estoque' as resultado;

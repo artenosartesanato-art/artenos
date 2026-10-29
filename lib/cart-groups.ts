@@ -18,6 +18,9 @@ export type CartItem = {
   /** Presentes após a migração 20261029_disponibilidade_estoque.sql. */
   availability?: "ready" | "made_to_order" | "sold_out" | null;
   max_quantity?: number | null;
+  /** Presentes após a migração 20261029_descricao_observacoes.sql. */
+  product_summary?: string | null;
+  customer_notes?: string | null;
 };
 
 /** Quantidade máxima do item (sob encomenda não depende do estoque). */

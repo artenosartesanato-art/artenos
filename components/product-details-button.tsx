@@ -24,6 +24,7 @@ import { useMarketplace } from "@/components/marketplace-state";
 import { useStorefrontActions } from "@/components/storefront-actions";
 import { ProductInquiryLink } from "@/components/product-inquiry-link";
 import { OptimizedImage } from "@/components/optimized-image";
+import { RichText } from "@/components/rich-text";
 import { AVAILABILITY_LABEL, availabilityFor, maxQuantityFor, productionLabel, type Availability } from "@/lib/availability";
 
 type ProductDetails = {
@@ -214,9 +215,13 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
 
         <section className="product-details-section" aria-labelledby={`${titleId}-sobre`}>
           <h3 id={`${titleId}-sobre`}>Sobre a peça</h3>
-          <p className="product-details-description">
-            {product.description?.trim() || "A loja ainda não publicou a descrição desta peça. Você pode perguntar pelos detalhes depois da compra, pelas mensagens do pedido."}
-          </p>
+          {product.description?.trim() ? (
+            <RichText className="product-details-description" text={product.description} />
+          ) : (
+            <p className="product-details-description">
+              A loja ainda não publicou a descrição desta peça. Você pode perguntar pelos detalhes pelo botão de mensagem.
+            </p>
+          )}
         </section>
 
         <section className="product-shipping-details" aria-labelledby={`${titleId}-envio`}>

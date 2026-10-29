@@ -7,6 +7,7 @@ import { useStorefrontActions } from "@/components/storefront-actions";
 import { ProductInquiryLink } from "@/components/product-inquiry-link";
 import { OptimizedImage } from "@/components/optimized-image";
 import { AVAILABILITY_LABEL, availabilityFor, type Availability } from "@/lib/availability";
+import { plainSummary } from "@/lib/rich-text";
 
 export type MarketplaceProduct = {
   id: string;
@@ -55,6 +56,7 @@ export function MarketplaceProductCard({ product, shopName, cartDisabled = false
   const adding = pendingCartIds.has(product.id);
   const availability = availabilityOf(product, cartDisabled);
   const unavailable = availability.unavailable;
+  const summary = plainSummary(product.description, 120);
   // Só se pergunta sobre peças de outras lojas.
   const ownProduct = Boolean(userId && product.shop_id && product.shop_id === userId);
 
@@ -92,6 +94,7 @@ export function MarketplaceProductCard({ product, shopName, cartDisabled = false
                 {product.name}
               </button>
             </h3>
+            {summary && <p className="store-product-summary">{summary}</p>}
             <p className="store-product-price">{money.format(Number(product.price))}</p>
             <div className="store-product-actions">
               <button type="button" className="store-product-add" disabled={unavailable || adding}

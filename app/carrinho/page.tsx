@@ -29,6 +29,7 @@ import "../storefront.css";
 import "./cart.css";
 import { OptimizedImage } from "@/components/optimized-image";
 import { GuestCartView } from "@/components/guest-cart-view";
+import { CartItemNotes } from "@/components/cart-item-notes";
 
 const formatCep = (cep: string) => cep.replace(/(\d{5})(\d{3})/, "$1-$2");
 const days = (min: number, max: number) => (min === max ? `${max} ${max === 1 ? "dia útil" : "dias úteis"}` : `${min} a ${max} dias úteis`);
@@ -347,6 +348,7 @@ export default function CarrinhoPage() {
                             </div>
                             <div className="cart-item-copy">
                               <h3>{item.product_name}</h3>
+                              {item.product_summary && <p className="cart-item-summary">{item.product_summary}</p>}
                               <p>{brl(toCents(item.unit_price))} cada</p>
                               {!item.product_active ? (
                                 <p className="cart-item-warning"><AlertTriangle size={14} /> Esta peça não está mais disponível.</p>
@@ -357,6 +359,9 @@ export default function CarrinhoPage() {
                               ) : item.stock !== null && item.stock <= 3 ? (
                                 <p className="cart-item-stock">{item.stock === 1 ? "Última unidade" : `${item.stock} unidades em estoque`}</p>
                               ) : null}
+                              {madeToOrder && item.product_active && (
+                                <CartItemNotes itemId={item.item_id} initial={item.customer_notes} />
+                              )}
                             </div>
                             <div className="cart-item-controls">
                               <div className="an-stepper an-stepper--sm" role="group" aria-label={`Quantidade de ${item.product_name}`}>

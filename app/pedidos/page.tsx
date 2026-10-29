@@ -24,6 +24,7 @@ import { messagesHref } from "@/lib/navigation";
 import "../storefront.css";
 import "./orders.css";
 import { OptimizedImage } from "@/components/optimized-image";
+import { withOrderItemDetails, type OrderItemDetails } from "@/lib/order-items";
 
 type AccountType = "client" | "artisan";
 type OrderStatus =
@@ -44,7 +45,7 @@ type OrderItem = {
   quantity: number;
   unit_price: number;
   subtotal: number;
-};
+} & OrderItemDetails;
 type HistoryItem = {
   id: string;
   status: OrderStatus;
@@ -154,8 +155,10 @@ export default function OrdersPage() {
       .then(({ data: rows, error: orderError }) => {
         if (request !== orderRequest.current) return;
         if (orderError) throw orderError;
-        setOrders(((rows || []) as Order[]).filter((order) => order.my_role === "client" && order.client_id === userId));
+        const mine = ((rows || []) as Order[]).filter((order) => order.my_role === "client" && order.client_id === userId);
+        return withOrderItemDetails(getSupabase(), mine);
       })
+      .then((list) => { if (list && request === orderRequest.current) setOrders(list); })
       .catch(() => { if (request === orderRequest.current) setError("Não foi possível carregar seus pedidos agora."); })
       .finally(() => { if (request === orderRequest.current) setLoading(false); });
   }, [authReady, userId, attempt]);
@@ -423,6 +426,9 @@ function OrderCard({
               <div key={item.id}>
                 <span>
                   {item.quantity}× {item.product_name}
+                  {item.made_to_order && <small className="order-item-tag">Sob encomenda</small>}
+                  {item.product_summary && <small className="order-item-summary">{item.product_summary}</small>}
+                  {item.customer_notes && <small className="order-item-notes">Observações para a loja: {item.customer_notes}</small>}
                 </span>
                 <strong>{money.format(Number(item.subtotal))}</strong>
               </div>

@@ -20,6 +20,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { useSellerProfile } from "@/components/seller-shell";
 import { getSupabase } from "@/lib/supabase";
+import { withOrderItemDetails, type OrderItemDetails } from "@/lib/order-items";
 import "./seller-sales.css";
 
 type OrderStatus =
@@ -40,7 +41,7 @@ type OrderItem = {
   quantity: number;
   unit_price: number;
   subtotal: number;
-};
+} & OrderItemDetails;
 type HistoryItem = {
   id: string;
   status: OrderStatus;
@@ -172,17 +173,16 @@ export default function SellerSalesPage() {
           artisan_net_amount: number;
         }>).map((financial) => [financial.order_id, financial]),
       );
-      setOrders(
-        ((data || []) as Order[])
-          .filter(
-            (order) =>
-              order.my_role === "artisan" && order.artisan_id === profile.id,
-          )
-          .map((order) => ({
-            ...order,
-            ...financialByOrder.get(order.id),
-          })),
-      );
+      const mine = ((data || []) as Order[])
+        .filter(
+          (order) =>
+            order.my_role === "artisan" && order.artisan_id === profile.id,
+        )
+        .map((order) => ({
+          ...order,
+          ...financialByOrder.get(order.id),
+        }));
+      setOrders(await withOrderItemDetails(supabase, mine));
       setError("");
     } catch {
       setError(
@@ -711,6 +711,9 @@ function SaleCard({
               <div key={item.id}>
                 <span>
                   {item.quantity}× {item.product_name}
+                  {item.made_to_order && <small className="order-item-tag">Sob encomenda</small>}
+                  {item.product_summary && <small className="order-item-summary">{item.product_summary}</small>}
+                  {item.customer_notes && <small className="order-item-notes">Observações para a loja: {item.customer_notes}</small>}
                 </span>
                 <strong>{money.format(Number(item.subtotal))}</strong>
               </div>
