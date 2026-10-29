@@ -316,7 +316,7 @@ export default function SellerCustomOrdersPage() {
         <strong>Fluxo da encomenda</strong>
         <span>1. Você publica uma opção → 2. O cliente solicita orçamento → 3. Você responde → 4. Ambos acompanham pelo chat.</span>
         <small>A proposta aceita ainda não cria automaticamente uma venda nem uma cobrança.</small>
-        <a href="/sob-encomenda">Ver como o cliente encontra suas opções</a>
+        {profile && <a href={`/loja?id=${encodeURIComponent(profile.id)}`}>Ver como o cliente encontra suas opções (página da loja)</a>}
       </section>
 
       <section className="custom-summary" aria-label="Resumo das encomendas">

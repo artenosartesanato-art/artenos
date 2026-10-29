@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { useSellerProfile } from "@/components/seller-shell";
 import { getSupabase } from "@/lib/supabase";
 import { withOrderItemDetails, type OrderItemDetails } from "@/lib/order-items";
+import { customOrderStage, nextProductionStep, STAGE_LABEL } from "@/lib/production-status";
 import "./seller-sales.css";
 
 type OrderStatus =
@@ -406,6 +407,7 @@ export default function SellerSalesPage() {
               {filteredOrders.map((order) => (
                 <SaleCard
                   key={order.id}
+                  onReload={() => void loadOrders()}
                   order={order}
                   expanded={expanded === order.id}
                   onToggle={() =>
@@ -552,11 +554,13 @@ function SaleCard({
   expanded,
   onToggle,
   onUpdate,
+  onReload,
 }: {
   order: Order;
   expanded: boolean;
   onToggle: () => void;
   onUpdate: () => void;
+  onReload: () => void;
 }) {
   const firstItem = order.items[0];
   const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
@@ -711,7 +715,9 @@ function SaleCard({
               <div key={item.id}>
                 <span>
                   {item.quantity}× {item.product_name}
-                  {item.made_to_order && <small className="order-item-tag">Sob encomenda</small>}
+                  {item.made_to_order && (
+                    <ProductionControl itemId={item.id} production={item.production_status} orderStatus={order.status} onChanged={onReload} />
+                  )}
                   {item.product_summary && <small className="order-item-summary">{item.product_summary}</small>}
                   {item.customer_notes && <small className="order-item-notes">Observações para a loja: {item.customer_notes}</small>}
                 </span>
@@ -726,5 +732,36 @@ function SaleCard({
         </div>
       )}
     </article>
+  );
+}
+
+/** Status de produção de um item sob encomenda; a loja avança uma etapa por vez. */
+function ProductionControl({ itemId, production, orderStatus, onChanged }: {
+  itemId: string;
+  production: string | null | undefined;
+  orderStatus: string;
+  onChanged: () => void;
+}) {
+  const [saving, setSaving] = useState(false);
+  const stage = customOrderStage(production, orderStatus);
+  const next = ["shipped", "delivered", "cancelled"].includes(stage) ? null : nextProductionStep(production);
+  async function advance() {
+    if (!next) return;
+    setSaving(true);
+    const { error: updateError } = await getSupabase().rpc("update_order_item_production", { p_item_id: itemId, p_status: next });
+    setSaving(false);
+    if (updateError) return toast.error("Não foi possível atualizar a produção. Tente novamente.");
+    toast.success(`Status atualizado: ${STAGE_LABEL[next]}. Quem comprou foi avisado.`);
+    onChanged();
+  }
+  return (
+    <small className="order-item-tag sale-production">
+      Sob encomenda · {STAGE_LABEL[stage]}
+      {next && (
+        <button type="button" onClick={() => void advance()} disabled={saving} aria-busy={saving}>
+          {saving ? "Salvando…" : `Marcar como “${STAGE_LABEL[next]}”`}
+        </button>
+      )}
+    </small>
   );
 }

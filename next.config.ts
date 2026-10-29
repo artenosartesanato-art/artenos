@@ -29,6 +29,10 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
+  // A antiga tela "Sob encomenda" virou o filtro da listagem; orçamentos ficam na página de cada loja.
+  async redirects() {
+    return [{ source: "/sob-encomenda", destination: "/categorias?encomenda=1", permanent: true }];
+  },
   images: {
     formats: ["image/avif", "image/webp"],
     // Menos larguras = menos versões geradas (custo e cache) sem perder nitidez.

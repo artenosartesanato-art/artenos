@@ -2239,3 +2239,10 @@ div.product-details-description :is(ul, ol) {
   color: var(--an-text-muted);
   font-size: var(--an-fs-sm);
 }
+.store-product-badge--order {
+  max-width: calc(100% - 64px);
+  background: var(--artenos-musgo);
+  color: #fff;
+  white-space: normal;
+  line-height: 1.25;
+}

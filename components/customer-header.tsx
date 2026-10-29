@@ -27,7 +27,6 @@ import { NotificationBell } from "@/components/notifications";
 const NAV_LINKS = [
   { href: "/categorias", label: "Categorias" },
   { href: "/lojas", label: "Lojas" },
-  { href: "/sob-encomenda", label: "Sob encomenda" },
   { href: "/favoritos", label: "Favoritos" },
   { href: "/pedidos", label: "Pedidos" },
   { href: "/mensagens", label: "Mensagens" },

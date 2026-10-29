@@ -35,7 +35,6 @@ export function messagesHref(sellerPanel: boolean, query = "") {
 export const NAV_MATCHES: Record<string, string[]> = {
   "/categorias": ["/categorias"],
   "/lojas": ["/lojas", "/loja"],
-  "/sob-encomenda": ["/sob-encomenda"],
   "/favoritos": ["/favoritos"],
   "/pedidos": ["/pedidos", "/pagamento"],
   "/mensagens": ["/mensagens"],

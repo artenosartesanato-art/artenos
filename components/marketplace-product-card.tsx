@@ -9,6 +9,7 @@ import { OptimizedImage } from "@/components/optimized-image";
 import { AVAILABILITY_LABEL, availabilityFor, type Availability } from "@/lib/availability";
 import { plainSummary } from "@/lib/rich-text";
 import { StarRating } from "@/components/stars";
+import { useMyCustomOrderLabel } from "@/components/my-custom-orders";
 
 export type MarketplaceProduct = {
   id: string;
@@ -60,6 +61,8 @@ export function MarketplaceProductCard({ product, shopName, cartDisabled = false
   const availability = availabilityOf(product, cartDisabled);
   const unavailable = availability.unavailable;
   const summary = plainSummary(product.description, 120);
+  // Quem já encomendou a peça vê o andamento no lugar do selo "Sob encomenda".
+  const myOrderLabel = useMyCustomOrderLabel(product.id, userId);
   // Só se pergunta sobre peças de outras lojas.
   const ownProduct = Boolean(userId && product.shop_id && product.shop_id === userId);
 
@@ -80,9 +83,13 @@ export function MarketplaceProductCard({ product, shopName, cartDisabled = false
                 </span>
               )}
             </button>
-            <span className={`an-badge store-product-badge${availability.tone === "warm" ? " an-badge--warm" : availability.tone === "muted" ? " an-badge--muted" : ""}`}>
-              {availability.label}
-            </span>
+            {myOrderLabel ? (
+              <span className="an-badge store-product-badge store-product-badge--order">{myOrderLabel}</span>
+            ) : (
+              <span className={`an-badge store-product-badge${availability.tone === "warm" ? " an-badge--warm" : availability.tone === "muted" ? " an-badge--muted" : ""}`}>
+                {availability.label}
+              </span>
+            )}
             <button type="button" className={saved ? "store-heart is-saved" : "store-heart"}
               disabled={favoritePending} onClick={() => void toggleFavorite(fullProduct)}
               aria-pressed={saved}

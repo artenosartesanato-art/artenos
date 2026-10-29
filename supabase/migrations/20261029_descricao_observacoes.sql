@@ -104,7 +104,8 @@ revoke all on function public.list_cart() from public, anon;
 grant execute on function public.list_cart() to authenticated;
 
 -- Itens dos pedidos de quem compra ou vende (observações, resumo, encomenda).
-create or replace function public.list_order_item_details(p_order_ids uuid[])
+drop function if exists public.list_order_item_details(uuid[]);
+create function public.list_order_item_details(p_order_ids uuid[])
 returns table (
   order_id uuid, item_id uuid, product_id uuid, product_name text, quantity integer,
   made_to_order boolean, customer_notes text, product_summary text

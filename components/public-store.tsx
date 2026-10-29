@@ -3,12 +3,13 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowRight, Clock3, MapPin, PackageOpen, RefreshCw, Sparkles, Store } from "@/components/icons";
+import { Clock3, MapPin, PackageOpen, RefreshCw, Sparkles, Store } from "@/components/icons";
 import { getSupabase } from "@/lib/supabase";
 import { computeAvailability } from "@/lib/availability";
 import { withAvailability } from "@/lib/product-availability";
 import { StarRating } from "@/components/stars";
 import { ReviewsList } from "@/components/reviews-list";
+import { StoreCustomQuotes } from "@/components/custom-quotes";
 import { MarketplaceProductCard, ProductGridSkeleton, type MarketplaceProduct } from "@/components/marketplace-product-card";
 import "@/app/storefront.css";
 import "@/app/loja/public-store.css";
@@ -216,14 +217,7 @@ function PublicStoreContent({ initial }: { initial: PublicStoreInitial | null })
             </section>
 
             {store.accepts_custom_orders && !store.vacation_mode && (
-              <section className="store-container public-shop-custom" aria-labelledby="encomenda-titulo">
-                <div>
-                  <p className="store-eyebrow">Sob encomenda</p>
-                  <h2 id="encomenda-titulo">Quer algo feito do seu jeito?</h2>
-                  <p>Esta loja aceita encomendas. Veja as opções personalizadas publicadas na área Sob encomenda.</p>
-                </div>
-                <Link className="an-btn an-btn--lg" href="/sob-encomenda">Ver opções sob encomenda <ArrowRight size={17} /></Link>
-              </section>
+              <StoreCustomQuotes artisanId={store.artisan_id} storeName={store.store_name} />
             )}
           </>
         )}

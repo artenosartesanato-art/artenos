@@ -519,3 +519,21 @@
   color: var(--an-text);
   font-style: italic;
 }
+.sale-production {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.sale-production button {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--artenos-musgo);
+  border-radius: var(--an-r-pill);
+  background: var(--an-surface);
+  color: var(--artenos-musgo);
+  font-size: var(--an-fs-2xs);
+  font-weight: 700;
+  font-style: normal;
+  cursor: pointer;
+}

@@ -366,6 +366,7 @@ revoke all on function public.search_storefront_products(text, uuid, uuid, text,
 grant execute on function public.search_storefront_products(text, uuid, uuid, text, integer) to anon, authenticated;
 
 drop function if exists public.browse_storefront_products(text, uuid, numeric, numeric, boolean, text, integer, integer);
+drop function if exists public.browse_storefront_products(text, uuid, numeric, numeric, boolean, text, integer, integer, text);
 create function public.browse_storefront_products(
   p_query text default null, p_category_id uuid default null,
   p_min_price numeric default null, p_max_price numeric default null,

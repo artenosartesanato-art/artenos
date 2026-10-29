@@ -26,6 +26,8 @@ import "./orders.css";
 import { OptimizedImage } from "@/components/optimized-image";
 import { withOrderItemDetails, type OrderItemDetails } from "@/lib/order-items";
 import { OrderReviewPanel, type Reviewable } from "@/components/order-review-panel";
+import { MyQuoteRequests } from "@/components/custom-quotes";
+import { customOrderStage, STAGE_LABEL } from "@/lib/production-status";
 
 type AccountType = "client" | "artisan";
 type OrderStatus =
@@ -284,6 +286,7 @@ export default function OrdersPage() {
             )}
           </>
         )}
+        {authReady && userId && <MyQuoteRequests />}
       </main>
     </div>
   );
@@ -447,7 +450,7 @@ function OrderCard({
               <div key={item.id}>
                 <span>
                   {item.quantity}× {item.product_name}
-                  {item.made_to_order && <small className="order-item-tag">Sob encomenda</small>}
+                  {item.made_to_order && <small className="order-item-tag">Sob encomenda · {STAGE_LABEL[customOrderStage(item.production_status, order.status)]}</small>}
                   {item.product_summary && <small className="order-item-summary">{item.product_summary}</small>}
                   {item.customer_notes && <small className="order-item-notes">Observações para a loja: {item.customer_notes}</small>}
                 </span>

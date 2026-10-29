@@ -25,7 +25,7 @@ export function CustomerFooter(_props: { userSignedIn?: boolean; authLoading?: b
           <Link href="/">Início</Link>
           <Link href="/categorias">Categorias</Link>
           <Link href="/lojas">Lojas e artesãs</Link>
-          <Link href="/sob-encomenda">Sob encomenda</Link>
+          <Link href="/categorias?encomenda=1">Sob encomenda</Link>
           <Link href="/como-funciona">Como funciona</Link>
           {!sellerPanelAvailable && <Link href="/como-funciona#vender">Venda na Artenós</Link>}
         </div>

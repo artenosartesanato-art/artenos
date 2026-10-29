@@ -22,6 +22,8 @@ type Filters = {
   min: number | null;
   max: number | null;
   readyOnly: boolean;
+  /** Só peças sob encomenda (substitui a antiga tela /sob-encomenda). */
+  madeToOrderOnly: boolean;
   sort: Sort;
 };
 export const PAGE_SIZE = 12;
@@ -29,7 +31,7 @@ type ShopMatch = { id: string; store_name: string; specialty: string | null; cit
 const fold = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
 const SORTS: Record<Sort, string> = { newest: "Mais recentes", rating: "Mais bem avaliados", price_asc: "Menor preço", price_desc: "Maior preço" };
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
-const emptyFilters: Filters = { query: "", categoryId: null, min: null, max: null, readyOnly: false, sort: "newest" };
+const emptyFilters: Filters = { query: "", categoryId: null, min: null, max: null, readyOnly: false, madeToOrderOnly: false, sort: "newest" };
 
 function readFilters(): Filters {
   const params = new URLSearchParams(window.location.search);
@@ -46,6 +48,7 @@ function readFilters(): Filters {
     min: number(params.get("min")),
     max: number(params.get("max")),
     readyOnly: params.get("pronta") === "1",
+    madeToOrderOnly: params.get("encomenda") === "1" && params.get("pronta") !== "1",
     sort: sort === "price_asc" || sort === "price_desc" || sort === "rating" ? sort : "newest",
   };
 }
@@ -57,6 +60,7 @@ function writeFilters(filters: Filters) {
   if (filters.min !== null) params.set("min", String(filters.min));
   if (filters.max !== null) params.set("max", String(filters.max));
   if (filters.readyOnly) params.set("pronta", "1");
+  if (filters.madeToOrderOnly) params.set("encomenda", "1");
   if (filters.sort !== "newest") params.set("ordem", filters.sort);
   const query = params.toString();
   window.history.replaceState(null, "", query ? `/categorias?${query}` : "/categorias");
@@ -143,8 +147,14 @@ function FilterPanel({ categories, filters, onChange, onClear, idPrefix }: {
       <fieldset className="category-filter-block">
         <legend>Disponibilidade</legend>
         <label className="category-check">
-          <input type="checkbox" checked={filters.readyOnly} onChange={(event) => onChange({ readyOnly: event.target.checked })} />
+          <input type="checkbox" checked={filters.readyOnly}
+            onChange={(event) => onChange({ readyOnly: event.target.checked, madeToOrderOnly: false })} />
           Só pronta entrega
+        </label>
+        <label className="category-check">
+          <input type="checkbox" checked={filters.madeToOrderOnly}
+            onChange={(event) => onChange({ madeToOrderOnly: event.target.checked, readyOnly: false })} />
+          Só sob encomenda
         </label>
       </fieldset>
       <button type="button" className="category-clear" onClick={() => { setMinPrice(""); setMaxPrice(""); setPriceError(""); onClear(); }}>
@@ -154,9 +164,12 @@ function FilterPanel({ categories, filters, onChange, onClear, idPrefix }: {
   );
 }
 
+// Só enviado quando o filtro está ligado: funciona antes e depois da migração 20261029_status_encomenda.
+const availabilityParam = (filters: Filters) => (filters.madeToOrderOnly ? { p_availability: "made_to_order" } : {});
+
 const sameFilters = (a: Filters, b: Filters) =>
   a.query === b.query && a.categoryId === b.categoryId && a.min === b.min && a.max === b.max &&
-  a.readyOnly === b.readyOnly && a.sort === b.sort;
+  a.readyOnly === b.readyOnly && a.madeToOrderOnly === b.madeToOrderOnly && a.sort === b.sort;
 
 export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | null }) {
   // Os dados do servidor valem só para a visão sem filtros e só uma vez.
@@ -220,7 +233,7 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
     void Promise.resolve(supabase.rpc("browse_storefront_products", {
       p_query: filters.query || null, p_category_id: filters.categoryId, p_min_price: filters.min,
       p_max_price: filters.max, p_ready_only: filters.readyOnly, p_sort: filters.sort,
-      p_limit: PAGE_SIZE, p_offset: 0,
+      p_limit: PAGE_SIZE, p_offset: 0, ...availabilityParam(filters),
     }))
       .then(async ({ data, error: productsError }) => {
         if (request !== productRequest.current) return;
@@ -282,7 +295,7 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
       const { data, error: loadError } = await getSupabase().rpc("browse_storefront_products", {
         p_query: filters.query || null, p_category_id: filters.categoryId, p_min_price: filters.min,
         p_max_price: filters.max, p_ready_only: filters.readyOnly, p_sort: filters.sort,
-        p_limit: PAGE_SIZE, p_offset: products.length,
+        p_limit: PAGE_SIZE, p_offset: products.length, ...availabilityParam(filters),
       });
       if (loadError) throw loadError;
       if (request === productRequest.current) {
@@ -310,6 +323,7 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
       chips.push({ key: "p", label, clear: { min: null, max: null } });
     }
     if (filters.readyOnly) chips.push({ key: "r", label: "Pronta entrega", clear: { readyOnly: false } });
+    if (filters.madeToOrderOnly) chips.push({ key: "e", label: "Sob encomenda", clear: { madeToOrderOnly: false } });
     return chips;
   }, [filters, selectedCategory]);
   const filterCount = activeChips.filter((chip) => chip.key !== "q").length;

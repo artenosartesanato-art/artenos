@@ -203,7 +203,7 @@ export function StorefrontHome({ initial }: { initial: HomeData | null }) {
                     Ver a coleção
                   </button>
                 ) : (
-                  <Link className="an-btn an-btn--lg store-hero-secondary" href="/sob-encomenda">
+                  <Link className="an-btn an-btn--lg store-hero-secondary" href="/categorias?encomenda=1">
                     Encomendar uma peça
                   </Link>
                 )}
