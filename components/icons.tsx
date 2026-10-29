@@ -58,6 +58,7 @@ export const Heart = icon("heart");
 export const KeyRound = icon("key");
 export const History = icon("clock-history");
 export const ImagePlus = icon("image");
+export const LifeBuoy = icon("life-preserver");
 export const LayoutDashboard = icon("grid");
 export const Loader2 = icon("arrow-repeat");
 export const LoaderCircle = icon("arrow-repeat");

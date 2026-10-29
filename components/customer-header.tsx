@@ -30,6 +30,7 @@ const NAV_LINKS = [
   { href: "/favoritos", label: "Favoritos" },
   { href: "/pedidos", label: "Pedidos" },
   { href: "/mensagens", label: "Mensagens" },
+  { href: "/ajuda", label: "Ajuda" },
 ];
 
 const formatCep = (cep: string) => `${cep.slice(0, 5)}-${cep.slice(5)}`;

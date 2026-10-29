@@ -38,6 +38,7 @@ export const NAV_MATCHES: Record<string, string[]> = {
   "/favoritos": ["/favoritos"],
   "/pedidos": ["/pedidos", "/pagamento"],
   "/mensagens": ["/mensagens"],
+  "/ajuda": ["/ajuda"],
   "/vendedor/mensagens": ["/vendedor/mensagens"],
 };
 

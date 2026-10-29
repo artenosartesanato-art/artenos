@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   CircleSlash2,
   Flag,
+  LifeBuoy,
   History,
   LayoutDashboard,
   Loader2,
@@ -64,6 +65,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
       { label: "Pedidos", href: "/administracao/pedidos", icon: Package },
       { label: "Clientes", href: "/administracao/clientes", icon: UserRound },
       { label: "Denúncias", href: "/administracao/denuncias", icon: Flag },
+      { label: "Chamados", href: "/administracao/chamados", icon: LifeBuoy },
     ],
   },
   {

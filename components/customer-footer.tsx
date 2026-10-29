@@ -5,6 +5,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import { useMarketplace } from "@/components/marketplace-state";
 import { SoundToggle } from "@/components/sound-toggle";
 import { messagesHref } from "@/lib/navigation";
+import { formatPhone, siteConfig } from "@/lib/site-config";
 
 /** As props antigas continuam aceitas, mas o estado vem do MarketplaceProvider. */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -44,8 +45,11 @@ export function CustomerFooter(_props: { userSignedIn?: boolean; authLoading?: b
         </div>
         <div>
           <h2>Informações</h2>
+          <Link href="/ajuda">Central de Ajuda</Link>
           <Link href="/termos">Termos de Uso</Link>
           <Link href="/privacidade">Privacidade</Link>
+          {siteConfig.supportEmail && <a href={`mailto:${siteConfig.supportEmail}`}>{siteConfig.supportEmail}</a>}
+          {siteConfig.supportPhone && <a href={`tel:+55${siteConfig.supportPhone.replace(/\D/g, "").replace(/^55/, "")}`}>{formatPhone(siteConfig.supportPhone)}</a>}
           {!userId && <Link href="/acesso">Venda na Artenós</Link>}
         </div>
       </div>
