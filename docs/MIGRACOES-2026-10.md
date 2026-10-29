@@ -21,8 +21,9 @@ uma, reexecute também as seguintes.
 Depois:
 
 1. Publique de novo a Edge Function: `supabase functions deploy calculate-shipping` (aceita o modo "comprar agora").
-2. Rode `supabase/auditoria_rls.sql` (só leitura) e confira o resultado.
-3. Configure os agendamentos diários/periódicos (`/api/cron/manutencao`, `/api/cron/avaliacoes`, `/api/cron/notas-fiscais`).
+2. Rode `supabase/validar_migracoes.sql` (só leitura): todas as linhas devem vir "OK"; as que faltarem aparecem no topo com o script a rodar de novo.
+3. Rode `supabase/auditoria_rls.sql` (só leitura) e confira o resultado.
+4. Configure os agendamentos diários/periódicos (`/api/cron/manutencao`, `/api/cron/avaliacoes`, `/api/cron/notas-fiscais`).
 
 A migração 2 confere se existe `public.artisan_store_settings(accepts_custom_orders)`; se não existir, ela
 para com uma mensagem e nada é alterado.
