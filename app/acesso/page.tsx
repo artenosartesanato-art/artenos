@@ -20,7 +20,9 @@ import { toast } from "sonner";
 import { favoriteIntentReturnPath } from "@/components/marketplace-state";
 import { markActivity, setRememberDevice } from "@/lib/session";
 import { checkThrottle, loadThrottle, registerFailure, registerSuccess, saveThrottle, waitLabel } from "@/lib/login-throttle";
-import { getSupabase, loginWithSupabase, registerWithSupabase } from "@/lib/supabase";
+import { captchaFrom, getSupabase, loginWithSupabase, registerWithSupabase } from "@/lib/supabase";
+import { recordAccess } from "@/lib/access-log";
+import { resetTurnstile, TurnstileWidget } from "@/components/turnstile-widget";
 import { safeReturnPath } from "@/lib/navigation";
 import {
   fieldForServerMessage,
@@ -222,6 +224,7 @@ function RegisterForm({ type, onGoToLogin }: { type: AccountType; onGoToLogin: (
       const message = error instanceof Error ? error.message : "Não foi possível concluir o cadastro. Tente novamente em instantes.";
       const field = fieldForServerMessage(message);
       setErrors(field ? { [field]: message } : { _form: message });
+      resetTurnstile();
     } finally {
       setPending(null);
     }
@@ -328,6 +331,7 @@ function RegisterForm({ type, onGoToLogin }: { type: AccountType; onGoToLogin: (
         </label>
         {errors.terms && <small className="field-error" id="campo-terms-erro"><AlertTriangle size={13} /> {errors.terms}</small>}
       </div>
+      <TurnstileWidget />
       <div className="form-actions">
         <button className="primary-button" disabled={pending !== null} aria-busy={pending === "standard"}>
           {pending === "standard" && <Loader2 size={18} className="spin" />}
@@ -388,6 +392,7 @@ function LoginForm({ returnTo, onRecover, onRegister }: { returnTo: string | nul
       const result = await loginWithSupabase(values);
       saveThrottle(registerSuccess(loadThrottle(), email));
       markActivity(true);
+      void recordAccess("login");
       toast.success(result.approvalStatus === "active"
         ? `Boas-vindas, ${result.firstName}!`
         : `Olá, ${result.firstName}. Acompanhe aqui a análise do seu cadastro.`);
@@ -400,6 +405,7 @@ function LoginForm({ returnTo, onRecover, onRegister }: { returnTo: string | nul
       // Só senha/e-mail errados contam para o limite (não falhas de conexão).
       if (/incorretos/i.test(message)) saveThrottle(registerFailure(loadThrottle(), email, Date.now()));
       setErrors({ _form: message });
+      resetTurnstile();
       setPending(false);
     }
   }
@@ -435,6 +441,7 @@ function LoginForm({ returnTo, onRecover, onRegister }: { returnTo: string | nul
       <p className="remember-help" id="lembrar-ajuda">
         Desmarcado, você sai ao fechar o navegador ou após 30 min sem uso. Em computador compartilhado, deixe desmarcado.
       </p>
+      <TurnstileWidget />
       <button className="primary-button" disabled={pending} aria-busy={pending}>
         {pending && <Loader2 size={18} className="spin" />}{pending ? "Entrando…" : "Entrar"}
       </button>
@@ -463,7 +470,9 @@ function RecoveryForm({ onBack }: { onBack: () => void }) {
     try {
       const { error } = await getSupabase().auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/redefinir-senha`,
+        captchaToken: captchaFrom(values),
       });
+      resetTurnstile();
       if (error && /rate|limit|many/i.test(error.message)) {
         setErrors({ _form: "Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente novamente." });
         return;
@@ -506,6 +515,7 @@ function RecoveryForm({ onBack }: { onBack: () => void }) {
           </span>
         )}
       </Field>
+      <TurnstileWidget />
       <button className="primary-button" disabled={pending} aria-busy={pending}>
         {pending && <Loader2 size={18} className="spin" />}{pending ? "Enviando…" : "Enviar link"}
       </button>

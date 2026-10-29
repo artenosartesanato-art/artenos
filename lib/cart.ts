@@ -9,7 +9,7 @@ export function getCartErrorMessage(error: unknown) {
         ? String(error.message)
         : "";
 
-  if (/estoque insuficiente/i.test(message)) return message;
+  if (/estoque insuficiente|esgotad/i.test(message)) return message;
   if (/indisponível|não encontrado/i.test(message))
     return "Este produto não está mais disponível.";
   if (/login/i.test(message)) return "Entre na sua conta para usar o carrinho.";

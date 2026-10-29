@@ -5,6 +5,7 @@ import { ScrollReveal } from "@/components/scroll-reveal";
 import { MarketplaceProvider } from "@/components/marketplace-state";
 import { StorefrontActionsProvider } from "@/components/storefront-actions";
 import { SiteChrome } from "@/components/site-chrome";
+import { CookieConsentBanner } from "@/components/cookie-consent";
 
 export const metadata: Metadata = {
   title: "Artenós | Artesanato com história",
@@ -49,6 +50,7 @@ export default function RootLayout({
           </StorefrontActionsProvider>
         </MarketplaceProvider>
         <ScrollReveal />
+        <CookieConsentBanner />
         <Toaster position="bottom-center" visibleToasts={1} closeButton toastOptions={{ duration: 5000 }} />
       </body>
     </html>

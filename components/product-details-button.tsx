@@ -12,11 +12,18 @@ import {
   Plus,
   Ruler,
   Scale,
+  ShieldCheck,
   ShoppingBag,
+  CreditCard,
   Store,
   Truck,
 } from "@/components/icons";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { getCartErrorMessage } from "@/lib/cart";
+import { requestShippingQuotes } from "@/lib/shipping-quote";
+import type { ShippingOption } from "@/lib/cart-groups";
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { getSupabase } from "@/lib/supabase";
 import { Dialog } from "@/components/ui/dialog";
@@ -24,6 +31,10 @@ import { useMarketplace } from "@/components/marketplace-state";
 import { useStorefrontActions } from "@/components/storefront-actions";
 import { ProductInquiryLink } from "@/components/product-inquiry-link";
 import { OptimizedImage } from "@/components/optimized-image";
+import { RichText } from "@/components/rich-text";
+import { StarRating } from "@/components/stars";
+import { ReviewsList } from "@/components/reviews-list";
+import { AVAILABILITY_LABEL, availabilityFor, maxQuantityFor, productionLabel, type Availability } from "@/lib/availability";
 
 type ProductDetails = {
   id: string;
@@ -33,6 +44,9 @@ type ProductDetails = {
   image_url?: string | null;
   stock?: number | null;
   ready_to_ship?: boolean;
+  availability?: Availability | null;
+  rating_avg?: number | string | null;
+  rating_count?: number | null;
   category_name?: string | null;
   shop_name?: string | null;
   shop_id?: string | null;
@@ -51,7 +65,6 @@ type ShippingDetails = {
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const decimal = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 });
-const MAX_QUANTITY = 99;
 
 function formatCep(value: string | null) {
   const digits = String(value ?? "").replace(/\D/g, "");
@@ -64,20 +77,17 @@ function formatWeight(value: number | null) {
   return grams >= 1000 ? `${decimal.format(grams / 1000)} kg` : `${decimal.format(grams)} g`;
 }
 
-function productionLabel(days: number | null | undefined, readyToShip?: boolean) {
-  if (days == null) return readyToShip ? "Pronta para postagem" : null;
-  if (days === 0) return "Pronta para postagem";
-  return `Produzida em até ${days} ${days === 1 ? "dia útil" : "dias"} antes da postagem`;
-}
-
 export function ProductDetailsButton({ product, children, cartDisabled = false }: {
   product: ProductDetails;
   children?: (openDetails: () => void) => ReactNode;
   cartDisabled?: boolean;
 }) {
   const titleId = useId();
-  const { favoriteIds, pendingFavoriteIds, userId } = useMarketplace();
-  const { addToCart, toggleFavorite, pendingCartIds } = useStorefrontActions();
+  const router = useRouter();
+  const { authReady, cep, favoriteIds, pendingFavoriteIds, userId } = useMarketplace();
+  const { addToCart, toggleFavorite, pendingCartIds, requireAuth } = useStorefrontActions();
+  const [buying, setBuying] = useState(false);
+  const [freight, setFreight] = useState<{ loading: boolean; error: string; options: ShippingOption[] | null }>({ loading: false, error: "", options: null });
   const [open, setOpen] = useState(false);
   // O diálogo só entra na árvore depois da primeira abertura: uma grade com
   // dezenas de cards não precisa de dezenas de diálogos ociosos.
@@ -116,6 +126,7 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
     setShippingError(false);
     setShippingLoading(true);
     setQuantity(1);
+    setFreight({ loading: false, error: "", options: null });
     setZoomed(false);
     setEverOpened(true);
     setOpen(true);
@@ -126,19 +137,62 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
     if (ok) setOpen(false);
   }
 
-  const maxQuantity = Math.max(1, Math.min(MAX_QUANTITY, product.stock ?? MAX_QUANTITY));
-  const unavailable = product.stock === 0 || cartDisabled;
+  /** Guarda a peça para a compra direta (sem mexer no carrinho). */
+  async function startBuyNow() {
+    if (!authReady) {
+      toast.info("Aguarde um instante enquanto verificamos sua conta.");
+      return false;
+    }
+    if (!userId) {
+      requireAuth("cart");
+      return false;
+    }
+    const { error } = await getSupabase().rpc("start_buy_now", { p_product_id: product.id, p_quantity: quantity });
+    if (error) {
+      toast.error(getCartErrorMessage(error));
+      return false;
+    }
+    return true;
+  }
+
+  async function buyNow() {
+    setBuying(true);
+    const ok = await startBuyNow();
+    setBuying(false);
+    if (!ok) return;
+    setOpen(false);
+    router.push("/comprar-agora");
+  }
+
+  async function estimateFreight() {
+    setFreight({ loading: true, error: "", options: null });
+    if (!(await startBuyNow())) return setFreight({ loading: false, error: "", options: null });
+    try {
+      const groups = await requestShippingQuotes(cep, "buy_now");
+      const group = groups[0];
+      if (!group || group.error) throw new Error(group?.error || "Não foi possível calcular o frete desta peça.");
+      setFreight({ loading: false, error: "", options: group.options.slice(0, 3) });
+    } catch (error) {
+      setFreight({ loading: false, error: error instanceof Error ? error.message : "Não foi possível calcular o frete.", options: null });
+    }
+  }
+
+  const availability = availabilityFor(product);
+  const maxQuantity = Math.max(1, maxQuantityFor(product));
+  const unavailable = availability === "sold_out" || cartDisabled;
   const adding = pendingCartIds.has(product.id);
+  const ownProduct = Boolean(userId && product.shop_id === userId);
   const saved = favoriteIds.has(product.id);
   const weight = shipping ? formatWeight(shipping.weight_grams) : null;
   const originCep = shipping ? formatCep(shipping.origin_cep) : null;
   const hasDimensions = Boolean(shipping?.length_cm && shipping?.width_cm && shipping?.height_cm);
-  const production = productionLabel(shipping?.production_time_days, product.ready_to_ship);
-  const stockLabel = product.stock === 0
+  const production = productionLabel(availability, shipping?.production_time_days);
+  // Sob encomenda não mostra unidades: a peça é feita depois do pedido.
+  const stockLabel = availability === "sold_out"
     ? "Esgotado no momento"
-    : product.stock != null
-      ? `${product.stock} ${product.stock === 1 ? "unidade disponível" : "unidades disponíveis"}`
-      : product.ready_to_ship ? "Disponível" : "Produzido a cada pedido";
+    : availability === "ready"
+      ? `${product.stock} ${product.stock === 1 ? "unidade a pronta entrega" : "unidades a pronta entrega"}`
+      : "Feita especialmente para você";
 
   return <>
     {children ? children(openDetails) : (
@@ -173,53 +227,119 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
         </p>
         <h2 id={titleId}>{product.name}</h2>
         <p className="product-details-price">{money.format(Number(product.price))}</p>
+        {Number(product.rating_count) > 0 && (
+          <a className="product-details-rating" href={`#${titleId}-avaliacoes`}>
+            <StarRating avg={product.rating_avg} count={product.rating_count} />
+          </a>
+        )}
 
         <ul className="product-details-facts">
           <li>
-            <span className={`an-badge${unavailable ? " an-badge--muted" : product.ready_to_ship ? "" : " an-badge--warm"}`}>
-              {cartDisabled ? "Loja em pausa" : product.stock === 0 ? "Esgotado" : product.ready_to_ship ? "Pronta entrega" : "Feito sob encomenda"}
+            <span className={`an-badge${unavailable ? " an-badge--muted" : availability === "ready" ? "" : " an-badge--warm"}`}>
+              {cartDisabled ? "Loja em pausa" : AVAILABILITY_LABEL[availability]}
             </span>
             <span>{stockLabel}</span>
           </li>
-          {(production || shippingLoading) && (
+          {availability !== "sold_out" && (production || shippingLoading) && (
             <li>
               <Clock3 size={16} />
-              <span>{shippingLoading ? "Consultando prazo de produção…" : production}</span>
+              <span>{shippingLoading && availability !== "ready" ? "Consultando prazo de produção…" : production}</span>
             </li>
           )}
         </ul>
 
         <div className="product-details-buy">
           <div className="an-stepper" role="group" aria-label="Quantidade">
-            <button type="button" onClick={() => setQuantity((value) => Math.max(1, value - 1))}
+            <button type="button" onClick={() => { setQuantity((value) => Math.max(1, value - 1)); setFreight({ loading: false, error: "", options: null }); }}
               disabled={quantity <= 1 || unavailable} aria-label="Diminuir quantidade"><Minus size={14} /></button>
             <output aria-live="polite" aria-label={`Quantidade: ${quantity}`}>{quantity}</output>
-            <button type="button" onClick={() => setQuantity((value) => Math.min(maxQuantity, value + 1))}
+            <button type="button" onClick={() => { setQuantity((value) => Math.min(maxQuantity, value + 1)); setFreight({ loading: false, error: "", options: null }); }}
               disabled={quantity >= maxQuantity || unavailable} aria-label="Aumentar quantidade"><Plus size={14} /></button>
           </div>
-          <button type="button" className="an-btn an-btn--lg product-details-add" onClick={() => void add()}
-            disabled={unavailable || adding} aria-busy={adding}>
-            {adding ? <LoaderCircle size={18} className="spin" /> : <ShoppingBag size={18} />}
-            {unavailable ? "Indisponível" : adding ? "Adicionando…" : `Adicionar · ${money.format(Number(product.price) * quantity)}`}
-          </button>
           <button type="button" className={`an-icon-btn product-details-fav${saved ? " is-saved" : ""}`}
             onClick={() => void toggleFavorite(product)} disabled={pendingFavoriteIds.has(product.id)}
             aria-pressed={saved} aria-label={saved ? "Remover dos favoritos" : "Salvar nos favoritos"}>
             <Heart size={19} fill={saved ? "currentColor" : "none"} />
           </button>
         </div>
-        {!(userId && product.shop_id === userId) && (
+        {/* Uma única ação de compra por tela: comprar agora (principal) e carrinho (secundária). */}
+        <div className="product-details-actions">
+          <button type="button" className="an-btn an-btn--lg an-btn--block product-details-buy-now" onClick={() => void buyNow()}
+            disabled={unavailable || buying || ownProduct} aria-busy={buying}>
+            {buying ? <LoaderCircle size={18} className="spin" /> : <ArrowRight size={18} />}
+            {unavailable ? (availability === "sold_out" ? "Esgotado" : "Indisponível")
+              : buying ? "Abrindo…"
+                : `${availability === "made_to_order" ? "Encomendar" : "Comprar agora"} · ${money.format(Number(product.price) * quantity)}`}
+          </button>
+          <button type="button" className="an-btn an-btn--secondary an-btn--block product-details-add" onClick={() => void add()}
+            disabled={unavailable || adding || ownProduct} aria-busy={adding}>
+            {adding ? <LoaderCircle size={18} className="spin" /> : <ShoppingBag size={18} />}
+            {adding ? "Adicionando…" : "Adicionar ao carrinho"}
+          </button>
+        </div>
+        {!ownProduct && (
           <ProductInquiryLink productId={product.id} productName={product.name} />
         )}
-        {product.stock != null && product.stock > 0 && quantity >= maxQuantity && (
+        {ownProduct && <p className="product-details-limit" role="status">Esta peça é da sua loja.</p>}
+        {availability === "ready" && quantity >= maxQuantity && (
           <p className="product-details-limit" role="status">Você selecionou todas as unidades disponíveis.</p>
+        )}
+
+        {!unavailable && (
+          <section className="product-purchase-info" aria-label="Frete, pagamento e segurança">
+            <div className="product-purchase-row">
+              <Truck size={16} />
+              <div>
+                <strong>Frete e prazo</strong>
+                {!userId ? (
+                  <span>Entre na sua conta para calcular para o seu CEP.</span>
+                ) : !/^\d{8}$/.test(cep) ? (
+                  <span>Cadastre seu CEP no perfil para calcular.</span>
+                ) : freight.options ? (
+                  <ul className="product-freight-options">
+                    {freight.options.map((option) => (
+                      <li key={option.id}>
+                        <span>{option.companyName} · {option.serviceName}</span>
+                        <span>{option.totalMinDays === option.totalMaxDays ? option.totalMaxDays : `${option.totalMinDays}–${option.totalMaxDays}`} dias úteis</span>
+                        <b>{money.format(option.price)}</b>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <span>
+                    {freight.error || `Entrega para o CEP ${cep.slice(0, 5)}-${cep.slice(5)}.`}{" "}
+                    <button type="button" className="product-freight-calc" onClick={() => void estimateFreight()} disabled={freight.loading || ownProduct}>
+                      {freight.loading ? "Calculando…" : "Calcular frete"}
+                    </button>
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="product-purchase-row">
+              <CreditCard size={16} />
+              <div><strong>Pagamento</strong><span>Pix ou cartão de crédito, pelo Mercado Pago.</span></div>
+            </div>
+            <div className="product-purchase-row">
+              <ShieldCheck size={16} />
+              <div><strong>Compra segura</strong><span>Os dados do cartão vão direto ao Mercado Pago, sem passar pela Artenós ou pela loja.</span></div>
+            </div>
+          </section>
         )}
 
         <section className="product-details-section" aria-labelledby={`${titleId}-sobre`}>
           <h3 id={`${titleId}-sobre`}>Sobre a peça</h3>
-          <p className="product-details-description">
-            {product.description?.trim() || "A loja ainda não publicou a descrição desta peça. Você pode perguntar pelos detalhes depois da compra, pelas mensagens do pedido."}
-          </p>
+          {product.description?.trim() ? (
+            <RichText className="product-details-description" text={product.description} />
+          ) : (
+            <p className="product-details-description">
+              A loja ainda não publicou a descrição desta peça. Você pode perguntar pelos detalhes pelo botão de mensagem.
+            </p>
+          )}
+        </section>
+
+        <section className="product-details-section" id={`${titleId}-avaliacoes`} aria-labelledby={`${titleId}-avaliacoes-titulo`}>
+          <h3 id={`${titleId}-avaliacoes-titulo`}>Avaliações</h3>
+          <ReviewsList kind="product" id={product.id} storeName={product.shop_name} />
         </section>
 
         <section className="product-shipping-details" aria-labelledby={`${titleId}-envio`}>
@@ -249,7 +369,7 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
           ) : (
             <div className="product-shipping-notice">As informações de envio desta peça ainda não foram cadastradas.</div>
           )}
-          <p className="product-details-freight"><Truck size={16} /> Frete e prazo de entrega são calculados no carrinho para o seu CEP.</p>
+          <p className="product-details-freight"><Truck size={16} /> O frete final é confirmado para o seu CEP antes do pagamento.</p>
         </section>
 
         {product.shop_id && (

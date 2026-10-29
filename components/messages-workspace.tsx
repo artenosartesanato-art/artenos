@@ -24,6 +24,8 @@ import { clearProductInquiry, pendingProductInquiry, validProductId } from "@/li
 import { accessHref } from "@/lib/navigation";
 import { useNotifications } from "@/components/notifications";
 import { formatClock, formatListTime, groupChat, initials } from "@/lib/message-format";
+import { findBlockedTerm, MODERATION_MESSAGE } from "@/lib/moderation";
+import { ReportConversationButton } from "@/components/report-conversation";
 
 type Order = { id: string; product_name: string; created_at: string };
 const topicLabel = (value: MessageTopic) =>
@@ -95,6 +97,7 @@ export function MessagesWorkspace({
   const search = searchParams.toString();
   const [user, setUser] = useState<User | null>(null);
   const [status, setStatus] = useState("Carregando...");
+  const [composerError, setComposerError] = useState("");
   const [orders, setOrders] = useState<Order[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [current, setCurrent] = useState<Conversation | null>(null);
@@ -420,21 +423,24 @@ export function MessagesWorkspace({
     const supabase = getSupabase();
     setSending(true);
 
-    const { data, error } = await supabase
-      .from("messages")
-      .insert({
-        conversation_id: current.conversation_id,
-        sender_id: user.id,
-        body,
-        topic,
-        reply_to_id: replyTo?.id ?? null,
-      })
-      .select("id, sender_id, body, topic, reply_to_id, created_at")
-      .single();
+    // O servidor confere termos ofensivos e suspensões (send_chat_message).
+    const { data: result, error } = await supabase.rpc("send_chat_message", {
+      p_conversation_id: current.conversation_id,
+      p_body: body,
+      p_topic: topic,
+      p_reply_to_id: replyTo?.id ?? null,
+    });
 
     setSending(false);
     // O texto digitado é preservado quando o envio falha.
     if (error) return setStatus("A mensagem não foi enviada. Confira sua conexão e tente novamente.");
+    const outcome = result as { status: "sent" | "blocked" | "suspended"; until?: string; message?: Message };
+    if (outcome.status === "blocked") return setComposerError(MODERATION_MESSAGE);
+    if (outcome.status === "suspended") {
+      const until = outcome.until ? new Date(outcome.until).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "";
+      return setComposerError(`Envio de mensagens suspenso temporariamente por uso repetido de termos não permitidos${until ? ` (até ${until})` : ""}.`);
+    }
+    const data = outcome.message;
     setStatus("");
     setText("");
     setReplyTo(null);
@@ -451,6 +457,9 @@ export function MessagesWorkspace({
       void sendMessage();
     }
   }
+
+  // Aviso antes de enviar; a regra que vale é a do servidor.
+  const blockedDraft = useMemo(() => Boolean(text.trim()) && findBlockedTerm(text) !== null, [text]);
 
   const authorName = (message: Message) =>
     message.sender_id === user?.id ? "Você" : current ? partnerName(current) : "";
@@ -594,6 +603,7 @@ export function MessagesWorkspace({
                       <h2>{partnerName(current)}</h2>
                       <p>{KIND_LABEL[current.kind]}</p>
                     </div>
+                    <ReportConversationButton conversationId={current.conversation_id} partnerName={partnerName(current)} />
                     <label className="chat-topic-filter">
                       <span className="messages-visually-hidden">Mostrar mensagens do assunto</span>
                       <select value={topicFilter}
@@ -725,14 +735,18 @@ export function MessagesWorkspace({
                       </button>
                       <label htmlFor="messages-text" className="messages-visually-hidden">Sua mensagem</label>
                       <textarea id="messages-text" ref={textRef} rows={1} value={text}
-                        onChange={(event) => setText(event.target.value)} onKeyDown={onComposerKey}
+                        onChange={(event) => { setText(event.target.value); setComposerError(""); }} onKeyDown={onComposerKey}
                         maxLength={2000} placeholder="Escreva uma mensagem" aria-describedby="chat-compose-hint" />
                       <button type="submit" className="chat-send" disabled={sending || !text.trim()} aria-busy={sending}
                         aria-label={sending ? "Enviando mensagem" : "Enviar mensagem"}>
                         <Send size={18} />
                       </button>
                     </div>
-                    <p id="chat-compose-hint" className="chat-compose-hint">Enter envia · Shift + Enter quebra a linha</p>
+                    {composerError || blockedDraft ? (
+                      <p id="chat-compose-hint" className="chat-compose-hint chat-compose-warning" role="alert">{composerError || MODERATION_MESSAGE}</p>
+                    ) : (
+                      <p id="chat-compose-hint" className="chat-compose-hint">Enter envia · Shift + Enter quebra a linha</p>
+                    )}
                   </form>
                 </>
               ) : openError ? (

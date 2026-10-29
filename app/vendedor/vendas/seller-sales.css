@@ -498,3 +498,42 @@
     flex-direction: column;
   }
 }
+
+/* Item sob encomenda: resumo da peça e observações de quem comprou. */
+.sale-items > div > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.sale-items small {
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-2xs);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.sale-items .order-item-tag {
+  color: var(--an-argila-texto);
+  font-weight: 700;
+}
+.sale-items .order-item-notes {
+  color: var(--an-text);
+  font-style: italic;
+}
+.sale-production {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.sale-production button {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--artenos-musgo);
+  border-radius: var(--an-r-pill);
+  background: var(--an-surface);
+  color: var(--artenos-musgo);
+  font-size: var(--an-fs-2xs);
+  font-weight: 700;
+  font-style: normal;
+  cursor: pointer;
+}

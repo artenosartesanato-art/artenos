@@ -24,11 +24,13 @@ import { getSupabase } from "@/lib/supabase";
 import { getCartErrorMessage } from "@/lib/cart";
 import { playUiSound } from "@/lib/ui-sound";
 import { notifyCartChanged, useMarketplace } from "@/components/marketplace-state";
-import { brl, groupCartByStore, toCents, type CartItem, type ShippingGroup } from "@/lib/cart-groups";
+import { brl, cartItemLimit, groupCartByStore, toCents, type CartItem, type ShippingGroup } from "@/lib/cart-groups";
 import "../storefront.css";
 import "./cart.css";
 import { OptimizedImage } from "@/components/optimized-image";
 import { GuestCartView } from "@/components/guest-cart-view";
+import { CartItemNotes } from "@/components/cart-item-notes";
+import { requestShippingQuotes } from "@/lib/shipping-quote";
 
 const formatCep = (cep: string) => cep.replace(/(\d{5})(\d{3})/, "$1-$2");
 const days = (min: number, max: number) => (min === max ? `${max} ${max === 1 ? "dia útil" : "dias úteis"}` : `${min} a ${max} dias úteis`);
@@ -90,23 +92,10 @@ export default function CarrinhoPage() {
     setShippingError("");
     setSelectedShipping({});
     try {
-      const { data: result, error } = await getSupabase().functions.invoke("calculate-shipping", { body: { destinationCep: cep } });
-      const payload = (result ?? {}) as { groups?: ShippingGroup[]; error?: string };
-      if (error || payload.error) {
-        let message = payload.error || error?.message;
-        if (error && "context" in error && error.context instanceof Response) {
-          const details = (await error.context.clone().json().catch(() => null)) as { error?: string } | null;
-          message = details?.error || message;
-        }
-        throw new Error(message || "Não foi possível calcular o frete.");
-      }
-      setShippingGroups(payload.groups ?? []);
+      setShippingGroups(await requestShippingQuotes(cep));
     } catch (error) {
       setShippingGroups([]);
-      const message = error instanceof Error ? error.message : "";
-      setShippingError(/fetch|network|edge function|non-2xx/i.test(message) || !message
-        ? "Não foi possível consultar as transportadoras agora."
-        : message);
+      setShippingError(error instanceof Error ? error.message : "Não foi possível consultar as transportadoras agora.");
     } finally {
       setShippingLoading(false);
     }
@@ -144,8 +133,9 @@ export default function CarrinhoPage() {
   async function changeQuantity(item: CartItem, newQuantity: number) {
     if (newQuantity < 1) return removeItem(item);
     if (pendingItems.current.has(item.item_id)) return;
-    if (item.stock !== null && newQuantity > item.stock) {
-      toast.error(`Há somente ${item.stock} ${item.stock === 1 ? "unidade disponível" : "unidades disponíveis"} deste produto.`);
+    const limit = cartItemLimit(item);
+    if (newQuantity > limit) {
+      toast.error(limit === 0 ? "Esta peça está esgotada." : `Há somente ${limit} ${limit === 1 ? "unidade disponível" : "unidades disponíveis"} deste produto.`);
       return;
     }
     pendingItems.current.add(item.item_id);
@@ -234,7 +224,7 @@ export default function CarrinhoPage() {
   const missingShipping = shippingGroups.filter((group) => !group.error && !selectedShipping[group.artisanId]).length;
   const shippingReady = !shippingLoading && shippingGroups.length > 0 &&
     shippingGroups.every((group) => !group.error && Boolean(selectedShipping[group.artisanId]));
-  const blockedItems = cart.filter((item) => !item.product_active || (item.stock !== null && item.quantity > item.stock));
+  const blockedItems = cart.filter((item) => !item.product_active || item.quantity > cartItemLimit(item));
   const canCheckout = !finishing && shippingReady && blockedItems.length === 0;
   const checkoutHint = blockedItems.length
     ? "Remova ou ajuste os itens indisponíveis para continuar."
@@ -333,7 +323,9 @@ export default function CarrinhoPage() {
                     <ul className="cart-items">
                       {group.items.map((item) => {
                         const busy = busyItems.has(item.item_id);
-                        const overStock = item.stock !== null && item.quantity > item.stock;
+                        const limit = cartItemLimit(item);
+                        const overStock = item.quantity > limit;
+                        const madeToOrder = item.availability === "made_to_order";
                         const unavailable = !item.product_active || overStock;
                         return (
                           <li className={`cart-item${unavailable ? " is-unavailable" : ""}${busy ? " is-busy" : ""}`} key={item.item_id}>
@@ -344,14 +336,20 @@ export default function CarrinhoPage() {
                             </div>
                             <div className="cart-item-copy">
                               <h3>{item.product_name}</h3>
+                              {item.product_summary && <p className="cart-item-summary">{item.product_summary}</p>}
                               <p>{brl(toCents(item.unit_price))} cada</p>
                               {!item.product_active ? (
                                 <p className="cart-item-warning"><AlertTriangle size={14} /> Esta peça não está mais disponível.</p>
                               ) : overStock ? (
-                                <p className="cart-item-warning"><AlertTriangle size={14} /> Restam {item.stock} — ajuste a quantidade.</p>
+                                <p className="cart-item-warning"><AlertTriangle size={14} /> {limit === 0 ? "Esgotada — remova do carrinho." : `Restam ${limit} — ajuste a quantidade.`}</p>
+                              ) : madeToOrder ? (
+                                <p className="cart-item-stock">Sob encomenda — produzida depois do pedido</p>
                               ) : item.stock !== null && item.stock <= 3 ? (
                                 <p className="cart-item-stock">{item.stock === 1 ? "Última unidade" : `${item.stock} unidades em estoque`}</p>
                               ) : null}
+                              {madeToOrder && item.product_active && (
+                                <CartItemNotes itemId={item.item_id} initial={item.customer_notes} />
+                              )}
                             </div>
                             <div className="cart-item-controls">
                               <div className="an-stepper an-stepper--sm" role="group" aria-label={`Quantidade de ${item.product_name}`}>
@@ -361,7 +359,7 @@ export default function CarrinhoPage() {
                                 </button>
                                 <output aria-live="polite">{busy ? <LoaderCircle size={14} className="spin" /> : item.quantity}</output>
                                 <button type="button" aria-label="Aumentar quantidade"
-                                  disabled={!item.product_active || busy || (item.stock !== null && item.quantity >= item.stock)}
+                                  disabled={!item.product_active || busy || item.quantity >= limit}
                                   onClick={() => void changeQuantity(item, item.quantity + 1)}>
                                   <Plus size={13} />
                                 </button>

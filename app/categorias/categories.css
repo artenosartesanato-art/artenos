@@ -15,60 +15,12 @@
   color: var(--an-text-muted);
   line-height: 1.6;
 }
-/* Chips quebram linha: nada de arrastar para os lados. */
-.category-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 22px 0 0;
-  padding: 4px 0 4px;
-}
-.category-chips-more {
-  display: none !important;
-}
-.category-chips button {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  gap: 8px;
-  min-height: 42px;
-  padding: 0 16px;
-  border: 1px solid var(--an-line-strong);
-  border-radius: var(--an-r-pill);
-  background: var(--an-surface);
-  color: var(--an-text);
-  font-size: var(--an-fs-sm);
-  font-weight: 650;
-  transition: background-color var(--an-dur-fast) ease, color var(--an-dur-fast) ease;
-}
-.category-chips button:hover {
-  border-color: var(--artenos-marrom);
-}
-.category-chips button[aria-pressed="true"] {
-  border-color: var(--artenos-marrom);
-  background: var(--artenos-marrom);
-  color: var(--artenos-perola);
-}
-.category-chips small {
-  min-width: 22px;
-  padding: 2px 6px;
-  border-radius: var(--an-r-pill);
-  background: color-mix(in srgb, var(--artenos-pessego) 60%, white);
-  color: var(--artenos-marrom);
-  font-size: var(--an-fs-2xs);
-  font-weight: 750;
-  text-align: center;
-}
-.category-chips button[aria-pressed="true"] small {
-  background: rgb(255 255 255 / 0.2);
-  color: #fff;
-}
 .category-layout {
   display: grid;
   grid-template-columns: 248px minmax(0, 1fr);
   gap: 28px;
   align-items: start;
-  margin-top: 14px;
+  margin-top: 24px;
 }
 .category-filters {
   position: sticky;
@@ -314,54 +266,28 @@
   }
 }
 
-.category-chips .category-chips-more {
-  border-style: dashed;
-  color: var(--an-argila-texto);
-}
-@media (max-width: 760px) {
-  .category-chips button {
-    min-height: 38px;
-    padding: 0 12px;
-  }
-  .category-chips:not(.is-expanded) .is-extra {
-    display: none;
-  }
-  .category-chips .category-chips-more {
-    display: inline-flex !important;
-  }
-}
-
-/* Atalhos de orçamento. */
-.category-budgets {
+/* Faixas prontas de preço, dentro do painel de filtros (única fonte do filtro). */
+.category-price-presets {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 8px;
-  margin-top: 10px;
+  gap: 6px;
+  margin-bottom: 12px;
 }
-.category-budgets > span {
-  margin-right: 4px;
-  color: var(--an-text-muted);
-  font-size: var(--an-fs-xs);
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-.category-budgets button {
+.category-price-presets button {
   min-height: 34px;
-  padding: 0 12px;
+  padding: 0 10px;
   border: 1px dashed var(--an-line-strong);
   border-radius: var(--an-r-sm);
   background: transparent;
   color: var(--an-text);
-  font-size: var(--an-fs-sm);
+  font-size: var(--an-fs-xs);
   font-weight: 650;
   cursor: pointer;
 }
-.category-budgets button:hover {
+.category-price-presets button:hover {
   border-color: var(--artenos-marrom);
 }
-.category-budgets button[aria-pressed="true"] {
+.category-price-presets button[aria-pressed="true"] {
   border-style: solid;
   border-color: var(--artenos-marrom);
   background: var(--an-surface-warm);

@@ -1,11 +1,9 @@
 import 'server-only';
 import { getSupabaseAdmin } from './supabase-admin';
+import { emailConfigured, escapeHtml, sendEmail } from './email';
 
 const brl = (value: number | string) =>
   Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-const escapeHtml = (value: string) =>
-  value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 function methodLabel(method: string | null) {
   if (method === 'bank_transfer' || method === 'pix') return 'Pix';
@@ -14,10 +12,8 @@ function methodLabel(method: string | null) {
   return method ?? 'Não informado';
 }
 
-// Envia o comprovante por e-mail uma única vez por compra (usa Resend: https://resend.com).
-// Variáveis: RESEND_API_KEY e EMAIL_FROM (ex.: "Artenós <pagamentos@seudominio.com.br>").
-// Em teste, sem domínio verificado, use EMAIL_FROM="Artenós <onboarding@resend.dev>" — nesse modo o Resend
-// só entrega para o e-mail da sua própria conta Resend.
+// Envia o comprovante por e-mail uma única vez por compra (via lib/email.ts:
+// SMTP do Gmail ou Resend, conforme as variáveis configuradas).
 export async function sendReceiptEmail(checkoutId: string): Promise<'sent' | 'skipped'> {
   const admin = getSupabaseAdmin();
 
@@ -36,8 +32,7 @@ export async function sendReceiptEmail(checkoutId: string): Promise<'sent' | 'sk
   if (!claimed) return 'skipped';
 
   try {
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) throw new Error('RESEND_API_KEY ausente: o comprovante não foi enviado por e-mail.');
+    if (!emailConfigured()) throw new Error('E-mail não configurado: o comprovante não foi enviado.');
 
     const { data: items, error: itemsError } = await admin
       .from('checkout_items')
@@ -78,17 +73,11 @@ export async function sendReceiptEmail(checkoutId: string): Promise<'sent' | 'sk
       `<p><strong>Total pago: ${brl(claimed.total_amount)}</strong></p>` +
       `<p>Você já pode conversar com a artesã sobre o pedido pela área de mensagens do Artenós.</p>`;
 
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from: process.env.EMAIL_FROM ?? 'Artenós <onboarding@resend.dev>',
-        to: [to],
-        subject: `Comprovante do seu pedido no Artenós (${brl(claimed.total_amount)})`,
-        html,
-      }),
+    await sendEmail({
+      to,
+      subject: `Comprovante do seu pedido no Artenós (${brl(claimed.total_amount)})`,
+      html,
     });
-    if (!response.ok) throw new Error(`Resend respondeu ${response.status}: ${await response.text()}`);
 
     return 'sent';
   } catch (error) {

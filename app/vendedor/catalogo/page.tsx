@@ -19,6 +19,9 @@ import {
 } from "@/components/icons";
 import { toast } from "sonner";
 import { getSupabase } from "@/lib/supabase";
+import { findBlockedTerm, moderationError } from "@/lib/moderation";
+import { DescriptionEditor } from "@/components/description-editor";
+import { plainSummary } from "@/lib/rich-text";
 import { useSellerProfile } from "@/components/seller-shell";
 import "./product-catalog.css";
 
@@ -73,7 +76,6 @@ type ProductForm = {
   lengthCm: string;
   packageCount: string;
   productionTimeDays: string;
-  readyToShip: boolean;
   active: boolean;
   imageUrl: string;
 };
@@ -97,7 +99,6 @@ const EMPTY_FORM: ProductForm = {
   lengthCm: "",
   packageCount: "1",
   productionTimeDays: "",
-  readyToShip: false,
   active: false,
   imageUrl: "",
 };
@@ -139,6 +140,10 @@ function errorMessage(error: unknown) {
     "volumes",
     "prazo de produção",
   ];
+  const blocked = moderationError(error);
+  if (blocked) return blocked;
+  const fiscal = message.match(/FISCAL:\s*(.+)/);
+  if (fiscal) return fiscal[1];
   return expected.find((text) => message.includes(text))
     ? message
     : "Não foi possível salvar o produto. Confira os dados e tente novamente.";
@@ -307,7 +312,6 @@ export default function ProductCatalogPage() {
       lengthCm: String(product.shipping_length_cm ?? ""),
       packageCount: String(product.shipping_package_count ?? 1),
       productionTimeDays: String(product.production_time_days ?? ""),
-      readyToShip: product.ready_to_ship,
       active: product.active,
       imageUrl: product.image_url || "",
     });
@@ -343,6 +347,8 @@ export default function ProductCatalogPage() {
       return toast.error("O nome precisa ter pelo menos 3 caracteres.");
     if (form.description.trim().length < 20)
       return toast.error("A descrição precisa ter pelo menos 20 caracteres.");
+    if (findBlockedTerm(`${form.name} ${form.description}`))
+      return toast.error("O nome ou a descrição contém termos que não são permitidos na Artenós.");
     if (!Number.isFinite(price) || price < 0.01)
       return toast.error("Informe um preço válido.");
     if (!Number.isInteger(stock) || stock < 0)
@@ -406,7 +412,8 @@ export default function ProductCatalogPage() {
         p_price: price,
         p_category_id: form.categoryId || null,
         p_stock: stock,
-        p_ready_to_ship: form.readyToShip,
+        // Calculado no banco pelo estoque; enviado só por compatibilidade.
+        p_ready_to_ship: stock > 0,
         p_image_url: finalImageUrl,
         // Um produto novo nasce como rascunho para que os dados logísticos
         // sejam persistidos antes de qualquer publicação na vitrine.
@@ -656,7 +663,7 @@ export default function ProductCatalogPage() {
                 <div className="catalog-product-body">
                   <small>{product.category_name || "Sem categoria"}</small>
                   <h2>{product.name}</h2>
-                  <p>{product.description}</p>
+                  <p>{plainSummary(product.description, 140)}</p>
                   <div className="catalog-product-data">
                     <strong>{money.format(Number(product.price))}</strong>
                     <span>
@@ -665,11 +672,10 @@ export default function ProductCatalogPage() {
                         : "Sem estoque"}
                     </span>
                   </div>
-                  {product.ready_to_ship && (
-                    <div className="catalog-ready">
-                      <PackageCheck size={14} /> Pronto para envio
-                    </div>
-                  )}
+                  <div className={product.stock > 0 ? "catalog-ready" : "catalog-made-to-order"}>
+                    <PackageCheck size={14} />{" "}
+                    {product.stock > 0 ? "Pronta entrega" : "Sob encomenda / esgotado"}
+                  </div>
                   {!product.shipping_data_complete && (
                     <div className="catalog-shipping-missing">
                       Dados de frete pendentes
@@ -746,21 +752,11 @@ export default function ProductCatalogPage() {
                     />
                     <small>{form.name.length}/120</small>
                   </label>
-                  <label>
-                    <span>Descrição</span>
-                    <textarea
-                      value={form.description}
-                      onChange={(event) =>
-                        setField("description", event.target.value)
-                      }
-                      minLength={20}
-                      maxLength={2000}
-                      rows={7}
-                      placeholder="Conte os materiais, medidas, técnica e detalhes da peça"
-                      required
-                    />
-                    <small>{form.description.length}/2000</small>
-                  </label>
+                  <DescriptionEditor
+                    value={form.description}
+                    onChange={(value) => setField("description", value)}
+                    placeholder="Conte os materiais, medidas, técnica e detalhes da peça"
+                  />
                   <div className="catalog-fields-row">
                     <label>
                       <span>Preço</span>
@@ -943,31 +939,13 @@ export default function ProductCatalogPage() {
                       a cada volume na cotação.
                     </small>
                   </section>
+                  <p className="catalog-availability-note" role="note">
+                    <PackageCheck size={15} />
+                    {Number(form.stock) > 0
+                      ? "Com estoque, a peça aparece como Pronta entrega. Quando as unidades acabarem, ela passa sozinha para Sob encomenda (ou Esgotado, se a loja não aceitar encomendas)."
+                      : "Sem estoque, a peça aparece como Sob encomenda se a loja aceitar encomendas; se não aceitar, como Esgotado. Informe o estoque para vender a pronta entrega."}
+                  </p>
                   <div className="catalog-form-toggles">
-                    <label>
-                      <span>
-                        <strong>Pronto para envio</strong>
-                        <small>
-                          A peça já está produzida e pode ser enviada.
-                        </small>
-                      </span>
-                      <input
-                        type="checkbox"
-                        checked={form.readyToShip}
-                        onChange={(event) => {
-                          const checked = event.target.checked;
-                          setForm((previous) => ({
-                            ...previous,
-                            readyToShip: checked,
-                            productionTimeDays: checked
-                              ? "0"
-                              : previous.productionTimeDays === "0"
-                                ? ""
-                                : previous.productionTimeDays,
-                          }));
-                        }}
-                      />
-                    </label>
                     <label>
                       <span>
                         <strong>Publicar na vitrine</strong>

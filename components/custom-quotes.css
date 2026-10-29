@@ -726,3 +726,73 @@
   color: var(--an-text-muted);
   font-size: var(--an-fs-xs);
 }
+
+/* Orçamentos na página da loja e em Pedidos (substituem a tela /sob-encomenda). */
+.custom-store-quotes {
+  margin-top: 44px;
+}
+.custom-store-quotes-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.custom-store-quote {
+  display: grid;
+  overflow: hidden;
+  border-radius: var(--an-r-lg, 16px);
+  background: var(--an-surface);
+  box-shadow: var(--an-shadow-sm);
+}
+.custom-store-quote img,
+.custom-store-quote-noimage {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  background: var(--an-surface-warm);
+  color: var(--artenos-marrom);
+}
+.custom-store-quote > div {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+}
+.custom-store-quote h3 {
+  margin: 0;
+  font: 600 var(--an-fs-lg) / 1.25 var(--font-display);
+}
+.custom-store-quote p {
+  margin: 0;
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-sm);
+  line-height: 1.5;
+}
+.custom-store-quote-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+.custom-store-quote .an-btn {
+  justify-self: start;
+}
+.custom-requests-section {
+  margin-top: 36px;
+}
+.custom-requests-section h2 {
+  margin: 0 0 6px;
+  font: 500 var(--an-fs-2xl) / 1.15 var(--font-display);
+}
+.custom-requests-section > p {
+  margin: 0 0 16px;
+  color: var(--an-text-muted);
+}
+.custom-requests-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}

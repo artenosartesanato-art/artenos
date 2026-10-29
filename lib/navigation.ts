@@ -27,3 +27,23 @@ export function messagesHref(sellerPanel: boolean, query = "") {
   const base = sellerPanel ? "/vendedor/mensagens" : "/mensagens";
   return query ? `${base}?${query.replace(/^\?/, "")}` : base;
 }
+
+/**
+ * Rotas que acendem cada item do menu principal. A página de uma loja é
+ * /loja?id=… (singular), então "Lojas" precisa reconhecer /loja também.
+ */
+export const NAV_MATCHES: Record<string, string[]> = {
+  "/categorias": ["/categorias"],
+  "/lojas": ["/lojas", "/loja"],
+  "/favoritos": ["/favoritos"],
+  "/pedidos": ["/pedidos", "/pagamento"],
+  "/mensagens": ["/mensagens"],
+  "/ajuda": ["/ajuda"],
+  "/vendedor/mensagens": ["/vendedor/mensagens"],
+};
+
+/** O item está ativo na própria rota e em qualquer sub-rota (/x ou /x/...). */
+export function isNavActive(href: string, pathname: string) {
+  const prefixes = NAV_MATCHES[href] ?? [href];
+  return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}

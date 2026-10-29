@@ -2,6 +2,8 @@
 // registerWithSupabase aplica antes do envio. Serve para mostrar o erro ao
 // lado do campo; a validação do servidor continua valendo.
 import { validBrazilianPhone, validCnpj, validCpf, validEmail } from "@/lib/supabase";
+import { meaningfulTextError } from "@/lib/text-quality";
+import { findBlockedTerm } from "@/lib/moderation";
 
 export type FieldErrors = Record<string, string>;
 const text = (value: unknown) => String(value ?? "").trim();
@@ -59,8 +61,10 @@ export function validateRegistration(values: Record<string, unknown>, type: "cli
   if (!text(values.confirmPassword)) errors.confirmPassword = "Repita a senha.";
   else if (password !== text(values.confirmPassword)) errors.confirmPassword = "As senhas não são iguais.";
   if (type === "artisan") {
-    const story = text(values.story);
-    if (story.length < 40) errors.story = `Conte um pouco mais: faltam ${40 - story.length} caracteres (mínimo de 40).`;
+    const storyError = meaningfulTextError(text(values.story), "A história da loja");
+    if (storyError) errors.story = storyError;
+    else if (findBlockedTerm(text(values.story))) errors.story = "A história contém termos que não são permitidos na Artenós.";
+    if (findBlockedTerm(text(values.storeName))) errors.storeName = "O nome da loja contém termos que não são permitidos na Artenós.";
   }
   if (values.terms !== "accepted") errors.terms = "Para criar a conta, aceite os Termos de Uso e a Política de Privacidade.";
   return errors;

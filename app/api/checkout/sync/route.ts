@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin, getUserFromRequest } from '../../../../lib/supabase-admin';
 import { findPaymentByReference, getPayment } from '../../../../lib/mercadopago';
 import { reconcilePayment } from '../../../../lib/payments';
+import { sameOrigin } from '../../../../lib/request-guard';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -12,6 +13,8 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // Ela pergunta ao Mercado Pago como está o pagamento e atualiza o banco. Assim o fluxo funciona
 // mesmo se o webhook atrasar ou não chegar (ex.: testando em localhost).
 export async function POST(request: Request) {
+  // Só aceita chamadas da própria página (proteção contra CSRF).
+  if (!sameOrigin(request)) return NextResponse.json({ error: 'Origem não permitida.' }, { status: 403 });
   const user = await getUserFromRequest(request);
   if (!user) return NextResponse.json({ error: 'Faça login.' }, { status: 401 });
 

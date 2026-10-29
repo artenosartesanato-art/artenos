@@ -570,3 +570,40 @@
   gap: 10px;
   margin-top: 20px;
 }
+
+/* Privacidade e dados (LGPD): baixar dados e excluir conta. */
+.profile-privacy {
+  display: grid;
+  gap: 12px;
+}
+.profile-privacy h2 {
+  margin: 0;
+}
+.profile-privacy p {
+  margin: 0;
+  color: var(--an-text-muted);
+}
+.profile-privacy-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.profile-delete-dialog {
+  display: grid;
+  gap: 12px;
+  padding: 28px 24px 22px;
+}
+.profile-delete-dialog h2 {
+  margin: 0;
+  font: 500 var(--an-fs-2xl) / 1.15 var(--font-display);
+}
+.profile-delete-dialog p {
+  margin: 0;
+  color: var(--an-text-muted);
+  line-height: 1.55;
+}
+.profile-delete-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

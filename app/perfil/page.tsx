@@ -23,6 +23,7 @@ import "../storefront.css";
 import "./profile.css";
 import { endSession, rememberDevice } from "@/lib/session";
 import { Dialog } from "@/components/ui/dialog";
+import { AccountPrivacy } from "@/components/account-privacy";
 
 type Profile = {
   id: string;
@@ -812,6 +813,7 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
                   <LogOut size={16} /> Sair de todos os aparelhos
                 </button>
               </section>
+              <AccountPrivacy />
               <Dialog open={confirmEverywhere} onClose={() => { if (!endingAll) setConfirmEverywhere(false); }}
                 labelledBy="sair-todos-titulo" describedBy="sair-todos-texto" className="profile-confirm-dialog">
                 <h2 id="sair-todos-titulo">Sair de todos os aparelhos?</h2>

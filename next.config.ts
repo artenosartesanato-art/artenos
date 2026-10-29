@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import type { Redirect } from "next/dist/lib/load-custom-routes";
 
 // Imagens do Storage do Supabase passam pelo otimizador do Next.js
 // (components/optimized-image.tsx). O host vem da variável pública do projeto.
@@ -11,11 +12,36 @@ const supabase = (() => {
 })();
 const localSupabase = Boolean(supabase && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(supabase.hostname));
 
-// Cabeçalhos de segurança em todas as respostas. Sem CSP completa de scripts
-// para não quebrar o pagamento (Mercado Pago); só diretivas sem esse risco.
+// Política de conteúdo completa (scripts, conexões, iframes). Começa em modo
+// "Report-Only" para não quebrar o pagamento do Mercado Pago sem teste: as
+// violações aparecem no console e em /api/csp-report. Depois de testar o
+// checkout sem violações, defina CSP_ENFORCE=true para passar a bloquear.
+const supabaseOrigin = supabase ? supabase.origin : "";
+const supabaseSocket = supabase ? `wss://${supabase.host}` : "";
+const mercadoPago = "https://*.mercadopago.com https://*.mercadopago.com.br https://*.mercadolibre.com https://*.mlstatic.com";
+const fullCsp = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""} https://sdk.mercadopago.com ${mercadoPago} https://challenges.cloudflare.com`,
+  `connect-src 'self' ${supabaseOrigin} ${supabaseSocket} https://viacep.com.br ${mercadoPago} https://challenges.cloudflare.com`.replace(/\s+/g, " "),
+  `frame-src 'self' ${mercadoPago} https://challenges.cloudflare.com`,
+  `img-src 'self' data: blob: ${supabaseOrigin} ${mercadoPago}`.replace(/\s+/g, " "),
+  "style-src 'self' 'unsafe-inline'",
+  `font-src 'self' data: ${mercadoPago}`,
+  "worker-src 'self' blob:",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "object-src 'none'",
+].join("; ");
+const enforceCsp = process.env.CSP_ENFORCE === "true";
+
+// Cabeçalhos de segurança em todas as respostas.
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
-  { key: "Content-Security-Policy", value: "frame-ancestors 'none'; base-uri 'self'; object-src 'none'" },
+  enforceCsp
+    ? { key: "Content-Security-Policy", value: fullCsp }
+    : { key: "Content-Security-Policy", value: "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'" },
+  ...(enforceCsp ? [] : [{ key: "Content-Security-Policy-Report-Only", value: `${fullCsp}; report-uri /api/csp-report` }]),
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), interest-cohort=()" },
@@ -28,6 +54,22 @@ const nextConfig: NextConfig = {
   agentRules: false,
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
+  },
+  // A antiga tela "Sob encomenda" virou o filtro da listagem; orçamentos ficam na página de cada loja.
+  async redirects(): Promise<Redirect[]> {
+    const httpsRedirect: Redirect[] = process.env.HTTPS_REDIRECT === "false" ? [] : [{
+      source: "/:path*",
+      has: [{ type: "header", key: "x-forwarded-proto", value: "http" }, { type: "host", value: "(?<host>.+)" }],
+      missing: [{ type: "host", value: "(localhost|127\\.0\\.0\\.1)(:\\d+)?" }],
+      destination: "https://:host/:path*",
+      permanent: true,
+    }];
+    return [
+      { source: "/sob-encomenda", destination: "/categorias?encomenda=1", permanent: true },
+      // HTTPS obrigatório: atrás do proxy da hospedagem, pedidos em http:// vão para https://.
+      // (Desligue com HTTPS_REDIRECT=false se o proxy não informar x-forwarded-proto corretamente.)
+      ...httpsRedirect,
+    ];
   },
   images: {
     formats: ["image/avif", "image/webp"],

@@ -1122,3 +1122,65 @@
     width: 100%;
   }
 }
+
+/* Denúncias de conversas. */
+.adm-report-list {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.adm-report {
+  display: grid;
+  gap: 10px;
+}
+.adm-report-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.adm-report-head small {
+  display: block;
+  margin-top: 2px;
+  color: var(--an-text-muted);
+}
+.adm-report-details,
+.adm-report-note,
+.adm-report-attempts {
+  margin: 0;
+}
+.adm-report-attempts {
+  color: var(--an-erro);
+  font-weight: 650;
+}
+.adm-report-messages {
+  display: grid;
+  gap: 6px;
+  max-height: 280px;
+  margin: 0;
+  padding: 10px;
+  overflow: auto;
+  border-radius: var(--an-r-md);
+  background: var(--an-surface-soft);
+  list-style: none;
+}
+.adm-report-messages li {
+  display: grid;
+  gap: 2px;
+}
+.adm-report-messages li.is-store {
+  justify-items: start;
+}
+.adm-report-messages li.is-client {
+  justify-items: end;
+  text-align: right;
+}
+.adm-report-messages small {
+  color: var(--an-text-muted);
+}
+.adm-report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

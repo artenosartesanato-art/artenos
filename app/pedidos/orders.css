@@ -821,3 +821,59 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Item sob encomenda: resumo da peça e observações de quem comprou. */
+.order-items > div > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.order-items small {
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-2xs);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.order-items .order-item-tag {
+  color: var(--an-argila-texto);
+  font-weight: 700;
+}
+.order-items .order-item-notes {
+  color: var(--an-text);
+  font-style: italic;
+}
+
+/* Avaliação do pedido entregue. */
+.order-reviews {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 18px;
+  border-radius: var(--an-r-md);
+  background: var(--an-surface-warm);
+}
+.order-reviews h3 {
+  margin: 0;
+  font: 500 var(--an-fs-xl) / 1.2 var(--font-display);
+}
+.order-reviews > p {
+  margin: 0;
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-sm);
+}
+.review-form {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--an-r-md);
+  background: var(--an-surface);
+}
+.review-form.is-done {
+  gap: 6px;
+}
+.review-form.is-done p {
+  margin: 0;
+}
+.review-form .an-btn {
+  justify-self: start;
+}

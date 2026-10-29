@@ -3,8 +3,13 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowRight, Clock3, MapPin, PackageOpen, RefreshCw, Sparkles, Store } from "@/components/icons";
+import { Clock3, MapPin, PackageOpen, RefreshCw, Sparkles, Store } from "@/components/icons";
 import { getSupabase } from "@/lib/supabase";
+import { computeAvailability } from "@/lib/availability";
+import { withAvailability } from "@/lib/product-availability";
+import { StarRating } from "@/components/stars";
+import { ReviewsList } from "@/components/reviews-list";
+import { StoreCustomQuotes } from "@/components/custom-quotes";
 import { MarketplaceProductCard, ProductGridSkeleton, type MarketplaceProduct } from "@/components/marketplace-product-card";
 import "@/app/storefront.css";
 import "@/app/loja/public-store.css";
@@ -82,6 +87,27 @@ function PublicStoreContent({ initial }: { initial: PublicStoreInitial | null })
     if (store) document.title = `${store.store_name} | Artenós`;
   }, [store]);
 
+  // Média da loja e avaliações das peças (funções da migração 20261029_avaliacoes).
+  const [storeRating, setStoreRating] = useState<{ avg: number | null; count: number }>({ avg: null, count: 0 });
+  const storeId = store?.artisan_id;
+  useEffect(() => {
+    if (!storeId) return;
+    let active = true;
+    void Promise.resolve(getSupabase().rpc("get_store_rating", { p_artisan_id: storeId })).then(({ data, error: ratingError }) => {
+      const row = (Array.isArray(data) ? data[0] : data) as { rating_avg: number | null; rating_count: number } | undefined;
+      if (active && !ratingError && row) setStoreRating({ avg: row.rating_avg, count: Number(row.rating_count ?? 0) });
+    });
+    return () => { active = false; };
+  }, [storeId]);
+  const productKey = products.map((product) => product.id).join(",");
+  useEffect(() => {
+    if (!productKey || products.every((product) => product.rating_count !== undefined)) return;
+    let active = true;
+    void withAvailability(getSupabase(), products).then((list) => { if (active) setProducts(list); });
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productKey]);
+
   const location = store ? [store.city, store.state].filter(Boolean).join(" · ") : "";
 
   return (
@@ -133,6 +159,12 @@ function PublicStoreContent({ initial }: { initial: PublicStoreInitial | null })
                   <div><dt>Peças publicadas</dt><dd>{store.published_products}</dd></div>
                   <div><dt>Produção média</dt><dd>até {store.production_time_days} {store.production_time_days === 1 ? "dia" : "dias"}</dd></div>
                   <div><dt>Encomendas</dt><dd>{store.vacation_mode ? "Pausadas" : store.accepts_custom_orders ? "Aceita" : "Não aceita"}</dd></div>
+                  <div>
+                    <dt>Avaliação</dt>
+                    <dd>{storeRating.count
+                      ? <a href="#avaliacoes-titulo"><StarRating avg={storeRating.avg} count={storeRating.count} size={13} /></a>
+                      : "Sem avaliações"}</dd>
+                  </div>
                 </dl>
               </div>
             </section>
@@ -161,7 +193,8 @@ function PublicStoreContent({ initial }: { initial: PublicStoreInitial | null })
               {products.length ? (
                 <div className="store-products">
                   {products.map((product, index) => (
-                    <MarketplaceProductCard key={product.id} product={{ ...product, shop_id: store.artisan_id }}
+                    <MarketplaceProductCard key={product.id} product={{ ...product, shop_id: store.artisan_id,
+                      availability: product.availability ?? computeAvailability(product.stock, store.accepts_custom_orders) }}
                       shopName={store.store_name} cartDisabled={store.vacation_mode} priority={index < 2} />
                   ))}
                 </div>
@@ -174,15 +207,17 @@ function PublicStoreContent({ initial }: { initial: PublicStoreInitial | null })
               )}
             </section>
 
+            <section className="store-container public-shop-reviews" aria-labelledby="avaliacoes-titulo">
+              <div>
+                <p className="store-eyebrow">Quem comprou conta</p>
+                <h2 id="avaliacoes-titulo">Avaliações da loja</h2>
+                {storeRating.count > 0 && <StarRating avg={storeRating.avg} count={storeRating.count} size={18} />}
+              </div>
+              <ReviewsList kind="store" id={store.artisan_id} storeName={store.store_name} />
+            </section>
+
             {store.accepts_custom_orders && !store.vacation_mode && (
-              <section className="store-container public-shop-custom" aria-labelledby="encomenda-titulo">
-                <div>
-                  <p className="store-eyebrow">Sob encomenda</p>
-                  <h2 id="encomenda-titulo">Quer algo feito do seu jeito?</h2>
-                  <p>Esta loja aceita encomendas. Veja as opções personalizadas publicadas na área Sob encomenda.</p>
-                </div>
-                <Link className="an-btn an-btn--lg" href="/sob-encomenda">Ver opções sob encomenda <ArrowRight size={17} /></Link>
-              </section>
+              <StoreCustomQuotes artisanId={store.artisan_id} storeName={store.store_name} />
             )}
           </>
         )}

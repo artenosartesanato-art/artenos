@@ -24,6 +24,10 @@ import { messagesHref } from "@/lib/navigation";
 import "../storefront.css";
 import "./orders.css";
 import { OptimizedImage } from "@/components/optimized-image";
+import { withOrderItemDetails, type OrderItemDetails } from "@/lib/order-items";
+import { OrderReviewPanel, type Reviewable } from "@/components/order-review-panel";
+import { MyQuoteRequests } from "@/components/custom-quotes";
+import { customOrderStage, STAGE_LABEL } from "@/lib/production-status";
 
 type AccountType = "client" | "artisan";
 type OrderStatus =
@@ -44,7 +48,7 @@ type OrderItem = {
   quantity: number;
   unit_price: number;
   subtotal: number;
-};
+} & OrderItemDetails;
 type HistoryItem = {
   id: string;
   status: OrderStatus;
@@ -137,6 +141,20 @@ export default function OrdersPage() {
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
   const [expanded, setExpanded] = useState<string | null>(null);
+  // Avaliações dos pedidos entregues (migração 20261029_avaliacoes).
+  const [reviewables, setReviewables] = useState<Reviewable[]>([]);
+  const [reviewTick, setReviewTick] = useState(0);
+  useEffect(() => {
+    if (!authReady || !userId) return;
+    void Promise.resolve(getSupabase().rpc("list_my_reviewables")).then(({ data, error: reviewError }) => {
+      if (!reviewError) setReviewables((data ?? []) as Reviewable[]);
+    });
+  }, [authReady, userId, reviewTick]);
+  // Link do lembrete (/pedidos?avaliar=<pedido>) abre o pedido certo.
+  useEffect(() => {
+    const target = new URLSearchParams(window.location.search).get("avaliar");
+    if (target && /^[0-9a-f-]{36}$/i.test(target)) queueMicrotask(() => setExpanded(target));
+  }, []);
   const orderRequest = useRef(0);
 
   useEffect(() => {
@@ -154,8 +172,10 @@ export default function OrdersPage() {
       .then(({ data: rows, error: orderError }) => {
         if (request !== orderRequest.current) return;
         if (orderError) throw orderError;
-        setOrders(((rows || []) as Order[]).filter((order) => order.my_role === "client" && order.client_id === userId));
+        const mine = ((rows || []) as Order[]).filter((order) => order.my_role === "client" && order.client_id === userId);
+        return withOrderItemDetails(getSupabase(), mine);
       })
+      .then((list) => { if (list && request === orderRequest.current) setOrders(list); })
       .catch(() => { if (request === orderRequest.current) setError("Não foi possível carregar seus pedidos agora."); })
       .finally(() => { if (request === orderRequest.current) setLoading(false); });
   }, [authReady, userId, attempt]);
@@ -249,7 +269,9 @@ export default function OrdersPage() {
               <section className="orders-list" aria-label="Pedidos">
                 {filteredOrders.map((order) => (
                   <OrderCard key={order.id} order={order} expanded={expanded === order.id}
-                    onToggle={() => setExpanded(expanded === order.id ? null : order.id)} />
+                    onToggle={() => setExpanded(expanded === order.id ? null : order.id)}
+                    reviews={reviewables.filter((row) => row.order_id === order.id)}
+                    onReviewSaved={() => setReviewTick((value) => value + 1)} />
                 ))}
               </section>
             ) : (
@@ -264,6 +286,7 @@ export default function OrdersPage() {
             )}
           </>
         )}
+        {authReady && userId && <MyQuoteRequests />}
       </main>
     </div>
   );
@@ -273,10 +296,14 @@ function OrderCard({
   order,
   expanded,
   onToggle,
+  reviews,
+  onReviewSaved,
 }: {
   order: Order;
   expanded: boolean;
   onToggle: () => void;
+  reviews: Reviewable[];
+  onReviewSaved: () => void;
 }) {
   const { sellerPanelAvailable } = useMarketplace();
   const firstItem = order.items[0];
@@ -423,6 +450,9 @@ function OrderCard({
               <div key={item.id}>
                 <span>
                   {item.quantity}× {item.product_name}
+                  {item.made_to_order && <small className="order-item-tag">Sob encomenda · {STAGE_LABEL[customOrderStage(item.production_status, order.status)]}</small>}
+                  {item.product_summary && <small className="order-item-summary">{item.product_summary}</small>}
+                  {item.customer_notes && <small className="order-item-notes">Observações para a loja: {item.customer_notes}</small>}
                 </span>
                 <strong>{money.format(Number(item.subtotal))}</strong>
               </div>
@@ -436,6 +466,7 @@ function OrderCard({
               <strong>{money.format(Number(order.total_amount || 0))}</strong>
             </div>
           </section>
+          {order.status === "delivered" && <OrderReviewPanel rows={reviews} onSaved={onReviewSaved} />}
         </div>
       )}
     </article>

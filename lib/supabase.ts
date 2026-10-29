@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { authStorage } from "@/lib/session";
+import { meaningfulTextError } from "@/lib/text-quality";
 
 let client: SupabaseClient | null = null;
 
@@ -224,6 +225,11 @@ async function validateCep(value: string) {
   }
 }
 
+/** Token do Turnstile (anti-robô), quando o formulário tem o widget. */
+export function captchaFrom(values: Record<string, unknown>) {
+  return text(values["cf-turnstile-response"]) || undefined;
+}
+
 export async function registerWithSupabase(values: Record<string, unknown>) {
   const type = text(values.type) as "client" | "artisan";
   const document = digits(values.document);
@@ -258,15 +264,10 @@ export async function registerWithSupabase(values: Record<string, unknown>) {
       "Informe um telefone brasileiro válido, com DDD. Celulares devem começar com 9.",
     );
   if (!(await validateCep(cep))) throw new Error("Informe um CEP válido.");
-  if (
-    type === "artisan" &&
-    (!text(values.storeName) ||
-      !text(values.specialty) ||
-      text(values.story).length < 40)
-  )
-    throw new Error(
-      "Informe a loja, especialidade e uma história com pelo menos 40 caracteres.",
-    );
+  if (type === "artisan" && (!text(values.storeName) || !text(values.specialty)))
+    throw new Error("Informe o nome da loja e a especialidade.");
+  const storyError = type === "artisan" ? meaningfulTextError(text(values.story), "A história da loja") : null;
+  if (storyError) throw new Error(storyError);
   const metadata = {
     account_type: type,
     registration_mode: values.assisted ? "assisted" : "standard",
@@ -287,7 +288,7 @@ export async function registerWithSupabase(values: Record<string, unknown>) {
     const { data, error } = await getSupabase().auth.signUp({
       email,
       password,
-      options: { data: metadata },
+      options: { data: metadata, captchaToken: captchaFrom(values) },
     });
     if (error) throw new Error(friendlyAuthError(error, "signup"));
     if (
@@ -321,6 +322,7 @@ export async function loginWithSupabase(values: Record<string, unknown>) {
     const result = await getSupabase().auth.signInWithPassword({
       email: text(values.email).toLowerCase(),
       password: text(values.password),
+      options: { captchaToken: captchaFrom(values) },
     });
     if (result.error) throw new Error(friendlyAuthError(result.error, "login"));
     data = result.data;

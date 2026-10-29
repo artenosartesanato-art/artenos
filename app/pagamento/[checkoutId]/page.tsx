@@ -27,7 +27,11 @@ type Checkout = {
   shipping_snapshot: { price: number; company_name: string; service_name: string }[] | null;
 };
 
-type Item = { id: string; product_name: string; unit_price: number; quantity: number; line_total: number };
+type Item = {
+  id: string; product_name: string; unit_price: number; quantity: number; line_total: number;
+  // Presentes após as migrações de 20261029 (disponibilidade e observações).
+  made_to_order?: boolean; product_summary?: string | null; customer_notes?: string | null;
+};
 
 const brl = (value: number | string) => Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -90,10 +94,17 @@ export default function PagamentoPage() {
       return null;
     }
 
-    const { data: itemRows } = await supabase
+    // Resumo da peça e observações para a loja; sem a migração, só o básico.
+    const detailed = await supabase
       .from('checkout_items')
-      .select('id, product_name, unit_price, quantity, line_total')
+      .select('id, product_name, unit_price, quantity, line_total, made_to_order, product_summary, customer_notes')
       .eq('checkout_id', checkoutId);
+    const itemRows: Item[] | null = detailed.error
+      ? (await supabase
+        .from('checkout_items')
+        .select('id, product_name, unit_price, quantity, line_total')
+        .eq('checkout_id', checkoutId)).data
+      : detailed.data;
 
     setCheckout(data as Checkout);
     if (data.status === 'approved') notifyCartChanged();
@@ -229,7 +240,13 @@ export default function PagamentoPage() {
       <ul>
         {items.map((item) => (
           <li key={item.id}>
-            <span>{item.product_name}<small>{item.quantity} × {brl(item.unit_price)}</small></span>
+            <span>
+              {item.product_name}
+              {item.made_to_order && <small className="payment-item-tag">Sob encomenda</small>}
+              {item.product_summary && <small className="payment-item-summary">{item.product_summary}</small>}
+              {item.customer_notes && <small className="payment-item-notes">Observações: {item.customer_notes}</small>}
+              <small>{item.quantity} × {brl(item.unit_price)}</small>
+            </span>
             <strong>{brl(item.line_total)}</strong>
           </li>
         ))}

@@ -38,17 +38,19 @@
 .public-shop-profile {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: end;
+  align-items: start;
   gap: 20px;
-  margin-top: -44px;
-  padding: 0 clamp(16px, 3vw, 32px);
+  /* Só o símbolo sobe sobre a capa; nome, cidade e indicadores ficam abaixo dela. */
+  padding: 14px clamp(16px, 3vw, 32px) 0;
 }
 .public-shop-symbol {
   position: relative;
   display: grid;
   place-items: center;
+  z-index: 1;
   width: 104px;
   height: 104px;
+  margin-top: -58px;
   border: 5px solid var(--an-bg);
   border-radius: 46% 54% 52% 48%;
   background: var(--artenos-pessego);
@@ -57,7 +59,7 @@
 }
 .public-shop-identity {
   min-width: 0;
-  padding-bottom: 4px;
+  padding-top: 4px;
 }
 .public-shop-identity .store-eyebrow {
   margin-bottom: 4px;
@@ -77,6 +79,7 @@
 }
 .public-shop-stats {
   display: flex;
+  align-self: center;
   gap: 8px;
   margin: 0;
 }
@@ -190,12 +193,12 @@
     padding-top: 14px;
   }
   .public-shop-profile {
-    margin-top: -36px;
     gap: 12px;
   }
   .public-shop-symbol {
     width: 80px;
     height: 80px;
+    margin-top: -46px;
     font-size: 1.7rem;
   }
   .public-shop-stats div {
@@ -205,5 +208,25 @@
   .public-shop-custom {
     flex-direction: column;
     align-items: stretch;
+  }
+}
+.public-shop-stats dd a {
+  color: inherit;
+  text-decoration: none;
+}
+.public-shop-reviews {
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) 2fr;
+  gap: 32px;
+  margin-top: 44px;
+}
+.public-shop-reviews h2 {
+  margin: 0 0 8px;
+  font: 500 var(--an-fs-3xl) / 1.1 var(--font-display);
+}
+@media (max-width: 900px) {
+  .public-shop-reviews {
+    grid-template-columns: 1fr;
+    gap: 14px;
   }
 }

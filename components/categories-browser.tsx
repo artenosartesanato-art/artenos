@@ -15,22 +15,23 @@ export type Category = { id: string; name: string; slug: string; image_url: stri
 export type Product = MarketplaceProduct & { total_count: number };
 /** Primeira página sem filtros, buscada no servidor (app/categorias/page.tsx). */
 export type CategoriesInitial = { categories: Category[]; products: Product[] };
-type Sort = "newest" | "price_asc" | "price_desc";
+type Sort = "newest" | "rating" | "price_asc" | "price_desc";
 type Filters = {
   query: string;
   categoryId: string | null;
   min: number | null;
   max: number | null;
   readyOnly: boolean;
+  /** Só peças sob encomenda (substitui a antiga tela /sob-encomenda). */
+  madeToOrderOnly: boolean;
   sort: Sort;
 };
 export const PAGE_SIZE = 12;
 type ShopMatch = { id: string; store_name: string; specialty: string | null; city: string | null; state: string | null };
-const MOBILE_CHIPS = 6;
 const fold = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
-const SORTS: Record<Sort, string> = { newest: "Mais recentes", price_asc: "Menor preço", price_desc: "Maior preço" };
+const SORTS: Record<Sort, string> = { newest: "Mais recentes", rating: "Mais bem avaliados", price_asc: "Menor preço", price_desc: "Maior preço" };
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
-const emptyFilters: Filters = { query: "", categoryId: null, min: null, max: null, readyOnly: false, sort: "newest" };
+const emptyFilters: Filters = { query: "", categoryId: null, min: null, max: null, readyOnly: false, madeToOrderOnly: false, sort: "newest" };
 
 function readFilters(): Filters {
   const params = new URLSearchParams(window.location.search);
@@ -47,7 +48,8 @@ function readFilters(): Filters {
     min: number(params.get("min")),
     max: number(params.get("max")),
     readyOnly: params.get("pronta") === "1",
-    sort: sort === "price_asc" || sort === "price_desc" ? sort : "newest",
+    madeToOrderOnly: params.get("encomenda") === "1" && params.get("pronta") !== "1",
+    sort: sort === "price_asc" || sort === "price_desc" || sort === "rating" ? sort : "newest",
   };
 }
 
@@ -58,6 +60,7 @@ function writeFilters(filters: Filters) {
   if (filters.min !== null) params.set("min", String(filters.min));
   if (filters.max !== null) params.set("max", String(filters.max));
   if (filters.readyOnly) params.set("pronta", "1");
+  if (filters.madeToOrderOnly) params.set("encomenda", "1");
   if (filters.sort !== "newest") params.set("ordem", filters.sort);
   const query = params.toString();
   window.history.replaceState(null, "", query ? `/categorias?${query}` : "/categorias");
@@ -112,6 +115,17 @@ function FilterPanel({ categories, filters, onChange, onClear, idPrefix }: {
       <form className="category-filter-block" onSubmit={applyPrices} noValidate>
         <fieldset>
           <legend>Faixa de preço</legend>
+          <div className="category-price-presets" role="group" aria-label="Faixas prontas">
+            {BUDGETS.map((budget) => {
+              const active = filters.min === budget.min && filters.max === budget.max;
+              return (
+                <button type="button" key={budget.key} aria-pressed={active}
+                  onClick={() => onChange(active ? { min: null, max: null } : { min: budget.min, max: budget.max })}>
+                  {budget.label}
+                </button>
+              );
+            })}
+          </div>
           <div className="category-price-inputs">
             <label className="an-field">
               <span>Mínimo (R$)</span>
@@ -133,8 +147,14 @@ function FilterPanel({ categories, filters, onChange, onClear, idPrefix }: {
       <fieldset className="category-filter-block">
         <legend>Disponibilidade</legend>
         <label className="category-check">
-          <input type="checkbox" checked={filters.readyOnly} onChange={(event) => onChange({ readyOnly: event.target.checked })} />
+          <input type="checkbox" checked={filters.readyOnly}
+            onChange={(event) => onChange({ readyOnly: event.target.checked, madeToOrderOnly: false })} />
           Só pronta entrega
+        </label>
+        <label className="category-check">
+          <input type="checkbox" checked={filters.madeToOrderOnly}
+            onChange={(event) => onChange({ madeToOrderOnly: event.target.checked, readyOnly: false })} />
+          Só sob encomenda
         </label>
       </fieldset>
       <button type="button" className="category-clear" onClick={() => { setMinPrice(""); setMaxPrice(""); setPriceError(""); onClear(); }}>
@@ -144,9 +164,12 @@ function FilterPanel({ categories, filters, onChange, onClear, idPrefix }: {
   );
 }
 
+// Só enviado quando o filtro está ligado: funciona antes e depois da migração 20261029_status_encomenda.
+const availabilityParam = (filters: Filters) => (filters.madeToOrderOnly ? { p_availability: "made_to_order" } : {});
+
 const sameFilters = (a: Filters, b: Filters) =>
   a.query === b.query && a.categoryId === b.categoryId && a.min === b.min && a.max === b.max &&
-  a.readyOnly === b.readyOnly && a.sort === b.sort;
+  a.readyOnly === b.readyOnly && a.madeToOrderOnly === b.madeToOrderOnly && a.sort === b.sort;
 
 export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | null }) {
   // Os dados do servidor valem só para a visão sem filtros e só uma vez.
@@ -164,7 +187,6 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
   const [attempt, setAttempt] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [panelKey, setPanelKey] = useState(0);
-  const [allChips, setAllChips] = useState(false);
   const [shops, setShops] = useState<ShopMatch[] | null>(null);
   const productRequest = useRef(0);
   const resultsHeading = useRef<HTMLHeadingElement>(null);
@@ -211,7 +233,7 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
     void Promise.resolve(supabase.rpc("browse_storefront_products", {
       p_query: filters.query || null, p_category_id: filters.categoryId, p_min_price: filters.min,
       p_max_price: filters.max, p_ready_only: filters.readyOnly, p_sort: filters.sort,
-      p_limit: PAGE_SIZE, p_offset: 0,
+      p_limit: PAGE_SIZE, p_offset: 0, ...availabilityParam(filters),
     }))
       .then(async ({ data, error: productsError }) => {
         if (request !== productRequest.current) return;
@@ -273,7 +295,7 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
       const { data, error: loadError } = await getSupabase().rpc("browse_storefront_products", {
         p_query: filters.query || null, p_category_id: filters.categoryId, p_min_price: filters.min,
         p_max_price: filters.max, p_ready_only: filters.readyOnly, p_sort: filters.sort,
-        p_limit: PAGE_SIZE, p_offset: products.length,
+        p_limit: PAGE_SIZE, p_offset: products.length, ...availabilityParam(filters),
       });
       if (loadError) throw loadError;
       if (request === productRequest.current) {
@@ -301,6 +323,7 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
       chips.push({ key: "p", label, clear: { min: null, max: null } });
     }
     if (filters.readyOnly) chips.push({ key: "r", label: "Pronta entrega", clear: { readyOnly: false } });
+    if (filters.madeToOrderOnly) chips.push({ key: "e", label: "Sob encomenda", clear: { madeToOrderOnly: false } });
     return chips;
   }, [filters, selectedCategory]);
   const filterCount = activeChips.filter((chip) => chip.key !== "q").length;
@@ -313,37 +336,6 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
           <h1>{filters.query ? `Resultados para “${filters.query}”` : selectedCategory?.name || "Todas as peças"}</h1>
           <p>Peças publicadas por lojas aprovadas na Artenós. Use os filtros para encontrar pronta entrega, faixas de preço e técnicas.</p>
         </header>
-
-        <nav className={`category-chips${allChips ? " is-expanded" : ""}`} aria-label="Categorias" id="chips-categorias">
-          <button type="button" aria-pressed={!filters.categoryId} onClick={() => update({ categoryId: null })}>Todas</button>
-          {categories.map((category, index) => (
-            <button type="button" key={category.id} aria-pressed={filters.categoryId === category.id}
-              className={index >= MOBILE_CHIPS - 1 && filters.categoryId !== category.id ? "is-extra" : undefined}
-              onClick={() => update({ categoryId: category.id })}>
-              {category.name}
-              <small aria-hidden="true">{category.product_count}</small>
-            </button>
-          ))}
-          {categories.length >= MOBILE_CHIPS && (
-            <button type="button" className="category-chips-more" aria-expanded={allChips} aria-controls="chips-categorias"
-              onClick={() => setAllChips((value) => !value)}>
-              {allChips ? "Menos categorias" : `+ ${categories.length - MOBILE_CHIPS + 1} categorias`}
-            </button>
-          )}
-        </nav>
-
-        <div className="category-budgets" role="group" aria-label="Orçamento">
-          <span aria-hidden="true">Orçamento</span>
-          {BUDGETS.map((budget) => {
-            const active = filters.min === budget.min && filters.max === budget.max;
-            return (
-              <button type="button" key={budget.key} aria-pressed={active}
-                onClick={() => { setPanelKey((value) => value + 1); update(active ? { min: null, max: null } : { min: budget.min, max: budget.max }); }}>
-                {budget.label}
-              </button>
-            );
-          })}
-        </div>
 
         <div className="category-layout">
           <aside className="category-filters" aria-labelledby="filtros-titulo">
