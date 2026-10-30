@@ -618,3 +618,19 @@
   margin: 6px 0 0;
   padding-left: 18px;
 }
+.profile-privacy-json {
+  margin: 10px 0 0;
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-sm);
+}
+.profile-privacy-json .link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--artenos-marrom);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
