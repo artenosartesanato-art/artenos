@@ -1,6 +1,8 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { authStorage, markActivity } from "@/lib/session";
 import { meaningfulTextError } from "@/lib/text-quality";
+import { emailTakenMessage } from "@/lib/account-deletion";
+import { siteConfig } from "@/lib/site-config";
 
 let client: SupabaseClient | null = null;
 
@@ -144,13 +146,27 @@ export function validCnpj(value: string) {
 
 type SupabaseError = { code?: string; message?: string; status?: number };
 
+/** E-mail já usado: inclui como pedir a reativação de uma conta em exclusão. */
+const EMAIL_TAKEN = emailTakenMessage(siteConfig.supportEmail);
+
+/**
+ * Login recusado porque a conta está bloqueada (o Supabase só diz isso quando
+ * a senha está certa). A tela confere no servidor se é exclusão em andamento.
+ */
+export class AccountBlockedError extends Error {
+  constructor() {
+    super("Esta conta está bloqueada.");
+    this.name = "AccountBlockedError";
+  }
+}
+
 function friendlyAuthError(error: SupabaseError, action: "signup" | "login") {
   const code = error.code ?? "";
   const message = error.message ?? "";
   const messages: Record<string, string> = {
-    email_exists: "Este e-mail já está cadastrado. Tente entrar na sua conta.",
+    email_exists: EMAIL_TAKEN,
     user_already_exists:
-      "Este e-mail já está cadastrado. Tente entrar na sua conta.",
+      EMAIL_TAKEN,
     weak_password:
       "A senha é muito fraca. Use pelo menos 8 caracteres e evite sequências fáceis.",
     email_address_invalid: "Informe um endereço de e-mail válido.",
@@ -188,7 +204,7 @@ function friendlyAuthError(error: SupabaseError, action: "signup" | "login") {
   if (/email.*invalid|invalid.*email/i.test(message))
     return "Informe um endereço de e-mail válido.";
   if (/already registered|already exists/i.test(message))
-    return "Este e-mail já está cadastrado. Tente entrar na sua conta.";
+    return EMAIL_TAKEN;
   return action === "login"
     ? "Não foi possível entrar agora. Tente novamente em instantes."
     : "Não foi possível concluir o cadastro. Tente novamente em instantes.";
@@ -297,7 +313,7 @@ export async function registerWithSupabase(values: Record<string, unknown>) {
       data.user.identities.length === 0
     ) {
       throw new Error(
-        "Este e-mail já está cadastrado. Tente entrar na sua conta.",
+        EMAIL_TAKEN,
       );
     }
   } catch (error) {
@@ -326,6 +342,7 @@ export async function loginWithSupabase(values: Record<string, unknown>) {
       password: text(values.password),
       options: { captchaToken: captchaFrom(values) },
     });
+    if (result.error?.code === "user_banned") throw new AccountBlockedError();
     if (result.error) throw new Error(friendlyAuthError(result.error, "login"));
     data = result.data;
   } catch (error) {

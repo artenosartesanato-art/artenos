@@ -20,7 +20,10 @@ import { toast } from "sonner";
 import { favoriteIntentReturnPath } from "@/components/marketplace-state";
 import { markActivity, setRememberDevice } from "@/lib/session";
 import { checkThrottle, loadThrottle, registerFailure, registerSuccess, saveThrottle, waitLabel } from "@/lib/login-throttle";
-import { captchaFrom, getSupabase, loginWithSupabase, registerWithSupabase } from "@/lib/supabase";
+import { AccountBlockedError, captchaFrom, getSupabase, loginWithSupabase, registerWithSupabase } from "@/lib/supabase";
+import { Dialog } from "@/components/ui/dialog";
+import { formatDeletionDate, reactivationMailto } from "@/lib/account-deletion";
+import { siteConfig } from "@/lib/site-config";
 import { recordAccess } from "@/lib/access-log";
 import { resetTurnstile, TurnstileWidget } from "@/components/turnstile-widget";
 import { safeReturnPath } from "@/lib/navigation";
@@ -361,6 +364,8 @@ function LoginForm({ returnTo, onRecover, onRegister }: { returnTo: string | nul
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
+  // Conta em exclusão (senha certa): aviso com a data e como reativar.
+  const [pendingDeletion, setPendingDeletion] = useState<{ email: string; date: string } | null>(null);
   const clear = (name: string) => setErrors((current) => {
     if (!current[name] && !current._form) return current;
     const next = { ...current };
@@ -406,6 +411,21 @@ function LoginForm({ returnTo, onRecover, onRegister }: { returnTo: string | nul
         if (window.location.pathname === "/acesso") window.location.replace(destination);
       }, 2500);
     } catch (error) {
+      if (error instanceof AccountBlockedError) {
+        // Confere no servidor (com a senha de novo) se é exclusão em andamento.
+        const situation = await fetch("/api/acesso/situacao", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password: String(values.password ?? "") }),
+        }).then((response) => response.json()).catch(() => null) as { status?: string; scheduledAt?: string } | null;
+        resetTurnstile();
+        setPending(false);
+        if (situation?.status === "pending_deletion" && situation.scheduledAt) {
+          setPendingDeletion({ email, date: formatDeletionDate(situation.scheduledAt) });
+        } else {
+          setErrors({ _form: "Esta conta está bloqueada. Entre em contato com o atendimento da Artenós." });
+        }
+        return;
+      }
       const message = error instanceof Error ? error.message : "Não foi possível entrar agora. Tente novamente.";
       // Só senha/e-mail errados contam para o limite (não falhas de conexão).
       if (/incorretos/i.test(message)) saveThrottle(registerFailure(loadThrottle(), email, Date.now()));
@@ -451,6 +471,25 @@ function LoginForm({ returnTo, onRecover, onRegister }: { returnTo: string | nul
         {pending && <Loader2 size={18} className="spin" />}{pending ? "Entrando…" : "Entrar"}
       </button>
       <p className="form-switch">Ainda não tem conta? <button type="button" className="link-button" onClick={onRegister}>Criar conta</button></p>
+      <Dialog open={pendingDeletion !== null} onClose={() => setPendingDeletion(null)} labelledBy="conta-exclusao-titulo"
+        className="account-pending-dialog" closeLabel="Fechar">
+        {pendingDeletion && (
+          <div className="account-pending-body">
+            <h2 id="conta-exclusao-titulo">Sua conta está em processo de exclusão</h2>
+            <p>Ela foi desativada a seu pedido e será excluída definitivamente em <strong>{pendingDeletion.date}</strong>.</p>
+            <p>
+              Para reativá-la antes dessa data, envie um e-mail para{" "}
+              {siteConfig.supportEmail ? <strong>{siteConfig.supportEmail}</strong> : "o atendimento da Artenós"} a partir do endereço da conta.
+            </p>
+            <div className="account-pending-actions">
+              {siteConfig.supportEmail && (
+                <a className="an-btn" href={reactivationMailto(siteConfig.supportEmail, pendingDeletion.email)}>Enviar e-mail</a>
+              )}
+              <button type="button" className="an-btn an-btn--ghost" onClick={() => setPendingDeletion(null)}>Fechar</button>
+            </div>
+          </div>
+        )}
+      </Dialog>
     </form>
   );
 }

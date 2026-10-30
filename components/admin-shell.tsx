@@ -19,6 +19,7 @@ import {
   Tags,
   UserRound,
   UserRoundCheck,
+  Trash2,
 } from "@/components/icons";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -66,6 +67,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
       { label: "Clientes", href: "/administracao/clientes", icon: UserRound },
       { label: "Denúncias", href: "/administracao/denuncias", icon: Flag },
       { label: "Chamados", href: "/administracao/chamados", icon: LifeBuoy },
+      { label: "Contas em exclusão", href: "/administracao/exclusoes", icon: Trash2 },
     ],
   },
   {
