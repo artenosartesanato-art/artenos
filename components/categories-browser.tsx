@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, LoaderCircle, PackageOpen, RefreshCw, SlidersHorizontal, X } from "@/components/icons";
+import { ArrowRight, LoaderCircle, PackageOpen, RefreshCw, SlidersHorizontal, SpriteIcon, X } from "@/components/icons";
+import { categoryLook } from "@/lib/category-looks";
 import { useHeaderSearchControl } from "@/components/header-search";
 import { Dialog } from "@/components/ui/dialog";
 import Link from "next/link";
@@ -312,7 +313,12 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
             </ol>
           </nav>
           <p className="store-eyebrow">Descubra o feito à mão</p>
-          <h1>{filters.query ? `Resultados para “${filters.query}”` : selectedCategory?.name || "Todas as peças"}</h1>
+          <h1>
+            {!filters.query && selectedCategory && (
+              <span className="category-title-icon" aria-hidden="true"><SpriteIcon name={categoryLook(selectedCategory).icon} size={22} /></span>
+            )}
+            {filters.query ? `Resultados para “${filters.query}”` : selectedCategory?.name || "Todas as peças"}
+          </h1>
           <p>Peças publicadas por lojas aprovadas na Artenós. Use os filtros para encontrar pronta entrega, faixas de preço e técnicas.</p>
         </header>
 

@@ -844,3 +844,13 @@
   font-size: 9px;
   font-weight: 500;
 }
+
+/* Ícone da categoria escolhida, ao lado do rótulo (o mesmo da vitrine). */
+.seller-category-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.seller-category-label svg {
+  color: var(--an-argila-texto, #8a5a44);
+}

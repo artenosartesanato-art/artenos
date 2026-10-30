@@ -3080,3 +3080,16 @@ div.product-details-description :is(ul, ol) {
   padding-top: 4px;
   border-top: 1px solid var(--an-line);
 }
+
+/* Ícone da técnica no menu de categorias (mesmo da home). O nome ocupa o meio. */
+:is(.categories-menu-grid, .categories-menu-list) a > span {
+  flex: 1;
+  min-width: 0;
+}
+.categories-menu-icon {
+  flex: none;
+  color: var(--an-argila-texto);
+}
+:is(.categories-menu-grid, .categories-menu-list) a.is-empty .categories-menu-icon {
+  opacity: 0.6;
+}
