@@ -1,8 +1,16 @@
 .shops-main {
   padding-block: 36px 40px;
 }
+/* Título à esquerda, busca no centro da página (sem bloco de fundo); a terceira coluna só equilibra. */
+.shops-head {
+  display: grid;
+  grid-template-columns: minmax(300px, 1fr) minmax(0, 680px) minmax(300px, 1fr);
+  align-items: center;
+  gap: 20px 32px;
+  margin-bottom: 28px;
+}
 .shops-intro {
-  max-width: 720px;
+  max-width: 460px;
 }
 .shops-intro h1 {
   margin: 0 0 10px;
@@ -16,7 +24,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin: 26px 0 8px;
+  margin: 0;
 }
 .shops-search,
 .shops-state {
@@ -26,7 +34,6 @@
 }
 .shops-search {
   flex: 1 1 320px;
-  max-width: 520px;
 }
 .shops-state {
   flex: 0 1 220px;
@@ -53,7 +60,9 @@
   border-radius: var(--an-r-pill);
 }
 .shops-count {
-  margin: 0 0 18px;
+  flex-basis: 100%;
+  margin: 2px 0 0;
+  text-align: center;
   color: var(--an-text-muted);
   font-size: var(--an-fs-sm);
 }
@@ -152,5 +161,19 @@
   }
   .shops-main {
     padding-top: 24px;
+  }
+}
+@media (max-width: 1200px) {
+  .shops-head {
+    grid-template-columns: 1fr;
+  }
+  .shops-intro {
+    max-width: 640px;
+  }
+  .shops-filters {
+    max-width: 720px;
+  }
+  .shops-count {
+    text-align: left;
   }
 }

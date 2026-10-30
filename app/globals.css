@@ -912,26 +912,41 @@ img {
   overflow: hidden;
   padding: clamp(28px, 6vh, 64px) clamp(32px, 5vw, 72px);
   color: var(--artenos-perola);
+  /* Textura estática e uniforme (pontos de bordado): não forma mancha ao rolar,
+     como o brilho e o anel antigos. */
   background:
-    radial-gradient(circle at 85% 85%, rgb(178 107 79 / 0.35), transparent 40%),
+    radial-gradient(circle, rgb(250 242 235 / 0.13) 1.3px, transparent 1.7px) 0 0 / 22px 22px,
     var(--artenos-marrom);
   display: flex;
   flex-direction: column;
   isolation: isolate;
 }
+/* Desenho fixo de linha e novelo no canto (traço fino, sem brilho). */
 .brand-panel::before {
   content: "";
   position: absolute;
-  right: -130px;
-  bottom: 8%;
-  width: 390px;
-  height: 390px;
-  border: 1px solid rgb(255 255 255 / 0.17);
-  border-radius: 47% 53% 62% 38%;
-  transform: rotate(22deg);
-  box-shadow:
-    0 0 0 46px rgb(255 255 255 / 0.035),
-    0 0 0 92px rgb(255 255 255 / 0.024);
+  top: clamp(36px, 5vh, 56px);
+  right: clamp(36px, 3vw, 56px);
+  width: clamp(150px, 13vw, 230px);
+  aspect-ratio: 1;
+  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 320' fill='none' stroke='%23F2C9B0' stroke-width='2' stroke-linecap='round'><path d='M96 214 C 112 176, 150 168, 176 170 S 206 150, 210 124' stroke-dasharray='7 9'/><circle cx='240' cy='90' r='48'/><path d='M198 66 C 230 80, 262 82, 286 70'/><path d='M193 92 C 228 108, 266 108, 288 96'/><path d='M200 120 C 232 132, 262 130, 282 118'/><path d='M222 46 C 210 80, 214 112, 232 136'/><path d='M252 44 C 266 78, 266 110, 254 138'/><path d='M276 30 L 304 6'/><path d='M268 26 L 300 0'/></svg>") center / contain no-repeat;
+  opacity: 0.42;
+  pointer-events: none;
+  z-index: -1;
+}
+@media (max-width: 1366px) {
+  .brand-panel::before {
+    width: 120px;
+  }
+}
+/* Moldura pontilhada, como uma costura em volta do painel. */
+.brand-panel::after {
+  content: "";
+  position: absolute;
+  inset: clamp(14px, 2vw, 24px);
+  border: 1.5px dashed rgb(250 242 235 / 0.2);
+  border-radius: 28px 6px 28px 6px;
+  pointer-events: none;
   z-index: -1;
 }
 .brand-copy {
@@ -1454,14 +1469,11 @@ img {
     min-height: 0;
     padding: 22px 20px 24px;
   }
-  .brand-panel::before {
-    width: 220px;
-    height: 220px;
-    right: -90px;
-    bottom: -60px;
-  }
   .brand-copy {
     margin: 0;
+  }
+  .brand-panel::before {
+    display: none;
   }
   .brand-copy .brand-title {
     margin: 6px 0 0;
@@ -1511,10 +1523,6 @@ img {
 }
 .access-page .access-shell {
   background: var(--an-bg);
-}
-/* No acesso o painel da marca encosta no rodapé, sem a faixa vazia entre eles. */
-.an-site:has(.access-page) .store-footer {
-  margin-top: 0;
 }
 .an-state--page {
   margin-block: clamp(32px, 8vh, 80px);

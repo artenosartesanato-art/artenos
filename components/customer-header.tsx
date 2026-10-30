@@ -26,6 +26,7 @@ import { NotificationBell } from "@/components/notifications";
 import { CategoriesMenu, CategoriesSheet } from "@/components/categories-menu";
 
 const NAV_LINKS = [
+  { href: "/", label: "Início" },
   { href: "/categorias", label: "Categorias" },
   { href: "/lojas", label: "Lojas" },
   { href: "/favoritos", label: "Favoritos" },
