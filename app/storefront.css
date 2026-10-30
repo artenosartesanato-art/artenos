@@ -3019,3 +3019,77 @@ div.product-details-description :is(ul, ol) {
     hyphens: auto;
   }
 }
+
+/* Menu da conta no cabeçalho (conectado): opções do papel e "Sair". */
+.store-account-menu {
+  position: relative;
+}
+.store-account-menu .store-account {
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.store-account-menu .store-account svg.is-open {
+  transform: rotate(180deg);
+}
+.store-account-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: var(--an-z-dropdown);
+  min-width: 230px;
+  padding: 6px;
+  border: 1px solid var(--an-line);
+  border-radius: var(--an-r-lg);
+  background: var(--an-surface);
+  box-shadow: var(--an-shadow-lg);
+}
+.store-account-dropdown ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.store-account-dropdown :is(a, button) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--an-r-md);
+  background: none;
+  color: var(--an-text);
+  font: inherit;
+  font-size: var(--an-fs-sm);
+  font-weight: 650;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.store-account-dropdown :is(a, button):hover,
+.store-account-dropdown a[aria-current="page"] {
+  background: var(--an-surface-warm);
+}
+.store-account-dropdown li:last-child {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--an-line);
+}
+
+/* Ícone da técnica no menu de categorias (mesmo da home). O nome ocupa o meio. */
+:is(.categories-menu-grid, .categories-menu-list) a > span {
+  flex: 1;
+  min-width: 0;
+}
+.categories-menu-icon {
+  flex: none;
+  color: var(--an-argila-texto);
+}
+:is(.categories-menu-grid, .categories-menu-list) a.is-empty .categories-menu-icon {
+  opacity: 0.6;
+}

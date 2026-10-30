@@ -1658,3 +1658,25 @@ img {
   text-align: left;
   cursor: pointer;
 }
+
+/* Login de conta em exclusão: aviso com a data e como reativar. */
+.account-pending-body {
+  display: grid;
+  gap: 12px;
+  padding: 28px;
+}
+.account-pending-body h2 {
+  margin: 0 40px 0 0;
+  font: 500 var(--an-fs-2xl) / 1.15 var(--font-display);
+}
+.account-pending-body p {
+  margin: 0;
+  color: var(--an-text-muted);
+  line-height: 1.6;
+}
+.account-pending-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}

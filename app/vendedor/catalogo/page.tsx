@@ -16,8 +16,10 @@ import {
   Tags,
   Upload,
   X,
+  SpriteIcon,
 } from "@/components/icons";
 import { toast } from "sonner";
+import { categoryLook } from "@/lib/category-looks";
 import { getSupabase } from "@/lib/supabase";
 import { findBlockedTerm, moderationError } from "@/lib/moderation";
 import { DescriptionEditor } from "@/components/description-editor";
@@ -525,6 +527,10 @@ export default function ProductCatalogPage() {
       </section>
     );
 
+  // Mesmo ícone da categoria usado na vitrine, ao lado do campo.
+  const selectedCategory = categories.find((category) => category.id === form.categoryId);
+  const selectedCategoryIcon = selectedCategory ? categoryLook(selectedCategory).icon : null;
+
   return (
     <div className="catalog-page">
       <header className="catalog-heading">
@@ -794,7 +800,10 @@ export default function ProductCatalogPage() {
                     </label>
                   </div>
                   <label>
-                    <span>Categoria</span>
+                    <span className="seller-category-label">
+                      Categoria
+                      {selectedCategoryIcon && <SpriteIcon name={selectedCategoryIcon} size={16} aria-hidden="true" />}
+                    </span>
                     <select
                       value={form.categoryId}
                       onChange={(event) =>

@@ -111,12 +111,15 @@ export const UserRoundCheck = icon("person-check");
 export const X = icon("x-lg");
 export const XCircle = icon("x-circle");
 
-/** Ícone do sprite escolhido por nome em tempo de execução (ex.: o ícone de cada categoria). */
+/**
+ * Ícone do sprite escolhido por nome em tempo de execução (ex.: o ícone de cada
+ * categoria). Nomes "art-*" são os desenhos próprios da Artenós.
+ */
 export function SpriteIcon({ name, size = 24, className = "", ...props }: IconProps & { name: string }) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 16 16" fill="currentColor"
       aria-hidden="true" focusable="false" className={`bi bi-${name} ${className}`.trim()} {...props}>
-      <use href={`/icons/bootstrap-icons.svg#${name}`} />
+      <use href={`${name.startsWith("art-") ? "/icons/artenos-categorias.svg" : "/icons/bootstrap-icons.svg"}#${name}`} />
     </svg>
   );
 }

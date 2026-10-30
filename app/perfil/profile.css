@@ -607,3 +607,30 @@
   justify-content: flex-end;
   gap: 8px;
 }
+/* Exclusão em 30 dias: data da exclusão definitiva em destaque e pendências. */
+.profile-delete-dialog .profile-delete-date {
+  padding: 10px 12px;
+  border-radius: var(--an-r-md);
+  background: var(--an-surface-warm);
+  color: var(--an-text);
+}
+.profile-delete-blockers ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+.profile-privacy-json {
+  margin: 10px 0 0;
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-sm);
+}
+.profile-privacy-json .link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--artenos-marrom);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}

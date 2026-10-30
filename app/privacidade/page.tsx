@@ -184,7 +184,7 @@ export default function PrivacyPage() {
           <li><strong>Registros de acesso</strong> (IP, data e hora): no mínimo 6 meses, como exige o art. 15 do Marco Civil; guardamos por 12 meses e depois apagamos automaticamente.</li>
           <li><strong>Pedidos, pagamentos, repasses e dados fiscais:</strong> pelos prazos legais (em regra, 5 anos), mesmo após a exclusão da conta.</li>
           <li><strong>Tentativas bloqueadas pelo filtro de termos:</strong> 6 meses.</li>
-          <li><strong>Dados da conta:</strong> enquanto a conta estiver ativa. Ao excluir a conta, apagamos ou anonimizamos nome, documento, contatos, endereço, favoritos, carrinho, avisos e chave Pix; o que precisa ser mantido por lei fica sem identificação de contato.</li>
+          <li><strong>Dados da conta:</strong> enquanto a conta estiver ativa. Ao pedir a exclusão, a conta é desativada na hora (o acesso é bloqueado, as sessões são encerradas e as peças de lojas saem da vitrine) e fica guardada por <strong>30 dias</strong>; nesse prazo, ela pode ser reativada a pedido, por e-mail{contactEmail ? <> para <a href={`mailto:${contactEmail}`}>{contactEmail}</a></> : null}. Depois dos 30 dias, a exclusão é definitiva: apagamos ou anonimizamos nome, documento, contatos, endereço, favoritos, carrinho, avisos e chave Pix; o que precisa ser mantido por lei fica sem identificação de contato.</li>
         </ul>
       </section>
 

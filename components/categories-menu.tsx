@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 import type { MouseEvent } from "react";
 import { CATALOG_URL_EVENT } from "@/lib/catalog-filters";
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
-import { ArrowRight, ChevronDown, LoaderCircle, RefreshCw } from "@/components/icons";
+import { ArrowRight, ChevronDown, LoaderCircle, RefreshCw, SpriteIcon } from "@/components/icons";
+import { categoryLook } from "@/lib/category-looks";
 import { Dialog } from "@/components/ui/dialog";
 import { categoryHref, topCategories, useStorefrontCategories, type StorefrontCategory } from "@/lib/storefront-categories";
 
@@ -33,6 +34,7 @@ function CategoryLinks({ categories, onNavigate, columns }: {
         <li key={category.id}>
           <Link href={categoryHref(category)} onClick={(event) => goToCategory(event, categoryHref(category), onNavigate)}
             className={category.product_count === 0 ? "is-empty" : undefined}>
+            <SpriteIcon name={categoryLook(category).icon} size={16} className="categories-menu-icon" />
             <span>{category.name}</span>
             <small aria-label={`${category.product_count} ${category.product_count === 1 ? "peça" : "peças"}`}>{category.product_count}</small>
           </Link>
