@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { authStorage } from "@/lib/session";
+import { authStorage, markActivity } from "@/lib/session";
 import { meaningfulTextError } from "@/lib/text-quality";
 
 let client: SupabaseClient | null = null;
@@ -318,6 +318,8 @@ export async function registerWithSupabase(values: Record<string, unknown>) {
 
 export async function loginWithSupabase(values: Record<string, unknown>) {
   let data;
+  // Antes de entrar: a sessão nasce com atividade recente (veja SessionGuard).
+  markActivity(true);
   try {
     const result = await getSupabase().auth.signInWithPassword({
       email: text(values.email).toLowerCase(),
@@ -334,7 +336,14 @@ export async function loginWithSupabase(values: Record<string, unknown>) {
       throw error;
     throw new Error(friendlyAuthError(error as SupabaseError, "login"));
   }
-  const { data: isAdmin } = await getSupabase().rpc("is_active_admin");
+  // Papel e perfil em paralelo (antes eram consultas em sequência).
+  const [{ data: isAdmin }, { data: profile, error: profileError }] = await Promise.all([
+    getSupabase().rpc("is_active_admin"),
+    getSupabase().from("profiles")
+      .select("account_type,approval_status,full_name")
+      .eq("id", data.user.id)
+      .maybeSingle(),
+  ]);
   if (isAdmin === true) {
     return {
       firstName: "administrador",
@@ -344,11 +353,6 @@ export async function loginWithSupabase(values: Record<string, unknown>) {
     };
   }
 
-  const { data: profile, error: profileError } = await getSupabase()
-    .from("profiles")
-    .select("account_type,approval_status,full_name")
-    .eq("id", data.user.id)
-    .single();
   if (profileError || !profile) {
     await getSupabase().auth.signOut();
     throw new Error(

@@ -19,11 +19,10 @@ import { useMarketplace } from "@/components/marketplace-state";
 import { Dialog } from "@/components/ui/dialog";
 import { SoundToggle } from "@/components/sound-toggle";
 import { accessHref, isNavActive, messagesHref } from "@/lib/navigation";
-import { endSession } from "@/lib/session";
-import { toast } from "sonner";
 import { useHeaderSearch } from "@/components/header-search";
 import { NotificationBell } from "@/components/notifications";
 import { CategoriesMenu, CategoriesSheet } from "@/components/categories-menu";
+import { AccountMenu, signOutTo, useAccountRole } from "@/components/account-menu";
 
 const NAV_LINKS = [
   { href: "/", label: "Início" },
@@ -137,7 +136,7 @@ function CepControl({ compact = false }: { compact?: boolean }) {
 export function CustomerHeader() {
   const router = useRouter();
   const pathname = usePathname();
-  const { authReady, userId, displayName, avatarUrl, sellerPanelAvailable, cartCount, cartPulse } = useMarketplace();
+  const { authReady, userId, displayName, sellerPanelAvailable, cartCount, cartPulse } = useMarketplace();
   const userSignedIn = authReady && !!userId;
   const [menuOpen, setMenuOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
@@ -177,7 +176,8 @@ export function CustomerHeader() {
   const navLinks = NAV_LINKS.map((link) => link.href === "/mensagens"
     ? { ...link, href: messagesHref(sellerPanelAvailable) } : link);
   // Quem tem loja edita o perfil dentro do painel, junto do menu da loja.
-  const profileHref = sellerPanelAvailable ? "/vendedor/perfil" : "/perfil";
+  const role = useAccountRole();
+  const profileHref = role === "admin" ? "/administracao/perfil" : sellerPanelAvailable ? "/vendedor/perfil" : "/perfil";
   const accountHref = userSignedIn ? profileHref : accessHref(pathname);
   const accountLabel = authReady ? (userSignedIn ? displayName || "Minha conta" : "Entrar") : "Minha conta";
   const cartLabel = `Carrinho, ${cartCount} ${cartCount === 1 ? "unidade" : "unidades"}`;
@@ -217,14 +217,14 @@ export function CustomerHeader() {
           <Link className="store-header-link store-header-favorites" href="/favoritos" aria-label="Favoritos">
             <Heart size={21} />
           </Link>
-          <Link className="store-header-link store-account" href={accountHref}
-            aria-label={userSignedIn ? `Minha conta, ${displayName || "perfil"}` : "Entrar ou criar conta"}>
-            {avatarUrl && userSignedIn
-              // eslint-disable-next-line @next/next/no-img-element
-              ? <img className="store-account-avatar" src={avatarUrl} alt="" width={30} height={30} />
-              : <UserRound size={21} />}
-            <span className="store-account-name">{accountLabel}</span>
-          </Link>
+          {userSignedIn ? (
+            <AccountMenu label={accountLabel} />
+          ) : (
+            <Link className="store-header-link store-account" href={accountHref} aria-label="Entrar ou criar conta">
+              <UserRound size={21} />
+              <span className="store-account-name">{accountLabel}</span>
+            </Link>
+          )}
           <Link className={`store-header-link store-cart-link${pulsing ? " is-pulsing" : ""}`}
             href="/carrinho" aria-label={cartLabel}>
             <ShoppingBag size={21} />
@@ -262,7 +262,6 @@ export function CustomerHeader() {
         <div className="an-drawer-body">
           <nav aria-label="Menu principal">
             <ul className="store-menu-list">
-              <li><Link href="/" onClick={() => setMenuOpen(false)} aria-current={pathname === "/" ? "page" : undefined}>Início</Link></li>
               {navLinks.map((link) => (
                 <li key={link.href}>
                   {link.href === "/categorias" ? (
@@ -297,16 +296,19 @@ export function CustomerHeader() {
                 <Store size={18} /> Venda na Artenós
               </Link>
             )}
-            <Link className={`an-btn an-btn--block${sellerPanelAvailable ? " an-btn--secondary" : ""}`} href={accountHref}
+            {role === "admin" && (
+              <Link className="an-btn an-btn--moss an-btn--block" href="/administracao" onClick={() => setMenuOpen(false)}>
+                Painel de administração
+              </Link>
+            )}
+            <Link className={`an-btn an-btn--block${sellerPanelAvailable || role === "admin" ? " an-btn--secondary" : ""}`} href={accountHref}
               onClick={() => setMenuOpen(false)}>
               <UserRound size={18} /> {userSignedIn ? "Meu perfil" : "Entrar ou criar conta"}
             </Link>
             {userSignedIn && (
-              <button type="button" className="an-btn an-btn--ghost an-btn--block" onClick={async () => {
+              <button type="button" className="an-btn an-btn--ghost an-btn--block" onClick={() => {
                 setMenuOpen(false);
-                await endSession("local");
-                router.replace("/");
-                toast.success("Você saiu da sua conta.");
+                void signOutTo(router);
               }}>
                 <LogOut size={18} /> Sair da conta
               </button>

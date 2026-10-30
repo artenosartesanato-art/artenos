@@ -13,6 +13,8 @@ type MarketplaceState = {
   avatarUrl: string | null;
   sellerPanelAvailable: boolean;
   accountType: "client" | "artisan" | null;
+  /** Conta da equipe (administração): o cabeçalho e as rotas se adaptam. */
+  isAdmin: boolean;
   cartCount: number;
   /** Soma dos produtos no carrinho, em centavos (sem frete). */
   cartSubtotalCents: number;
@@ -97,6 +99,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
   const avatarUrlRef = useRef<string | null>(null);
   const [sellerPanelAvailable, setSellerPanelAvailable] = useState(false);
   const [accountType, setAccountType] = useState<"client" | "artisan" | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [cartCount, setCartCount] = useState(0);
   const [cartSubtotalCents, setCartSubtotalCents] = useState(0);
   const [cartPulse, setCartPulse] = useState(0);
@@ -127,10 +130,15 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
     const identity = ++identityRequest.current;
     if (!account) return;
     const supabase = getSupabase();
-    const { data, error } = await supabase.from("profiles")
-      .select("full_name,account_type,approval_status,avatar_path,cep")
-      .eq("id", account).maybeSingle();
+    // Perfil e papel de administração juntos (em paralelo).
+    const [{ data, error }, adminCheck] = await Promise.all([
+      supabase.from("profiles")
+        .select("full_name,account_type,approval_status,avatar_path,cep")
+        .eq("id", account).maybeSingle(),
+      Promise.resolve(supabase.rpc("is_active_admin")).catch(() => ({ data: false })),
+    ]);
     if (request !== generation.current || identity !== identityRequest.current || account !== accountRef.current) return;
+    setIsAdmin(adminCheck.data === true);
     const registeredCep = String(data?.cep ?? "").replace(/\D/g, "");
     if (error || registeredCep.length !== 8) {
       setCep("");
@@ -260,6 +268,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
       setAvatarUrl(null);
       setSellerPanelAvailable(false);
       setAccountType(null);
+      setIsAdmin(false);
       setCartCount(0);
       setCartSubtotalCents(0);
       if (nextId) {
@@ -353,7 +362,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
   const guestFavoriteIds = useMemo(() => new Set(guestFavorites.map((item) => item.id)), [guestFavorites]);
   const guest = authReady && !userId;
   const value = useMemo(() => ({ authReady, userId, displayName, avatarUrl,
-    sellerPanelAvailable, accountType,
+    sellerPanelAvailable, accountType, isAdmin,
     cartCount: guest ? guestTotals.count : cartCount,
     cartSubtotalCents: guest ? guestTotals.subtotalCents : cartSubtotalCents,
     cartPulse, cep, cepStatus, cepError, setGuestCep,
@@ -361,7 +370,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
     favoritesReady: guest ? true : favoritesReady,
     pendingFavoriteIds, refreshCart, pulseCart, refreshFavorites, toggleFavorite,
     guestCart, guestFavorites, addGuestToCart, setGuestQuantity }),
-  [authReady, userId, displayName, avatarUrl, sellerPanelAvailable, accountType, cartCount, cartSubtotalCents, cartPulse,
+  [authReady, userId, displayName, avatarUrl, sellerPanelAvailable, accountType, isAdmin, cartCount, cartSubtotalCents, cartPulse,
     cep, cepStatus, cepError, setGuestCep, favoriteIds, favoritesReady, pendingFavoriteIds, refreshCart, pulseCart,
     refreshFavorites, toggleFavorite, guest, guestTotals, guestFavoriteIds, guestCart, guestFavorites, addGuestToCart,
     setGuestQuantity]);

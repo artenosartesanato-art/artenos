@@ -47,3 +47,35 @@ export function isNavActive(href: string, pathname: string) {
   const prefixes = NAV_MATCHES[href] ?? [href];
   return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
+
+export type AccountRole = "admin" | "seller" | "client";
+export type AccountLink = { href: string; label: string };
+
+/** Opções do menu da conta no cabeçalho, conforme o papel. */
+export function accountLinks(role: AccountRole): AccountLink[] {
+  if (role === "admin") {
+    return [
+      { href: "/administracao", label: "Painel de administração" },
+      { href: "/administracao/perfil", label: "Meu perfil" },
+    ];
+  }
+  if (role === "seller") {
+    return [
+      { href: "/vendedor", label: "Painel da loja" },
+      { href: "/vendedor/perfil", label: "Meu perfil" },
+      { href: "/pedidos", label: "Meus pedidos" },
+    ];
+  }
+  return [
+    { href: "/perfil", label: "Meu perfil" },
+    { href: "/pedidos", label: "Meus pedidos" },
+    { href: "/favoritos", label: "Favoritos" },
+  ];
+}
+
+/** Páginas de comprador ou de loja que não existem para a equipe: o admin vai para o painel. */
+const BUYER_ONLY = ["/perfil", "/pedidos", "/carrinho", "/comprar-agora", "/pagamento", "/favoritos", "/mensagens", "/vendedor", "/cadastro-em-analise", "/repasses"];
+
+export function adminRedirectFor(pathname: string): string | null {
+  return BUYER_ONLY.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)) ? "/administracao" : null;
+}
