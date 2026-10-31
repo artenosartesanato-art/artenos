@@ -296,13 +296,13 @@
   gap: 10px;
 }
 .custom-request-top time {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--an-argila-texto);
 }
 .custom-status {
   border-radius: 99px;
   padding: 5px 8px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
 }
 .custom-status.is-pending {

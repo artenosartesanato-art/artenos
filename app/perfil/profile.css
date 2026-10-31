@@ -125,7 +125,7 @@
   overflow: hidden;
 }
 .profile-avatar-wrap small {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--an-argila-texto);
   text-align: center;
 }
@@ -210,7 +210,7 @@
   color: var(--an-argila-texto);
   text-transform: uppercase;
   letter-spacing: 1.1px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   margin-bottom: 6px;
 }

@@ -141,7 +141,7 @@
   min-height: 14px;
   margin-top: -4px;
   color: var(--an-argila-texto);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 400;
 }
 
@@ -265,7 +265,7 @@
 
 .pricing-result span {
   display: block;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: .6px;
   text-transform: uppercase;
@@ -280,7 +280,7 @@
 .pricing-formula-note {
   margin: 13px 2px;
   color: var(--an-argila-texto);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.45;
 }
 
@@ -397,7 +397,7 @@
 .pricing-history-copy span,
 .pricing-history-copy time {
   color: var(--an-argila-texto);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .pricing-history-copy time {
@@ -416,7 +416,7 @@
 
 .pricing-history-values span {
   color: var(--an-argila-texto);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .pricing-history-values strong {

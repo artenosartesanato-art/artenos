@@ -1763,3 +1763,169 @@ img {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+/* Convite "Desenvolvido por" (rodapé). Identidade da empresa desenvolvedora:
+   troque só as variáveis --dev-* para aplicar as cores oficiais. */
+.store-footer-credit {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--artenos-perola);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.store-footer-credit:focus-visible {
+  outline: 2px solid var(--artenos-pessego);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.dev-credit-dialog {
+  --dev-bg: #0d1117;
+  --dev-surface: #161b22;
+  --dev-text: #f0f3f6;
+  --dev-muted: #a7b1bc;
+  --dev-accent: #5b8cff;
+  --dev-accent-2: #22d3ee;
+  --dev-on-accent: #0d1117;
+  width: min(480px, 100%);
+  background:
+    radial-gradient(120% 70% at 100% 0%, color-mix(in srgb, var(--dev-accent) 28%, transparent), transparent 60%),
+    radial-gradient(90% 60% at 0% 100%, color-mix(in srgb, var(--dev-accent-2) 18%, transparent), transparent 60%),
+    var(--dev-bg);
+  color: var(--dev-text);
+  box-shadow: 0 24px 60px rgb(0 0 0 / 0.45), 0 0 0 1px rgb(255 255 255 / 0.08);
+}
+.dev-credit-dialog .an-dialog-close {
+  border: 1px solid rgb(255 255 255 / 0.16);
+  background: rgb(255 255 255 / 0.08);
+  color: var(--dev-text);
+}
+.dev-credit-dialog .an-dialog-close:hover {
+  background: rgb(255 255 255 / 0.16);
+}
+.dev-credit {
+  display: grid;
+  gap: 14px;
+  padding: clamp(24px, 6vw, 36px);
+}
+.dev-credit-badge {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.06);
+  color: var(--dev-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.dev-credit h2 {
+  margin: 0;
+  padding-right: 32px;
+  color: var(--dev-text);
+  font: 750 clamp(24px, 6vw, 30px) / 1.15 var(--font-body);
+  letter-spacing: -0.01em;
+}
+.dev-credit p {
+  margin: 0;
+  color: var(--dev-muted);
+  font-size: 15px;
+  line-height: 1.6;
+}
+.dev-credit p strong {
+  color: var(--dev-text);
+}
+.dev-credit-points {
+  display: grid;
+  gap: 8px;
+  margin: 2px 0 4px;
+  padding: 0;
+  list-style: none;
+}
+.dev-credit-points li {
+  position: relative;
+  padding-left: 22px;
+  color: var(--dev-text);
+  font-size: 14px;
+  line-height: 1.45;
+}
+.dev-credit-points li::before {
+  content: "";
+  position: absolute;
+  top: 0.45em;
+  left: 2px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--dev-accent), var(--dev-accent-2));
+}
+.dev-credit-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 6px;
+}
+.dev-credit-cta,
+.dev-credit-later {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 750;
+  text-decoration: none;
+  cursor: pointer;
+}
+.dev-credit-cta {
+  border: 0;
+  background: linear-gradient(135deg, var(--dev-accent), var(--dev-accent-2));
+  color: var(--dev-on-accent);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--dev-accent) 35%, transparent);
+}
+.dev-credit-cta:hover {
+  filter: brightness(1.06);
+}
+.dev-credit-later {
+  border: 1px solid rgb(255 255 255 / 0.16);
+  background: transparent;
+  color: var(--dev-text);
+}
+.dev-credit-later:hover {
+  background: rgb(255 255 255 / 0.06);
+}
+.dev-credit-cta:focus-visible,
+.dev-credit-later:focus-visible {
+  outline: 2px solid var(--dev-text);
+  outline-offset: 3px;
+}
+
+/* Celular: campos com texto de 16px. Abaixo disso o iPhone dá zoom sozinho ao
+   tocar no campo e a página fica "desalinhada" até a pessoa afastar. */
+@media (max-width: 760px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Buscas dentro de caixas (vendas, encomendas, catálogo, conversas, painel):
+   o campo ocupa toda a altura da caixa, facilitando o toque no celular. */
+.sales-search input,
+.custom-search input,
+.catalog-toolbar input,
+.chat-search input,
+.adm-search input,
+.admin-search input {
+  align-self: stretch;
+  min-height: 38px;
+}

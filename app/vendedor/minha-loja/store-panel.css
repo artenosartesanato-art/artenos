@@ -28,7 +28,7 @@
   border-radius: 999px;
   background: var(--artenos-perola);
   color: var(--artenos-musgo);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.6px;
@@ -77,7 +77,7 @@
   display: block;
   margin-top: 9px;
   color: var(--an-argila-texto);
-  font-size: 10px;
+  font-size: 11px;
 }
 .store-cover-actions {
   display: flex;
@@ -176,11 +176,12 @@
 }
 .store-form-fields label em {
   color: var(--an-argila-texto);
-  font-size: 9px;
+  font-size: 11px;
   font-style: normal;
   font-weight: 500;
 }
 .store-form-fields input,
+.store-form-fields select,
 .store-form-fields textarea {
   width: 100%;
   border: 1px solid var(--artenos-pessego);
@@ -193,13 +194,19 @@
   font-weight: 400;
   line-height: 1.5;
 }
-.store-form-fields input {
+.store-form-fields input,
+.store-form-fields select {
   height: 44px;
+}
+.store-form-fields select {
+  padding-block: 0;
+  cursor: pointer;
 }
 .store-form-fields textarea {
   resize: vertical;
 }
 .store-form-fields input:focus,
+.store-form-fields select:focus,
 .store-form-fields textarea:focus {
   border-color: var(--artenos-argila);
   box-shadow: 0 0 0 3px #b26b4f17;
@@ -207,7 +214,7 @@
 .store-form-fields label > small {
   align-self: flex-end;
   color: var(--an-argila-texto);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 400;
 }
 .store-number-field {
@@ -221,7 +228,7 @@
   right: 12px;
   top: 14px;
   color: var(--an-argila-texto);
-  font-size: 10px;
+  font-size: 11px;
 }
 .store-toggle-list {
   margin-top: 21px;
@@ -253,7 +260,7 @@
 }
 .store-toggle-list small {
   color: var(--an-argila-texto);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 400;
 }
 .store-toggle-list input {
@@ -320,7 +327,7 @@
   gap: 7px;
   padding: 13px 16px;
   color: var(--artenos-marrom);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.8px;
   text-transform: uppercase;
@@ -342,7 +349,7 @@
   padding: 5px 8px;
   border-radius: 999px;
   background: #4b3026d9;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
 }
@@ -381,7 +388,7 @@
   gap: 5px;
   margin: 0 0 15px;
   color: var(--an-argila-texto);
-  font-size: 10px;
+  font-size: 11px;
 }
 .store-preview-body blockquote {
   margin: 0 0 14px;
@@ -389,7 +396,7 @@
   border-left: 3px solid var(--artenos-argila);
   background: var(--artenos-perola);
   color: var(--artenos-marrom);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.45;
 }
 .store-preview-story {
@@ -416,14 +423,14 @@
 }
 .store-preview-body dt {
   color: var(--an-argila-texto);
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
 }
 .store-preview-body dd {
   margin: 0;
   color: var(--artenos-marrom);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 750;
 }
 .store-panel-state {
@@ -511,7 +518,7 @@
   gap: 7px;
   padding: 0 11px;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.6px;
@@ -570,7 +577,7 @@
 .store-overview-grid small {
   overflow: hidden;
   color: var(--an-argila-texto);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -605,7 +612,7 @@
   border-radius: 999px;
   background: var(--artenos-perola);
   color: var(--artenos-musgo);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
 }
@@ -642,7 +649,7 @@
   border-radius: 999px;
   background: #4b3026e8;
   color: #fff;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
 }
@@ -651,7 +658,7 @@
 }
 .store-owner-products small {
   color: var(--an-argila-texto);
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
 }
@@ -669,7 +676,7 @@
 .store-owner-products p {
   margin: 5px 0 0;
   color: var(--an-argila-texto);
-  font-size: 9px;
+  font-size: 11px;
 }
 .store-products-empty {
   min-height: 190px;
@@ -714,7 +721,7 @@
 .store-catalog-note p {
   margin: 4px 0 0;
   color: var(--an-argila-texto);
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1.45;
 }
 .store-catalog-note > span {
@@ -722,7 +729,7 @@
   align-items: center;
   gap: 5px;
   color: var(--an-argila-texto);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
   white-space: nowrap;
@@ -764,10 +771,14 @@
 }
 @media (max-width: 430px) {
   .store-overview-grid {
-    grid-template-columns: 1fr;
+    gap: 10px;
   }
   .store-overview-grid article {
-    min-height: 75px;
+    min-height: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 14px;
   }
 }
 

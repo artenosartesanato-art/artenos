@@ -121,7 +121,7 @@
 }
 .order-card-top span,
 .order-card-top time {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--an-argila-texto);
 }
 .order-card-top span {
@@ -129,7 +129,7 @@
   color: var(--artenos-marrom);
 }
 .order-status {
-  font-size: 10px;
+  font-size: 11px;
   border-radius: 99px;
   padding: 6px 9px;
   background: var(--artenos-pessego);
@@ -181,7 +181,7 @@
   min-width: 0;
 }
 .order-product-copy small {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--an-argila-texto);
   text-transform: uppercase;
   letter-spacing: 0.8px;
@@ -299,7 +299,7 @@
   margin: 4px 0;
 }
 .order-timeline time {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--an-argila-texto);
 }
 .order-information {
@@ -318,7 +318,7 @@
   padding-top: 10px;
 }
 .order-information dt {
-  font-size: 9px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 1px;
   color: var(--an-argila-texto);

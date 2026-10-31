@@ -313,8 +313,13 @@ export default function SellerCustomOrdersPage() {
       </header>
 
       <section className="custom-flow-note" aria-label="Como funcionam as encomendas">
-        <strong>Fluxo da encomenda</strong>
-        <span>1. Você publica uma opção → 2. O cliente solicita orçamento → 3. Você responde → 4. Ambos acompanham pelo chat.</span>
+        <strong>Como funciona</strong>
+        <ol className="custom-flow-steps">
+          <li><span>Você publica uma opção</span></li>
+          <li><span>O cliente pede um orçamento</span></li>
+          <li><span>Você responde com preço e prazo</span></li>
+          <li><span>Vocês combinam os detalhes pelo chat</span></li>
+        </ol>
         <small>A proposta aceita ainda não cria automaticamente uma venda nem uma cobrança.</small>
         {profile && <a href={`/loja?id=${encodeURIComponent(profile.id)}`}>Ver como o cliente encontra suas opções (página da loja)</a>}
       </section>

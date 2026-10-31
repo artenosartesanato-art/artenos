@@ -3150,3 +3150,13 @@ div.product-details-description :is(ul, ol) {
     margin-right: 0;
   }
 }
+
+/* Tablet com conta de loja: cinco atalhos no cabeçalho cabem sem empurrar a página. */
+@media (max-width: 980px) {
+  .store-header-actions {
+    gap: 0;
+  }
+  .store-header-actions .store-seller-switch {
+    margin-right: 2px;
+  }
+}

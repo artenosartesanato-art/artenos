@@ -201,7 +201,7 @@
 .admin-fee-copy p {
   margin: 0 0 4px;
   color: var(--artenos-marrom);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: .15em;
   text-transform: uppercase;
@@ -225,7 +225,7 @@
 
 .admin-fee-copy time {
   color: var(--an-argila-texto);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .admin-fee-card form {
@@ -240,7 +240,7 @@
   flex-direction: column;
   gap: 6px;
   color: var(--artenos-marrom);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
 }
 
@@ -297,7 +297,7 @@
   max-width: 170px;
   padding-bottom: 8px;
   color: var(--an-argila-texto);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .admin-workspace {
@@ -390,7 +390,7 @@
   background: rgba(133, 89, 69, 0.1);
   display: grid;
   place-items: center;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 900;
 }
 .admin-filters button.active span {
@@ -461,7 +461,7 @@
   padding: 5px 9px;
   border-radius: 999px;
   display: inline-block;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.05em;
   text-transform: uppercase;
