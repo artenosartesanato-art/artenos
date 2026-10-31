@@ -8,3 +8,6 @@ coverage/
 npm-debug.log*
 .DS_Store
 *.pem
+
+# Saída dos testes de carga (k6)
+load-tests/resultado-*.json
