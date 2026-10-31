@@ -36,6 +36,8 @@ type NotificationsValue = {
 
 const NotificationsContext = createContext<NotificationsValue | null>(null);
 const COLUMNS = "id, kind, title, body, link, ref_id, unread_count, created_at, read_at";
+// 42501: sem permissão; 42P01 / PGRST205: tabela não existe (script não rodou).
+const PERMANENT_ERRORS = new Set(["42501", "42P01", "PGRST205"]);
 
 export function useNotifications() {
   return useContext(NotificationsContext);
@@ -112,12 +114,26 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     // Leitura completa. A primeira só preenche a lista; as seguintes (consulta
     // de segurança) avisam o que chegou sem passar pelo tempo real.
     let loaded = false;
+    // Erro permanente (tabela ausente ou sem permissão de leitura): para de
+    // consultar e de reconectar até recarregar a página. Antes, o site repetia
+    // a leitura a cada 30 s, a cada troca de página e a cada volta para a aba.
+    let stopped = false;
     async function load() {
+      if (stopped) return;
       const { data, error } = await supabase.from("notifications").select(COLUMNS)
         .order("created_at", { ascending: false }).limit(MAX_ITEMS);
       if (!active) return;
-      // Tabela ausente: o painel mostra "em breve" até o script ser executado.
-      if (error) { if (!loaded) setAvailable(false); return; }
+      if (error) {
+        if (PERMANENT_ERRORS.has(String(error.code ?? ""))) {
+          stopped = true;
+          setAvailable(false);
+          if (channel) void supabase.removeChannel(channel);
+          console.warn("[avisos] Avisos desligados: rode supabase/notificacoes.sql e migrations/20261104_notificacoes_permissao.sql.", error.code);
+          return;
+        }
+        if (!loaded) setAvailable(false);
+        return;
+      }
       const rows = (data ?? []) as AppNotification[];
       const fresh = loaded ? freshUnread(itemsRef.current, rows) : [];
       loaded = true;
@@ -135,7 +151,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     let retryTimer: number | undefined;
     let channel: ReturnType<typeof supabase.channel> | null = null;
     function connect() {
-      if (!active) return;
+      if (!active || stopped) return;
       if (channel) void supabase.removeChannel(channel);
       channel = supabase
         .channel(`notificacoes-${userId}-${Date.now()}`)

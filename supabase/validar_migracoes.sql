@@ -174,6 +174,11 @@ checagens as (
   select 'notificacoes.sql', 'tabela', 'notifications',
     case when to_regclass('public.notifications') is null then 'FALTA: rode supabase/notificacoes.sql' else 'OK' end
   union all
+  select 'notificacoes.sql', 'permissão', 'leitura de notifications por quem está conectado',
+    case when to_regclass('public.notifications') is null then 'FALTA: rode supabase/notificacoes.sql'
+         when has_table_privilege('authenticated', 'public.notifications', 'SELECT') then 'OK'
+         else 'FALTA: rode migrations/20261104_notificacoes_permissao.sql' end
+  union all
   select 'notificacoes.sql', 'gatilho', 'aviso de mensagem nova (notify_new_message)',
     case when exists (select 1 from pg_trigger where tgname = 'notify_new_message' and not tgisinternal) then 'OK'
          else 'FALTA: rode supabase/notificacoes.sql' end
