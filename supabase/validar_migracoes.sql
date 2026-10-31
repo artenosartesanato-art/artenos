@@ -198,6 +198,12 @@ checagens as (
          when to_regprocedure('public.list_storefront_categories_with_counts()') is null then 'FALTA: rode migrations/20261103_contagem_categorias.sql'
          else 'OK' end
   union all
+  select '20261105 frete_assinatura', 'função', 'frete não expira ao pagar de novo (assinatura sem updated_at)',
+    case when exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                       where n.nspname = 'public' and p.proname in ('current_buy_now_signature', 'current_cart_shipping_signature')
+                         and p.prosrc ilike '%updated_at%') then 'FALTA: rode migrations/20261105_frete_assinatura.sql'
+         else 'OK' end
+  union all
   -- Sobrecargas duplicadas deixam chamadas ambíguas (acontece ao rodar um script antigo depois de um novo).
   select 'ordem dos scripts', 'sobrecarga', p.proname,
     case when count(*) > 1 then 'ATENÇÃO: ' || count(*) || ' versões; rode de novo os scripts a partir do 06' else 'OK' end
