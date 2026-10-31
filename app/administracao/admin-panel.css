@@ -1198,3 +1198,30 @@
 .adm-payment-fees {
   margin-top: 18px;
 }
+
+/* Celular: filtros numa linha que desliza para o lado (em vez de várias linhas
+   de botões empilhados). A borda direita esmaece para indicar que há mais. */
+@media (max-width: 640px) {
+  .adm-chips {
+    flex-wrap: nowrap;
+    max-width: 100%;
+    margin-inline: -16px;
+    padding: 2px 16px 6px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 16px;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent);
+    mask-image: linear-gradient(90deg, #000 85%, transparent);
+  }
+  .adm-chips::-webkit-scrollbar {
+    display: none;
+  }
+  .adm-chips button {
+    flex: none;
+    min-height: 40px;
+    scroll-snap-align: start;
+    white-space: nowrap;
+  }
+}

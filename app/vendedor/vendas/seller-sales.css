@@ -50,7 +50,7 @@
 .sales-summary span {
   margin-top: 3px;
   color: var(--an-argila-texto);
-  font-size: 10px;
+  font-size: 11px;
 }
 .sales-panel {
   padding: 23px;
@@ -76,7 +76,7 @@
   border-radius: 999px;
   background: #fff;
   color: var(--artenos-marrom);
-  font-size: 10px;
+  font-size: 11px;
   cursor: pointer;
 }
 .sales-tabs button.active {
@@ -136,14 +136,14 @@
 }
 .sale-card-top time {
   color: var(--an-argila-texto);
-  font-size: 9px;
+  font-size: 11px;
 }
 .sale-card-top > strong {
   padding: 5px 8px;
   border-radius: 999px;
   background: var(--artenos-perola);
   color: var(--artenos-marrom);
-  font-size: 9px;
+  font-size: 11px;
 }
 .sale-card-top > strong.is-delivered {
   background: var(--artenos-perola);
@@ -179,7 +179,7 @@
 }
 .sale-copy small {
   color: var(--an-argila-texto);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
 }
@@ -200,7 +200,7 @@
   gap: 5px;
   margin-top: 7px;
   color: var(--artenos-marrom);
-  font-size: 10px;
+  font-size: 11px;
 }
 .sale-actions {
   display: flex;
@@ -216,7 +216,7 @@
   border-radius: 7px;
   background: #fff;
   color: var(--artenos-marrom);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 750;
   cursor: pointer;
 }
@@ -278,16 +278,16 @@
   background: var(--artenos-marrom);
 }
 .sale-details ol strong {
-  font-size: 10px;
+  font-size: 11px;
 }
 .sale-details ol p {
   margin: 3px 0;
   color: var(--artenos-marrom);
-  font-size: 10px;
+  font-size: 11px;
 }
 .sale-details ol time {
   color: var(--an-argila-texto);
-  font-size: 8px;
+  font-size: 11px;
 }
 .sale-info dl {
   display: grid;
@@ -301,12 +301,12 @@
 }
 .sale-info dt {
   color: var(--an-argila-texto);
-  font-size: 9px;
+  font-size: 11px;
 }
 .sale-info dd {
   margin: 0;
   color: var(--artenos-marrom);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.5;
 }
 .sale-info dd a,
@@ -320,7 +320,7 @@
 }
 .sale-info > a {
   margin-top: 15px;
-  font-size: 10px;
+  font-size: 11px;
 }
 .sale-items {
   margin-top: 22px;
@@ -333,7 +333,7 @@
   gap: 20px;
   padding: 7px 0;
   color: var(--artenos-marrom);
-  font-size: 10px;
+  font-size: 11px;
 }
 .sale-items .sale-total {
   margin-top: 4px;

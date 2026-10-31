@@ -12,27 +12,8 @@ import {
 } from "@/components/admin-ui";
 import { getSupabase } from "@/lib/supabase";
 import { ORDER_STATUS_LABEL, brl, brlShort, change, formatDate, orderTone } from "@/lib/admin";
+import { normalizeDashboard, type Dashboard } from "@/lib/admin-dashboard";
 
-type Dashboard = {
-  period_days: number;
-  since: string;
-  sales: { orders: number; gmv: number; products_amount: number; shipping_amount: number; platform_fee: number; buyers: number; sellers: number };
-  sales_previous: { orders: number; gmv: number; platform_fee: number };
-  cancelled: number;
-  orders_by_status: { status: string; total: number }[];
-  daily: { day: string; orders: number; gmv: number }[];
-  top_sellers: { artisan_id: string; store_name: string; orders: number; gmv: number }[];
-  top_categories: { name: string; units: number; amount: number }[];
-  sellers: { active: number; in_review: number; new: number };
-  applications: { waiting: number; suspended: number };
-  clients: { total: number; new: number };
-  products: { active: number; out_of_stock: number; new: number; shops_with_products: number };
-  payouts: { pending_amount: number; pending_count: number; failed_count: number; paid_amount: number };
-  to_ship: number;
-  delivery_problems: number;
-  messages: number;
-  custom_orders: number;
-};
 type RecentOrder = { order_id: string; order_code: string; status: string; created_at: string; total_amount: number; store_name: string; client_name: string };
 
 const PERIODS = [
@@ -93,7 +74,9 @@ export default function AdminDashboardPage() {
         supabase.rpc("admin_list_orders", { p_status: null, p_query: null, p_limit: 6, p_offset: 0 }),
       ]);
       if (dashboard.error) throw dashboard.error;
-      setData(dashboard.data as Dashboard);
+      const normalized = normalizeDashboard(dashboard.data);
+      if (!normalized) throw new Error("Resposta vazia do painel");
+      setData(normalized);
       setRecent((orders.data ?? []) as RecentOrder[]);
       setUpdatedAt(new Date());
     } catch (loadError) {

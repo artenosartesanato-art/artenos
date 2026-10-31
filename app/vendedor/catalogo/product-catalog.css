@@ -77,7 +77,7 @@
 .catalog-overview small {
   overflow: hidden;
   color: var(--an-argila-texto);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -181,7 +181,7 @@
   padding: 6px 9px;
   border-radius: 999px;
   color: #fff;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 850;
   letter-spacing: 0.5px;
   text-transform: uppercase;
@@ -200,7 +200,7 @@
   border-radius: 999px;
   background: #b26b4fe8;
   color: #fff;
-  font-size: 8px;
+  font-size: 11px;
   font-style: normal;
   font-weight: 850;
   text-transform: uppercase;
@@ -210,7 +210,7 @@
 }
 .catalog-product-body > small {
   color: var(--an-argila-texto);
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.6px;
   text-transform: uppercase;
@@ -227,7 +227,7 @@
   display: -webkit-box;
   margin: 0;
   color: var(--an-argila-texto);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.55;
   -webkit-box-orient: vertical;
   overflow: hidden;
@@ -247,7 +247,7 @@
 }
 .catalog-product-data span {
   color: var(--an-argila-texto);
-  font-size: 9px;
+  font-size: 11px;
 }
 .catalog-ready,
 .catalog-made-to-order {
@@ -256,7 +256,7 @@
   gap: 6px;
   margin-top: 9px;
   color: var(--artenos-musgo);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 800;
 }
 .catalog-product-actions {
@@ -275,7 +275,7 @@
   border-radius: 8px;
   background: #fff;
   color: var(--artenos-marrom);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   cursor: pointer;
 }
@@ -416,7 +416,7 @@
 .catalog-form-main label > small {
   align-self: flex-end;
   color: var(--an-argila-texto);
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 500;
 }
 .catalog-form-main input,
@@ -464,7 +464,7 @@
   left: 11px;
   top: 13px;
   color: var(--an-argila-texto);
-  font-size: 9px;
+  font-size: 11px;
 }
 .catalog-money-field input {
   padding-left: 35px;
@@ -479,7 +479,7 @@
   top: 50%;
   transform: translateY(-50%);
   color: var(--an-argila-texto);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 750;
   pointer-events: none;
 }
@@ -511,7 +511,7 @@
 }
 .catalog-logistics-fields > div:first-child small {
   color: var(--an-argila-texto);
-  font-size: 9px;
+  font-size: 11px;
 }
 .catalog-form-toggles {
   border-top: 1px solid var(--artenos-pessego);
@@ -536,7 +536,7 @@
 }
 .catalog-form-toggles small {
   color: var(--an-argila-texto);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 400;
 }
 .catalog-form-toggles input {
@@ -601,7 +601,7 @@
   gap: 8px;
 }
 .catalog-image-preview span {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
 }
 .catalog-image-field > label {
@@ -614,7 +614,7 @@
   border-radius: 8px;
   background: var(--artenos-marrom);
   color: #fff;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   cursor: pointer;
 }
@@ -629,7 +629,7 @@
   border-radius: 7px;
   background: #fff;
   color: var(--artenos-marrom);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -637,7 +637,7 @@
   display: block;
   margin-top: 10px;
   color: var(--an-argila-texto);
-  font-size: 8px;
+  font-size: 11px;
   line-height: 1.55;
 }
 .catalog-modal form > footer {
@@ -679,7 +679,7 @@
   border-radius: 6px;
   background: var(--artenos-perola);
   color: var(--artenos-marrom);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 750;
 }
 @media (max-width: 1050px) {
@@ -706,6 +706,8 @@
     flex-direction: column;
   }
   .catalog-toolbar form {
+    flex: none;
+    height: 46px;
     max-width: none;
   }
   .catalog-toolbar > select {
@@ -841,7 +843,7 @@
 }
 .description-editor > small {
   color: var(--an-argila-texto);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 500;
 }
 
