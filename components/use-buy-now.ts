@@ -1,5 +1,6 @@
 "use client";
 
+import { playUiSound } from "@/lib/ui-sound";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
@@ -44,6 +45,7 @@ export function useBuyNow() {
     setPendingId(null);
     if (!ok) return;
     beforeNavigate?.();
+    playUiSound("purchase");
     router.push(BUY_NOW_PATH);
   }, [prepare, router]);
 

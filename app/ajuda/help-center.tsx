@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import {
   ArrowLeftRight, BagCheck, Clock3, CreditCard, HelpCircle, Mail, Palette, Phone, Search, Store, Truck, Whatsapp,
 } from "@/components/icons";
@@ -13,6 +13,31 @@ const TOPIC_ICONS: Record<string, typeof Search> = {
 };
 
 type Contact = { whatsapp: string | null; email: string; phone: string; phoneHref: string; hours: string };
+
+/**
+ * Pergunta em cartão: o cartão inteiro (fechado) é o botão; a resposta abre
+ * deslizando. Fechada, a resposta fica fora da leitura e do teclado.
+ */
+function FaqItem({ question, answer, group, defaultOpen = false }: {
+  question: string; answer: string[]; group?: string; defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const id = useId();
+  return (
+    <div className={`help-q${open ? " is-open" : ""}`}>
+      <button type="button" className="help-q-head" aria-expanded={open} aria-controls={id} onClick={() => setOpen((value) => !value)}>
+        <span className="help-q-text">
+          {group && <small>{group}</small>}
+          <span>{question}</span>
+        </span>
+        <span className="help-q-icon" aria-hidden="true" />
+      </button>
+      <div id={id} className="help-q-body" role="region" aria-label={question} aria-hidden={!open} inert={!open}>
+        <div className="help-answer">{answer.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div>
+      </div>
+    </div>
+  );
+}
 
 /** Compara sem acento e sem caixa: "credito" acha "crédito". */
 const fold = (value: string) => value.normalize("NFD").replace(/[̀-ͯ]/g, "").toLocaleLowerCase("pt-BR");
@@ -53,10 +78,7 @@ export function HelpCenter({ faq, contact }: { faq: FaqGroup[]; contact: Contact
           {results.length ? (
             <div className="help-questions">
               {results.map((item) => (
-                <details key={item.q} open={results.length <= 3}>
-                  <summary><small>{item.group}</small>{item.q}</summary>
-                  <div className="help-answer">{item.a.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div>
-                </details>
+                <FaqItem key={`${term}-${item.q}`} question={item.q} answer={item.a} group={item.group} defaultOpen={results.length <= 3} />
               ))}
             </div>
           ) : (
@@ -82,10 +104,7 @@ export function HelpCenter({ faq, contact }: { faq: FaqGroup[]; contact: Contact
               <h2 id={`${current.id}-titulo`}>{current.title}</h2>
               <div className="help-questions">
                 {current.items.map((item, index) => (
-                  <details key={item.q} open={index === 0}>
-                    <summary>{item.q}</summary>
-                    <div className="help-answer">{item.a.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div>
-                  </details>
+                  <FaqItem key={`${current.id}-${item.q}`} question={item.q} answer={item.a} defaultOpen={index === 0} />
                 ))}
               </div>
             </section>

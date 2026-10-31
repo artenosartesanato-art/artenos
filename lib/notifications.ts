@@ -30,6 +30,11 @@ export function unreadTotal(items: AppNotification[]) {
   return items.reduce((total, item) => total + (item.read_at ? 0 : Math.max(item.unread_count, 1)), 0);
 }
 
+/** Mensagens novas (contador do link "Mensagens"): só os avisos de mensagem. */
+export function unreadMessages(items: AppNotification[]) {
+  return unreadTotal(items.filter((item) => item.kind === "mensagem"));
+}
+
 export function badgeText(total: number) {
   return total > 99 ? "99+" : String(total);
 }

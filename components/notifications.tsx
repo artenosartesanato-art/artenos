@@ -11,7 +11,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { getSupabase } from "@/lib/supabase";
 import { formatListTime } from "@/lib/message-format";
 import {
-  badgeText, freshUnread, readOnVisit, titleWithCount, unreadByRef, unreadTotal, upsertNotification,
+  badgeText, freshUnread, readOnVisit, titleWithCount, unreadByRef, unreadMessages, unreadTotal, upsertNotification,
   MAX_ITEMS, type AppNotification, type NotificationKind,
 } from "@/lib/notifications";
 import {
@@ -24,6 +24,8 @@ type NotificationsValue = {
   available: boolean;
   items: AppNotification[];
   unread: number;
+  /** Mensagens novas, para o contador do link "Mensagens". */
+  unreadMessages: number;
   unreadByRef: Map<string, number>;
   markRead: (ids?: string[]) => void;
   /** A conversa aberta na tela: mensagens dela não tocam o som cheio nem acumulam. */
@@ -215,7 +217,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   }, [unread, pathname]);
 
   const value = useMemo<NotificationsValue>(() => ({
-    available, items, unread, unreadByRef: unreadByRef(items), markRead, setActiveRef, open, setOpen,
+    available, items, unread, unreadMessages: unreadMessages(items), unreadByRef: unreadByRef(items), markRead, setActiveRef, open, setOpen,
   }), [available, items, unread, markRead, setActiveRef, open]);
 
   return (
@@ -256,7 +258,7 @@ function NotificationToast({ item, onOpen, onClose }: {
 }
 
 function useNotificationSound() {
-  return useSyncExternalStore(subscribeNotificationSoundPreference, notificationSoundEnabled, () => true);
+  return useSyncExternalStore(subscribeNotificationSoundPreference, notificationSoundEnabled, () => false);
 }
 
 /** Sininho do cabeçalho: sempre visível para quem entrou na conta. */
@@ -299,7 +301,7 @@ function NotificationsPanel() {
           <button type="button" role="switch" aria-checked={soundOn} className="an-sound-toggle notif-sound"
             onClick={() => setNotificationSoundEnabled(!soundOn)}>
             <span className="an-sound-toggle-track" aria-hidden="true"><span /></span>
-            <span>Som das notificações: {soundOn ? "ligado" : "desligado"}</span>
+            <span>Sons da plataforma: {soundOn ? "ligados" : "desligados"}</span>
           </button>
         </div>
       </div>
@@ -347,5 +349,27 @@ function NotificationsPanel() {
         )}
       </div>
     </Dialog>
+  );
+}
+
+/**
+ * Contador de mensagens novas (link "Mensagens"). Muda em tempo real com os
+ * avisos e dá um pulo quando chega mais uma.
+ */
+export function MessagesCount({ className = "" }: { className?: string }) {
+  const notifications = useNotifications();
+  const count = notifications?.unreadMessages ?? 0;
+  const previous = useRef(count);
+  const [bump, setBump] = useState(0);
+  useEffect(() => {
+    if (count > previous.current) queueMicrotask(() => setBump((value) => value + 1));
+    previous.current = count;
+  }, [count]);
+  if (!count) return null;
+  return (
+    <span key={bump} className={`messages-count${bump ? " is-bumping" : ""} ${className}`.trim()}>
+      <span aria-hidden="true">{badgeText(count)}</span>
+      <span className="an-visually-hidden">, {count} {count === 1 ? "mensagem nova" : "mensagens novas"}</span>
+    </span>
   );
 }

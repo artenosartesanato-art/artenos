@@ -2,7 +2,6 @@
 
 import {
   Calculator,
-  FileText,
   HandCoins,
   Heart,
   LayoutDashboard,
@@ -25,6 +24,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { getSupabase } from "@/lib/supabase";
 import { useMarketplace } from "@/components/marketplace-state";
+import { MessagesCount } from "@/components/notifications";
 import { Dialog } from "@/components/ui/dialog";
 import { endSession } from "@/lib/session";
 
@@ -72,7 +72,6 @@ const managementLinks = [
   { label: "Vendas", href: "/vendedor/vendas", icon: ShoppingBag },
   { label: "Avaliações", href: "/vendedor/avaliacoes", icon: Star },
   { label: "Repasses", href: "/vendedor/repasses", icon: HandCoins },
-  { label: "Dados fiscais", href: "/vendedor/dados-fiscais", icon: FileText },
   { label: "Mensagens", href: "/vendedor/mensagens", icon: Mail },
 ];
 
@@ -131,6 +130,7 @@ function SellerNavLink({
       <Icon size={18} />
       <span>{item.label}</span>
       {item.href === "/carrinho" && cartCount > 0 && <small className="seller-cart-count" aria-hidden="true">{cartCount > 99 ? "99+" : cartCount}</small>}
+      {item.href === "/vendedor/mensagens" && <MessagesCount className="seller-messages-count" />}
     </Link>
   );
 }

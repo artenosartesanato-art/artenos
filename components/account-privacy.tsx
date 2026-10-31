@@ -37,7 +37,7 @@ export function AccountPrivacy() {
       });
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(body.error || "Não foi possível gerar o arquivo agora.");
+        throw new Error(body.error || `Não foi possível gerar o arquivo agora (erro ${response.status}).`);
       }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
@@ -45,8 +45,13 @@ export function AccountPrivacy() {
       link.href = url;
       const named = /filename="([^"]+)"/.exec(response.headers.get("content-disposition") ?? "")?.[1];
       link.download = named ?? `artenos-meus-dados.${format}`;
+      // Firefox e Safari só baixam se o link estiver na página; o celular
+      // precisa do arquivo disponível por mais tempo.
+      link.style.display = "none";
+      document.body.appendChild(link);
       link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
       toast.success(format === "xlsx" ? "Planilha com seus dados baixada." : "Arquivo JSON com seus dados baixado.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível gerar o arquivo agora.");

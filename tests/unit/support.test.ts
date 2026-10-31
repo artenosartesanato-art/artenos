@@ -29,3 +29,14 @@ test("só aceita POST do próprio site", () => {
   assert.equal(sameOrigin(request("https://site-malicioso.com")), false);
   assert.equal(sameOrigin(request(null)), false);
 });
+
+test("contato: e-mail confirmado e número do pedido só com números", async () => {
+  const { validateSupport } = await import("../../lib/support.ts");
+  const base = { name: "Ana", email: "ana@ex.com", topic: "compra", message: "Meu pedido não chegou ainda.", startedAt: 0 };
+  assert.deepEqual(validateSupport({ ...base, emailConfirm: "ANA@ex.com", orderCode: "1042" }, 60_000), {
+    ok: true, value: { name: "Ana", email: "ana@ex.com", topic: "compra", orderCode: "AN-1042", message: "Meu pedido não chegou ainda." },
+  });
+  assert.equal(validateSupport({ ...base, emailConfirm: "outra@ex.com" }, 60_000).ok, false);
+  assert.equal(validateSupport({ ...base, orderCode: "12a4" }, 60_000).ok, false);
+  assert.equal((validateSupport({ ...base, orderCode: "AN-77" }, 60_000) as { value: { orderCode: string } }).value.orderCode, "AN-77");
+});
