@@ -79,3 +79,23 @@ const BUYER_ONLY = ["/perfil", "/pedidos", "/carrinho", "/comprar-agora", "/paga
 export function adminRedirectFor(pathname: string): string | null {
   return BUYER_ONLY.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)) ? "/administracao" : null;
 }
+
+export type LoginAccount = "admin" | "seller" | "client";
+
+const startsWithSection = (path: string, section: string) =>
+  path === section || path.startsWith(`${section}/`) || path.startsWith(`${section}?`) || path.startsWith(`${section}#`);
+
+/**
+ * Para onde voltar depois de entrar, conferindo se a conta pode abrir a página.
+ * O "voltar" pode ter ficado de outra sessão (ex.: a sessão da equipe expirou
+ * no painel e depois entrou a conta de uma loja): nesse caso é ignorado e a
+ * pessoa vai para a página inicial da própria conta.
+ */
+export function returnPathForAccount(returnTo: string | null | undefined, account: LoginAccount): string | null {
+  const path = safeReturnPath(returnTo);
+  if (!path) return null;
+  if (startsWithSection(path, "/administracao")) return account === "admin" ? path : null;
+  if (account === "admin") return null; // a equipe só usa o painel
+  if (startsWithSection(path, "/vendedor")) return account === "seller" ? path : null;
+  return path;
+}
