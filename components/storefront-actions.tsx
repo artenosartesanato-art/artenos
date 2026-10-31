@@ -43,7 +43,7 @@ const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL
 export function StorefrontActionsProvider({ children }: { children: ReactNode }) {
   const {
     authReady, userId, cartCount, cartSubtotalCents, refreshCart, pulseCart,
-    toggleFavorite: saveFavorite, addGuestToCart, suspendedUntil,
+    toggleFavorite: saveFavorite, addGuestToCart, suspendedUntil, accountType,
   } = useMarketplace();
   const pending = useRef(new Set<string>());
   const [pendingCartIds, setPendingCartIds] = useState<ReadonlySet<string>>(new Set());
@@ -75,7 +75,7 @@ export function StorefrontActionsProvider({ children }: { children: ReactNode })
     }
     if (isSuspended(suspendedUntil)) {
       playUiSound("error");
-      toast.error(suspensionMessage(suspendedUntil));
+      toast.error(suspensionMessage(suspendedUntil, accountType));
       return false;
     }
     if (pending.current.has(product.id)) return false;
@@ -97,7 +97,7 @@ export function StorefrontActionsProvider({ children }: { children: ReactNode })
       pending.current.delete(product.id);
       setPendingCartIds(new Set(pending.current));
     }
-  }, [authReady, userId, suspendedUntil, refreshCart, pulseCart, addGuestToCart]);
+  }, [authReady, userId, suspendedUntil, accountType, refreshCart, pulseCart, addGuestToCart]);
 
   const toggleFavorite = useCallback(async (product: ActionProduct) => {
     try {

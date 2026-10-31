@@ -8,17 +8,30 @@ export function formatSuspensionEnd(until: string) {
   return dateTime.format(new Date(until)).replace(", ", " às ");
 }
 
-/** Texto curto mostrado quando a pessoa tenta fazer algo durante a suspensão. */
-export function suspensionMessage(until: string | null | undefined) {
-  return until
-    ? `Sua conta está suspensa até ${formatSuspensionEnd(until)}. Enquanto isso, você pode navegar, mas não pode comprar, favoritar ou enviar mensagens.`
-    : "Sua conta está suspensa. Enquanto isso, você pode navegar, mas não pode comprar, favoritar ou enviar mensagens.";
+export type SuspendedRole = "client" | "artisan";
+
+/** O que a conta não pode fazer, conforme seja cliente ou loja. */
+export function suspensionLimits(role: SuspendedRole | null | undefined) {
+  return role === "artisan"
+    ? "Ela fica fora da vitrine e você não pode publicar ou editar peças, alterar a loja, comprar, favoritar ou enviar mensagens. Os pedidos já pagos ainda podem ser enviados."
+    : "Você pode navegar pela Artenós, mas não pode comprar, favoritar ou enviar mensagens.";
+}
+
+/** Título do aviso: "Sua conta" (cliente) ou "Sua loja" (vendedora). */
+export function suspensionTitle(until: string | null | undefined, role: SuspendedRole | null | undefined) {
+  const subject = role === "artisan" ? "Sua loja está suspensa" : "Sua conta está suspensa";
+  return until ? `${subject} até ${formatSuspensionEnd(until)}.` : `${subject}.`;
+}
+
+/** Texto mostrado quando a pessoa tenta fazer algo durante a suspensão. */
+export function suspensionMessage(until: string | null | undefined, role?: SuspendedRole | null) {
+  return `${suspensionTitle(until, role)} ${suspensionLimits(role)}`;
 }
 
 /** Erro do banco por causa da suspensão (o texto começa com "Sua conta está suspensa"). */
 export function isSuspensionError(error: unknown) {
   const message = typeof error === "object" && error && "message" in error ? String((error as { message: unknown }).message) : String(error ?? "");
-  return /sua conta está suspensa/i.test(message);
+  return /sua (conta|loja) está suspensa/i.test(message);
 }
 
 /** Suspensão ainda valendo? */

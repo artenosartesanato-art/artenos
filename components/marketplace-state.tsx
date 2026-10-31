@@ -105,6 +105,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
   const [isAdmin, setIsAdmin] = useState(false);
   const [suspendedUntil, setSuspendedUntil] = useState<string | null>(null);
   const suspendedRef = useRef<string | null>(null);
+  const accountTypeRef = useRef<"client" | "artisan" | null>(null);
   const [cartCount, setCartCount] = useState(0);
   const [cartSubtotalCents, setCartSubtotalCents] = useState(0);
   const [cartPulse, setCartPulse] = useState(0);
@@ -163,7 +164,9 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
       setCepError("");
     }
     if (error) return;
-    setAccountType(data?.account_type === "artisan" ? "artisan" : data?.account_type === "client" ? "client" : null);
+    const nextType = data?.account_type === "artisan" ? "artisan" : data?.account_type === "client" ? "client" : null;
+    accountTypeRef.current = nextType;
+    setAccountType(nextType);
     setDisplayName(String(data?.full_name ?? "").trim().split(/\s+/)[0] || null);
     setSellerPanelAvailable(data?.account_type === "artisan" && data.approval_status === "active");
     let nextUrl: string | null = null;
@@ -221,7 +224,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
       setGuestFavorites(next);
       return !saved;
     }
-    if (isSuspended(suspendedRef.current)) throw new Error(suspensionMessage(suspendedRef.current));
+    if (isSuspended(suspendedRef.current)) throw new Error(suspensionMessage(suspendedRef.current, accountTypeRef.current));
     if (favoritePending.current.has(productId)) throw new Error("Aguarde a atualização deste favorito.");
     favoritePending.current.add(productId);
     setPendingFavoriteIds(new Set(favoritePending.current));
@@ -282,6 +285,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
       setAccountType(null);
       setIsAdmin(false);
       suspendedRef.current = null;
+      accountTypeRef.current = null;
       setSuspendedUntil(null);
       setCartCount(0);
       setCartSubtotalCents(0);

@@ -226,6 +226,11 @@ checagens as (
            or not exists (select 1 from pg_trigger where tgname = 'account_suspension_guard' and tgrelid = 'public.cart_items'::regclass)
          then 'FALTA: rode migrations/20261109_suspensao_conta.sql' else 'OK' end
   union all
+  select '20261110 suspensao_textos', 'função', 'aviso de suspensão diferente para cliente e loja',
+    case when exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                       where n.nspname = 'public' and p.proname = 'account_suspension_guard' and p.prosrc ilike '%Sua loja está suspensa%')
+         then 'OK' else 'FALTA: rode migrations/20261110_suspensao_textos.sql' end
+  union all
   -- Sobrecargas duplicadas deixam chamadas ambíguas (acontece ao rodar um script antigo depois de um novo).
   select 'ordem dos scripts', 'sobrecarga', p.proname,
     case when count(*) > 1 then 'ATENÇÃO: ' || count(*) || ' versões; rode de novo os scripts a partir do 06' else 'OK' end

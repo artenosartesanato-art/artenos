@@ -50,8 +50,8 @@ export default function ReportsPage() {
 
   useEffect(() => { queueMicrotask(() => void load()); }, [load]);
 
-  async function decide(report: Report, next: "reviewing" | "resolved" | "dismissed", suspend?: { userId: string; days: number; who: string }) {
-    if (suspend && !window.confirm(`Suspender ${suspend.who} por ${suspend.days} dias?\n\nDurante a suspensão a conta pode navegar, mas não compra, não favorita, não envia mensagens e não altera a loja (uma loja suspensa também sai da vitrine).`)) return;
+  async function decide(report: Report, next: "reviewing" | "resolved" | "dismissed", suspend?: { userId: string; days: number; who: string; store: boolean }) {
+    if (suspend && !window.confirm(`Suspender ${suspend.who} por ${suspend.days} dias?\n\n${suspend.store ? "Durante a suspensão a loja sai da vitrine e não pode publicar ou editar peças, alterar a loja, comprar ou enviar mensagens (pedidos já pagos ainda podem ser enviados)." : "Durante a suspensão o comprador pode navegar, mas não compra, não favorita e não envia mensagens."}`)) return;
     const note = next === "reviewing" ? null : window.prompt("Anotação interna (opcional):") ?? null;
     setBusy(report.report_id);
     const { error: saveError } = await getSupabase().rpc("admin_resolve_conversation_report", {
@@ -125,7 +125,9 @@ export default function ReportsPage() {
                     <p key={role} className="adm-report-suspended">
                       <Badge tone="alert">{role === "client" ? "Comprador suspenso" : "Loja suspensa"}</Badge>
                       {" "}{role === "client" ? report.client_name : report.store_name} até {formatDate(person.until, true)}.
-                      {" "}Pode navegar, mas não compra, não favorita e não envia mensagens.
+                      {" "}{role === "client"
+                        ? "Pode navegar, mas não compra, não favorita e não envia mensagens."
+                        : "Fora da vitrine; não publica nem edita peças, não altera a loja e não envia mensagens."}
                     </p>
                   ) : null;
                 })}
@@ -143,7 +145,7 @@ export default function ReportsPage() {
                       </button>
                     ) : (
                       <button key={role} type="button" className="adm-btn adm-btn--danger" disabled={busy === report.report_id}
-                        onClick={() => void decide(report, "resolved", { userId: person.userId, days: 7, who: person.who })}>
+                        onClick={() => void decide(report, "resolved", { userId: person.userId, days: 7, who: person.who, store: role === "store" })}>
                         Suspender {person.label} 7 dias
                       </button>
                     );
