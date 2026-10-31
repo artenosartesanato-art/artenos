@@ -534,3 +534,108 @@
     grid-row: 1;
   }
 }
+
+/* Taxa do Mercado Pago: meio de pagamento considerado no preço */
+.pricing-payment {
+  margin: 22px 0 0;
+  padding: 18px 0 0;
+  border: 0;
+  border-top: 1px solid var(--artenos-pessego);
+}
+.pricing-payment legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+  color: var(--artenos-marrom);
+  font-size: 13px;
+  font-weight: 750;
+}
+.pricing-payment > p {
+  clear: both;
+  margin: 6px 0 12px;
+  color: var(--an-argila-texto);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.pricing-payment-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.pricing-payment-options label {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--artenos-pessego);
+  border-radius: 11px;
+  background: #fff;
+  cursor: pointer;
+}
+.pricing-payment-options label.is-selected {
+  border-color: var(--artenos-marrom);
+  box-shadow: 0 0 0 1px var(--artenos-marrom);
+}
+.pricing-payment-options input[type="radio"] {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  margin: 2px 0 0;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  accent-color: var(--artenos-marrom);
+}
+.pricing-payment-options strong,
+.pricing-payment-options small {
+  display: block;
+}
+.pricing-payment-options strong {
+  color: var(--artenos-marrom);
+  font-size: 13px;
+}
+.pricing-payment-options small {
+  margin-top: 2px;
+  color: var(--an-argila-texto);
+  font-size: 11px;
+}
+
+/* Com o preço sugerido: quanto sai e quanto fica, no Pix e no cartão */
+.pricing-by-method {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 11px;
+  background: var(--artenos-perola);
+  font-size: 11px;
+}
+.pricing-by-method p {
+  margin: 0 0 8px;
+  color: var(--artenos-marrom);
+  font-weight: 700;
+}
+.pricing-by-method ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pricing-by-method li {
+  display: grid;
+  gap: 2px;
+  color: var(--an-argila-texto);
+}
+.pricing-by-method li > span:first-child {
+  color: var(--artenos-marrom);
+  font-weight: 750;
+}
+.pricing-by-method strong {
+  color: var(--artenos-musgo);
+}
+@media (max-width: 520px) {
+  .pricing-payment-options {
+    grid-template-columns: 1fr;
+  }
+}

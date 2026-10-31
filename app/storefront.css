@@ -3141,3 +3141,12 @@ div.product-details-description :is(ul, ol) {
   background: none;
   box-shadow: none;
 }
+
+/* Celular estreito com conta de loja: o atalho do painel cabe sem empurrar o carrinho. */
+@media (max-width: 430px) {
+  .store-header-actions .store-seller-switch {
+    width: 40px;
+    min-height: 40px;
+    margin-right: 0;
+  }
+}
