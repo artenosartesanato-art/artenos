@@ -1680,3 +1680,33 @@ img {
   gap: 8px;
   margin-top: 6px;
 }
+
+/* Contador de mensagens novas no link "Mensagens" (cabeçalho, menu e painel). */
+.messages-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 19px;
+  height: 19px;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--artenos-musgo);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  vertical-align: middle;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .messages-count.is-bumping {
+    animation: messages-count-bump 520ms var(--an-ease-spring, cubic-bezier(.34, 1.56, .64, 1));
+  }
+}
+@keyframes messages-count-bump {
+  0% { transform: scale(0.6); }
+  45% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+.seller-messages-count {
+  margin-left: auto;
+}

@@ -103,51 +103,111 @@
   display: grid;
   gap: 10px;
 }
-.help-questions details {
+.help-q {
+  overflow: hidden;
   border: 1px solid var(--an-line);
   border-radius: var(--an-r-md);
   background: var(--an-surface);
+  transition: border-color var(--an-dur-fast) ease, box-shadow var(--an-dur-base) ease;
 }
-.help-questions details[open] {
+.help-q:hover {
   border-color: var(--an-line-strong);
 }
-.help-questions summary {
+.help-q.is-open {
+  border-color: var(--an-line-strong);
+  box-shadow: var(--an-shadow-sm);
+}
+/* O cartão fechado inteiro é clicável. */
+.help-q-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 4px 12px;
+  gap: 16px;
+  width: 100%;
+  min-height: 58px;
   padding: 16px 18px;
+  border: 0;
+  background: none;
+  color: var(--an-text);
+  font: inherit;
   font-weight: 650;
   line-height: 1.4;
-  list-style: none;
+  text-align: left;
   cursor: pointer;
 }
-.help-questions summary::-webkit-details-marker {
-  display: none;
+.help-q-head:focus-visible {
+  outline: 3px solid var(--artenos-musgo);
+  outline-offset: -3px;
+  border-radius: var(--an-r-md);
 }
-.help-questions summary::after {
-  content: "+";
-  flex: none;
-  margin-left: auto;
-  color: var(--artenos-musgo);
-  font-size: 1.3rem;
-  font-weight: 500;
-  line-height: 1;
+.help-q-text {
+  display: grid;
+  gap: 4px;
 }
-.help-questions details[open] summary::after {
-  content: "–";
-}
-.help-questions summary small {
-  flex-basis: 100%;
+.help-q-text small {
   color: var(--an-argila-texto);
   font-size: var(--an-fs-2xs);
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+/* "+" que gira e vira "×" ao abrir. */
+.help-q-icon {
+  position: relative;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--an-sucesso-fundo);
+  transition: transform var(--an-dur-base) var(--an-ease-out), background-color var(--an-dur-fast) ease;
+}
+.help-q-icon::before,
+.help-q-icon::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 2px;
+  margin: -1px 0 0 -6px;
+  border-radius: 2px;
+  background: var(--artenos-musgo);
+}
+.help-q-icon::after {
+  transform: rotate(90deg);
+}
+.help-q.is-open .help-q-icon {
+  transform: rotate(45deg);
+  background: var(--artenos-musgo);
+}
+.help-q.is-open .help-q-icon::before,
+.help-q.is-open .help-q-icon::after {
+  background: #fff;
+}
+/* A resposta desliza (altura animada sem medir: grid de 0fr para 1fr). */
+.help-q-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--an-dur-slow, 320ms) var(--an-ease-out);
+}
+.help-q.is-open .help-q-body {
+  grid-template-rows: 1fr;
+}
+.help-q-body > .help-answer {
+  min-height: 0;
+  overflow: hidden;
+}
+@media (prefers-reduced-motion: reduce) {
+  .help-q-body,
+  .help-q-icon {
+    transition: none;
+  }
+}
 .help-answer {
-  padding: 0 18px 16px;
+  padding: 0 18px;
+}
+.help-q.is-open .help-answer {
+  padding-bottom: 16px;
 }
 .help-answer p {
   margin: 0 0 10px;
@@ -311,5 +371,42 @@ a.help-channel:hover {
   }
   .help-cta-button {
     width: 100%;
+  }
+}
+
+/* Formulário de contato: e-mail e confirmação lado a lado; pedido com "AN-" fixo. */
+.help-form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.help-order-input {
+  display: flex;
+  align-items: stretch;
+}
+.help-order-input > span {
+  display: grid;
+  place-items: center;
+  padding: 0 12px;
+  border: 1px solid var(--an-line-strong);
+  border-right: 0;
+  border-radius: var(--an-r-md) 0 0 var(--an-r-md);
+  background: var(--an-surface-warm);
+  color: var(--an-text-muted);
+  font-weight: 700;
+}
+.help-order-input input {
+  flex: 1;
+  min-width: 0;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.help-field-hint {
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-xs);
+}
+@media (max-width: 600px) {
+  .help-form-row {
+    grid-template-columns: 1fr;
   }
 }

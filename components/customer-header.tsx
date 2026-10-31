@@ -20,7 +20,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { SoundToggle } from "@/components/sound-toggle";
 import { accessHref, isNavActive, messagesHref } from "@/lib/navigation";
 import { useHeaderSearch } from "@/components/header-search";
-import { NotificationBell } from "@/components/notifications";
+import { MessagesCount, NotificationBell } from "@/components/notifications";
 import { CategoriesMenu, CategoriesSheet } from "@/components/categories-menu";
 import { AccountMenu, signOutTo, useAccountRole } from "@/components/account-menu";
 
@@ -243,6 +243,7 @@ export function CustomerHeader() {
           ) : (
             <Link key={link.href} href={link.href} aria-current={isActive(link.href) ? "page" : undefined}>
               {link.label}
+              {link.label === "Mensagens" && <MessagesCount />}
             </Link>
           ))}
         </div>
@@ -273,6 +274,7 @@ export function CustomerHeader() {
                   ) : (
                     <Link href={link.href} onClick={() => setMenuOpen(false)} aria-current={isActive(link.href) ? "page" : undefined}>
                       {link.label}
+                      {link.label === "Mensagens" && <MessagesCount />}
                     </Link>
                   )}
                 </li>

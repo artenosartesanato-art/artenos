@@ -16,11 +16,32 @@ const LIMIT = 5000;
 type Row = Record<string, unknown>;
 
 export async function GET(request: Request) {
+  try {
+    return await exportData(request);
+  } catch (error) {
+    // Nunca devolve uma página de erro em HTML: a tela mostra o motivo.
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[exportar-dados]', message);
+    const config = /SUPABASE_SERVICE_ROLE_KEY|NEXT_PUBLIC_SUPABASE_URL/.test(message);
+    return NextResponse.json({
+      error: config
+        ? 'A exportação está indisponível: falta configurar a chave do servidor (SUPABASE_SERVICE_ROLE_KEY) na hospedagem.'
+        : 'Não foi possível gerar o arquivo agora. Tente de novo em instantes.',
+    }, { status: 500 });
+  }
+}
+
+async function exportData(request: Request) {
   const user = await getUserFromRequest(request);
-  if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
+  if (!user) return NextResponse.json({ error: 'Sua sessão expirou. Entre de novo para baixar seus dados.' }, { status: 401 });
   const admin = getSupabaseAdmin();
-  const { data: allowed } = await admin.rpc('rate_limit_hit', { p_bucket: 'exportar-dados', p_key: user.id, p_limit: 1, p_window_seconds: 600 });
-  if (allowed === false) {
+  // Limite: 2 exportações concluídas a cada 10 minutos (a planilha e o JSON).
+  // Conta só as que deram certo (registradas no fim), para uma falha não
+  // bloquear a próxima tentativa.
+  const { data: recent } = await admin.from('access_logs').select('created_at')
+    .eq('user_id', user.id).eq('event', 'data_export')
+    .gte('created_at', new Date(Date.now() - 10 * 60_000).toISOString()).limit(2);
+  if ((recent?.length ?? 0) >= 2) {
     return NextResponse.json({ error: 'Você já baixou seus dados há pouco. Tente de novo em 10 minutos.' }, { status: 429 });
   }
   const format = new URL(request.url).searchParams.get('formato') === 'json' ? 'json' : 'xlsx';

@@ -28,10 +28,16 @@ export function validateSupport(raw: Record<string, unknown>, now = Date.now()):
   const name = String(raw.name ?? "").trim().slice(0, 120);
   const email = String(raw.email ?? "").trim().toLowerCase().slice(0, 200);
   const topic = String(raw.topic ?? "") as SupportTopic;
-  const orderCode = String(raw.orderCode ?? "").trim().slice(0, 40) || null;
+  // Número do pedido: só os dígitos (o "AN-" é fixo); aceita também "AN-1042".
+  const orderDigits = String(raw.orderCode ?? "").replace(/^\s*AN-?/i, "").trim();
+  if (orderDigits && !/^\d{1,12}$/.test(orderDigits)) return { ok: false, error: "No número do pedido, use só os números (ex.: 1042)." };
+  const orderCode = orderDigits ? `AN-${orderDigits}` : null;
   const message = String(raw.message ?? "").trim().slice(0, 4000);
   if (name.length < 2) return { ok: false, error: "Informe seu nome." };
   if (!EMAIL.test(email)) return { ok: false, error: "Informe um e-mail válido para a resposta." };
+  if (raw.emailConfirm !== undefined && String(raw.emailConfirm).trim().toLowerCase() !== email) {
+    return { ok: false, error: "Os dois e-mails não são iguais. Confira e digite de novo." };
+  }
   if (!(topic in SUPPORT_TOPICS)) return { ok: false, error: "Escolha o assunto." };
   if (message.length < 10) return { ok: false, error: "Conte com um pouco mais de detalhes (mínimo de 10 caracteres)." };
   return { ok: true, value: { name, email, topic, orderCode, message } };

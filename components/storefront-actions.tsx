@@ -97,6 +97,7 @@ export function StorefrontActionsProvider({ children }: { children: ReactNode })
     try {
       // Visitante: favorito na memória desta aba, levado para a conta ao entrar.
       const saved = await saveFavorite(product.id, product);
+      playUiSound(saved ? "favorite" : "removed");
       if (saved) confirmFavoriteSaved(product.name);
       else confirmFavoriteRemoved(product.name);
     } catch (error) {

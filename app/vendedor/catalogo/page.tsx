@@ -19,6 +19,7 @@ import {
   SpriteIcon,
 } from "@/components/icons";
 import { toast } from "sonner";
+import { playUiSound } from "@/lib/ui-sound";
 import { categoryLook } from "@/lib/category-looks";
 import { getSupabase } from "@/lib/supabase";
 import { findBlockedTerm, moderationError } from "@/lib/moderation";
@@ -101,7 +102,8 @@ const EMPTY_FORM: ProductForm = {
   lengthCm: "",
   packageCount: "1",
   productionTimeDays: "",
-  active: false,
+  // Peça nova já vem para publicar; desmarque para guardar como rascunho.
+  active: true,
   imageUrl: "",
 };
 const money = new Intl.NumberFormat("pt-BR", {
@@ -457,13 +459,16 @@ export default function ProductCatalogPage() {
         await supabase.storage.from(STORE_BUCKET).remove([oldImagePath]);
       }
 
-      toast.success(
-        editingId
-          ? "Produto atualizado."
-          : form.active
-            ? "Produto criado e publicado."
-            : "Produto salvo como rascunho.",
-      );
+      playUiSound("success");
+      if (!form.active) {
+        // Rascunho não aparece para os clientes: deixa isso claro.
+        toast.info("Produto salvo como rascunho.", {
+          description: "Ele ainda não aparece na vitrine. Use “Publicar” no catálogo quando quiser mostrar aos clientes.",
+          duration: 9000,
+        });
+      } else {
+        toast.success(editingId ? "Produto atualizado." : "Produto criado e publicado na vitrine.");
+      }
       closeFormAfterSave();
       await loadCatalog(query, status);
     } catch (error) {
@@ -498,6 +503,7 @@ export default function ProductCatalogPage() {
         p_active: !product.active,
       });
       if (error) throw error;
+      playUiSound(product.active ? "removed" : "success");
       toast.success(
         product.active ? "Produto pausado." : "Produto publicado na vitrine.",
       );

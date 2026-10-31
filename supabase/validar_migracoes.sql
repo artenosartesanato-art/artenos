@@ -170,6 +170,24 @@ checagens as (
          when exists (select 1 from public.products where coalesce(stock, 0) > 0 and not ready_to_ship) then 'ATENÇÃO: há peça com estoque e sem pronta entrega'
          else 'OK' end
   union all
+  -- Avisos em tempo real (contador e som de mensagens novas): supabase/notificacoes.sql.
+  select 'notificacoes.sql', 'tabela', 'notifications',
+    case when to_regclass('public.notifications') is null then 'FALTA: rode supabase/notificacoes.sql' else 'OK' end
+  union all
+  select 'notificacoes.sql', 'gatilho', 'aviso de mensagem nova (notify_new_message)',
+    case when exists (select 1 from pg_trigger where tgname = 'notify_new_message' and not tgisinternal) then 'OK'
+         else 'FALTA: rode supabase/notificacoes.sql' end
+  union all
+  select 'notificacoes.sql', 'tempo real', 'notifications na publicação supabase_realtime',
+    case when exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime'
+                        and schemaname = 'public' and tablename = 'notifications') then 'OK'
+         else 'FALTA: rode supabase/notificacoes.sql' end
+  union all
+  select '20261031 exclusao_30_dias', 'coluna', 'profiles.account_status',
+    case when exists (select 1 from information_schema.columns where table_schema = 'public'
+                        and table_name = 'profiles' and column_name = 'account_status') then 'OK'
+         else 'FALTA: rode migrations/20261031_exclusao_30_dias.sql' end
+  union all
   -- Sobrecargas duplicadas deixam chamadas ambíguas (acontece ao rodar um script antigo depois de um novo).
   select 'ordem dos scripts', 'sobrecarga', p.proname,
     case when count(*) > 1 then 'ATENÇÃO: ' || count(*) || ' versões; rode de novo os scripts a partir do 06' else 'OK' end

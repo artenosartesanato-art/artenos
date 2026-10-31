@@ -16,12 +16,14 @@ export function SupportContact() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [protocol, setProtocol] = useState("");
+  const [orderDigits, setOrderDigits] = useState("");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const payload = {
-      name: form.get("name"), email: form.get("email"), topic: form.get("topic"), orderCode: form.get("orderCode"),
+      name: form.get("name"), email: form.get("email"), emailConfirm: form.get("emailConfirm"), topic: form.get("topic"),
+      orderCode: orderDigits,
       message: form.get("message"), website: form.get("website"), startedAt,
       turnstileToken: form.get("cf-turnstile-response"),
     };
@@ -56,16 +58,30 @@ export function SupportContact() {
   }
   return (
     <form className="help-form" onSubmit={submit} noValidate>
-      <label className="an-field"><span>Nome</span><input name="name" autoComplete="name" required maxLength={120} /></label>
-      <label className="an-field"><span>E-mail para resposta</span><input name="email" type="email" autoComplete="email" required maxLength={200} /></label>
+      <label className="an-field"><span>Nome</span><input name="name" autoComplete="name" required maxLength={120} placeholder="Como podemos te chamar?" /></label>
+      <div className="help-form-row">
+        <label className="an-field"><span>E-mail para resposta</span><input name="email" type="email" autoComplete="email" required maxLength={200} placeholder="voce@exemplo.com" /></label>
+        <label className="an-field"><span>Confirme o e-mail</span><input name="emailConfirm" type="email" autoComplete="off" required maxLength={200} placeholder="Digite o e-mail de novo"
+          onPaste={(event) => event.preventDefault()} /></label>
+      </div>
       <label className="an-field">
         <span>Assunto</span>
         <select name="topic" defaultValue="compra">
           {Object.entries(SUPPORT_TOPICS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </select>
       </label>
-      <label className="an-field"><span>Número do pedido (opcional)</span><input name="orderCode" maxLength={40} /></label>
-      <label className="an-field"><span>Mensagem</span><textarea name="message" rows={5} required minLength={10} maxLength={4000} /></label>
+      <label className="an-field">
+        <span>Número do pedido (opcional)</span>
+        {/* Os pedidos da Artenós são "AN-" + números: o prefixo é fixo e o campo aceita só números. */}
+        <span className="help-order-input">
+          <span aria-hidden="true">AN-</span>
+          <input name="orderCode" inputMode="numeric" pattern="[0-9]*" maxLength={12} placeholder="1042" value={orderDigits}
+            aria-describedby="pedido-dica" onChange={(event) => setOrderDigits(event.target.value.replace(/\D/g, ""))} />
+        </span>
+        <small id="pedido-dica" className="help-field-hint">Está em Pedidos, no título de cada compra (ex.: Pedido AN-1042).</small>
+      </label>
+      <label className="an-field"><span>Mensagem</span><textarea name="message" rows={5} required minLength={10} maxLength={4000}
+        placeholder="Conte o que aconteceu e como podemos ajudar." /></label>
       {/* Campo escondido: pessoas não preenchem; robôs costumam preencher. */}
       <label className="help-honeypot" aria-hidden="true">Site<input name="website" tabIndex={-1} autoComplete="off" /></label>
       {TURNSTILE_SITE_KEY && (

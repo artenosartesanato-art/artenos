@@ -1,5 +1,6 @@
 "use client";
 
+import { playUiSound } from "@/lib/ui-sound";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { User } from "@supabase/supabase-js";
@@ -441,6 +442,7 @@ export function MessagesWorkspace({
       return setComposerError(`Envio de mensagens suspenso temporariamente por uso repetido de termos não permitidos${until ? ` (até ${until})` : ""}.`);
     }
     const data = outcome.message;
+    playUiSound("sent");
     setStatus("");
     setText("");
     setReplyTo(null);
