@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchStorefrontCategories } from "@/lib/category-counts";
 import { useEffect, useSyncExternalStore } from "react";
 import { getSupabase } from "@/lib/supabase";
 
@@ -23,7 +24,7 @@ export function primeStorefrontCategories(list: StorefrontCategory[]) {
 
 export function loadStorefrontCategories(): Promise<StorefrontCategory[]> {
   if (cache) return Promise.resolve(cache);
-  pending ??= Promise.resolve(getSupabase().rpc("list_storefront_categories_with_products"))
+  pending ??= fetchStorefrontCategories(getSupabase())
     .then(({ data, error }) => {
       if (error) throw error;
       cache = (data ?? []) as StorefrontCategory[];
@@ -50,4 +51,4 @@ export function useStorefrontCategories(autoLoad = true) {
   return { categories, failed: failed && !categories, retry: () => void loadStorefrontCategories().catch(() => null) };
 }
 
-export { categoryHref, findCategory, isCategoryRef, topCategories } from "@/lib/category-utils";
+export { categoryCountLabel, categoryHref, findCategory, isCategoryRef, topCategories } from "@/lib/category-utils";

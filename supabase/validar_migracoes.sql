@@ -188,6 +188,11 @@ checagens as (
                         and table_name = 'profiles' and column_name = 'account_status') then 'OK'
          else 'FALTA: rode migrations/20261031_exclusao_30_dias.sql' end
   union all
+  select '20261102/20261103 sob encomenda', 'função', 'opções na vitrine e contador das categorias',
+    case when to_regprocedure('public.list_public_custom_order_services(integer)') is null then 'FALTA: rode migrations/20261102_opcoes_sob_encomenda_categoria.sql'
+         when to_regprocedure('public.list_storefront_categories_with_counts()') is null then 'FALTA: rode migrations/20261103_contagem_categorias.sql'
+         else 'OK' end
+  union all
   -- Sobrecargas duplicadas deixam chamadas ambíguas (acontece ao rodar um script antigo depois de um novo).
   select 'ordem dos scripts', 'sobrecarga', p.proname,
     case when count(*) > 1 then 'ATENÇÃO: ' || count(*) || ' versões; rode de novo os scripts a partir do 06' else 'OK' end

@@ -16,7 +16,7 @@ import { MarketplaceProductCard, ProductGridSkeleton, type MarketplaceProduct } 
 import "@/app/storefront.css";
 import "@/app/categorias/categories.css";
 
-export type Category = { id: string; name: string; slug: string; image_url: string | null; product_count: number };
+export type Category = { id: string; name: string; slug: string; image_url: string | null; product_count: number; piece_count?: number; service_count?: number };
 export type Product = MarketplaceProduct & { total_count: number };
 /** Primeira página sem filtros, buscada no servidor (app/categorias/page.tsx). */
 export type CategoriesInitial = { categories: Category[]; products: Product[] };

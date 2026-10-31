@@ -1,5 +1,20 @@
 // Regras puras das categorias (testáveis no Node).
-export type StorefrontCategory = { id: string; name: string; slug: string; image_url: string | null; product_count: number };
+/** product_count = itens na vitrine (peças + opções sob encomenda), o número mostrado no menu. */
+export type StorefrontCategory = {
+  id: string; name: string; slug: string; image_url: string | null; product_count: number;
+  piece_count?: number; service_count?: number;
+};
+
+/** "2 itens: 1 peça e 1 opção sob encomenda" (texto lido no menu de categorias). */
+export function categoryCountLabel(category: StorefrontCategory) {
+  const total = Number(category.product_count);
+  const pieces = Number(category.piece_count ?? total);
+  const services = Number(category.service_count ?? 0);
+  if (!services) return `${pieces} ${pieces === 1 ? "peça" : "peças"}`;
+  const parts = [pieces ? `${pieces} ${pieces === 1 ? "peça" : "peças"}` : null,
+    `${services} ${services === 1 ? "opção sob encomenda" : "opções sob encomenda"}`].filter(Boolean).join(" e ");
+  return `${total} ${total === 1 ? "item" : "itens"}: ${parts}`;
+}
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
