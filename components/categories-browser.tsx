@@ -1,5 +1,6 @@
 "use client";
 
+import { PublicCustomServices } from "@/components/custom-quotes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, LoaderCircle, PackageOpen, RefreshCw, SlidersHorizontal, SpriteIcon, X } from "@/components/icons";
 import { categoryLook } from "@/lib/category-looks";
@@ -322,6 +323,11 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
           <p>Peças publicadas por lojas aprovadas na Artenós. Use os filtros para encontrar pronta entrega, faixas de preço e técnicas.</p>
         </header>
 
+        {/* "Encomendar uma peça" (Só sob encomenda): as opções de orçamento das lojas vêm primeiro. */}
+        {filters.madeToOrderOnly && (
+          <PublicCustomServices limit={12} eyebrow="Peça um orçamento" title="Opções sob encomenda das lojas"
+            description="Escolha uma opção e conte o que você quer: a loja responde com preço e prazo." className="category-custom-services" />
+        )}
         <div className="category-layout">
           <section className="category-results" aria-labelledby="resultados-titulo">
             <div className="category-toolbar">

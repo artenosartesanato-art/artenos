@@ -796,3 +796,33 @@
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 14px;
 }
+
+/* Opções sob encomenda de todas as lojas (home e "Encomendar uma peça"). */
+.custom-public-services-lead {
+  max-width: 620px;
+  margin: 6px 0 0;
+  color: var(--an-text-muted);
+}
+.custom-public-services-store {
+  color: var(--an-argila-texto);
+  font-size: var(--an-fs-2xs);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.custom-public-services-description {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+#orcamentos {
+  scroll-margin-top: 150px;
+}
+.custom-public-services .store-section-heading h2 {
+  margin: 0;
+  font: 500 var(--an-fs-3xl) / 1.08 var(--font-display);
+}
+.custom-public-services .store-eyebrow {
+  margin: 0 0 8px;
+}

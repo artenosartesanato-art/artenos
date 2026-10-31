@@ -2,9 +2,10 @@
 
 // Orçamentos sob encomenda (antes na tela separada /sob-encomenda):
 // StoreCustomQuotes fica na página da loja e MyQuoteRequests em Pedidos.
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
-import { Clock3, MessageCircle, Palette } from "@/components/icons";
+import { ArrowRight, Clock3, MessageCircle, Palette } from "@/components/icons";
 import { Dialog } from "@/components/ui/dialog";
 import { OptimizedImage } from "@/components/optimized-image";
 import { useMarketplace } from "@/components/marketplace-state";
@@ -52,8 +53,74 @@ export async function openQuoteConversation(request: Pick<QuoteRequest, "id" | "
 }
 
 /** Opções de orçamento de uma loja, com o formulário de solicitação. */
+type PublicService = Service & { store_name: string };
+
+function productionLabel(service: Service) {
+  return service.min_production_days === service.max_production_days
+    ? `${service.max_production_days} dias` : `${service.min_production_days} a ${service.max_production_days} dias`;
+}
+
+/** Link que abre a loja já com o formulário de orçamento daquela opção. */
+export function serviceQuoteHref(service: { id: string; artisan_id: string }) {
+  return `/loja?id=${encodeURIComponent(service.artisan_id)}&orcamento=${encodeURIComponent(service.id)}#orcamentos`;
+}
+
+/**
+ * Opções sob encomenda de todas as lojas (home e "Encomendar uma peça").
+ * Sem nenhuma opção publicada, não mostra nada.
+ */
+export function PublicCustomServices({ limit = 8, eyebrow = "Feito sob encomenda", title = "Peça algo feito só para você",
+  description = "Opções que as lojas fazem sob medida: escolha uma e peça um orçamento.", className = "" }: {
+  limit?: number; eyebrow?: string; title?: string; description?: string; className?: string;
+}) {
+  const [services, setServices] = useState<PublicService[]>([]);
+  useEffect(() => {
+    let active = true;
+    void Promise.resolve(getSupabase().rpc("list_public_custom_order_services", { p_limit: limit }))
+      .then(({ data, error }) => { if (active && !error) setServices((data ?? []) as PublicService[]); })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, [limit]);
+
+  if (!services.length) return null;
+  return (
+    <section className={`custom-store-quotes custom-public-services ${className}`.trim()} aria-labelledby="opcoes-encomenda-titulo">
+      <div className="store-section-heading">
+        <div>
+          <p className="store-eyebrow">{eyebrow}</p>
+          <h2 id="opcoes-encomenda-titulo">{title}</h2>
+          {description && <p className="custom-public-services-lead">{description}</p>}
+        </div>
+      </div>
+      <ul className="custom-store-quotes-list">
+        {services.map((service) => (
+          <li key={service.id} className="custom-store-quote">
+            {service.image_url ? (
+              <OptimizedImage src={service.image_url} alt="" width={320} height={240} sizes="(max-width: 760px) 100vw, 320px" />
+            ) : (
+              <span className="custom-store-quote-noimage" aria-hidden="true"><Palette size={26} /></span>
+            )}
+            <div>
+              <small className="custom-public-services-store">{service.store_name}</small>
+              <h3>{service.title}</h3>
+              {service.description && <p className="custom-public-services-description">{service.description}</p>}
+              <p className="custom-store-quote-meta">
+                {service.starting_price ? <>A partir de <strong>{money.format(service.starting_price)}</strong> · </> : null}
+                <Clock3 size={13} /> {productionLabel(service)} de produção
+              </p>
+              <Link className="an-btn an-btn--secondary an-btn--sm" href={serviceQuoteHref(service)} prefetch={false}>
+                Pedir orçamento <ArrowRight size={14} />
+              </Link>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export function StoreCustomQuotes({ artisanId, storeName }: { artisanId: string; storeName: string }) {
-  const { userId } = useMarketplace();
+  const { userId, authReady } = useMarketplace();
   const { requireAuth } = useStorefrontActions();
   const [services, setServices] = useState<Service[]>([]);
   const [selected, setSelected] = useState<Service | null>(null);
@@ -70,6 +137,20 @@ export function StoreCustomQuotes({ artisanId, storeName }: { artisanId: string;
       .then(({ data, error }) => { if (active && !error) setServices((data ?? []) as Service[]); });
     return () => { active = false; };
   }, [artisanId]);
+
+  // Veio de "Pedir orçamento" na vitrine (?orcamento=<id>): rola até aqui e,
+  // com a conta conectada, já abre o formulário daquela opção (uma vez).
+  const handledLink = useRef(false);
+  useEffect(() => {
+    if (handledLink.current || !services.length || !authReady) return;
+    const wanted = new URLSearchParams(window.location.search).get("orcamento");
+    if (!wanted) return;
+    handledLink.current = true;
+    const service = services.find((item) => item.id === wanted);
+    document.getElementById("orcamentos")?.scrollIntoView({ block: "start" });
+    if (service && userId && userId !== artisanId) queueMicrotask(() => open(service));
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- abre uma vez, quando a lista e a sessão estão prontas
+  }, [services, authReady, userId, artisanId]);
 
   function open(service: Service) {
     if (!userId) return requireAuth("generic");
@@ -104,7 +185,7 @@ export function StoreCustomQuotes({ artisanId, storeName }: { artisanId: string;
 
   if (!services.length) return null;
   return (
-    <section className="store-container custom-store-quotes" aria-labelledby="orcamentos-loja-titulo">
+    <section id="orcamentos" className="store-container custom-store-quotes" aria-labelledby="orcamentos-loja-titulo">
       <div className="store-section-heading">
         <div>
           <p className="store-eyebrow">Sob encomenda</p>
