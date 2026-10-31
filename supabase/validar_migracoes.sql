@@ -210,6 +210,17 @@ checagens as (
                             and pg_get_constraintdef(oid) ilike '%upgrade%')
          then 'FALTA: rode migrations/20261106_cliente_vira_vendedor.sql' else 'OK' end
   union all
+  select '20261107 moderacao_especialidade', 'gatilho', 'filtro de termos na especialidade e no cadastro',
+    case when exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                       where n.nspname = 'public' and p.proname = 'moderate_profile_texts' and p.prosrc ilike '%specialty%')
+          and exists (select 1 from pg_trigger t where t.tgname = 'moderate_profile_texts' and not t.tgisinternal
+                       and t.tgtype & 4 = 4)
+         then 'OK' else 'FALTA: rode migrations/20261107_moderacao_especialidade.sql' end
+  union all
+  select '20261108 foto_perfil_loja', 'função', 'foto de perfil da loja',
+    case when to_regprocedure('public.set_my_store_logo(text)') is null or to_regprocedure('public.list_store_logos(uuid[])') is null
+         then 'FALTA: rode migrations/20261108_foto_perfil_loja.sql' else 'OK' end
+  union all
   -- Sobrecargas duplicadas deixam chamadas ambíguas (acontece ao rodar um script antigo depois de um novo).
   select 'ordem dos scripts', 'sobrecarga', p.proname,
     case when count(*) > 1 then 'ATENÇÃO: ' || count(*) || ' versões; rode de novo os scripts a partir do 06' else 'OK' end

@@ -770,3 +770,37 @@
     min-height: 75px;
   }
 }
+
+/* Foto de perfil da loja */
+.store-logo-card {
+  grid-template-columns: auto 1fr;
+  margin-top: 14px;
+}
+.store-logo-preview {
+  width: 132px;
+  height: 132px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 4px solid var(--artenos-perola);
+  border-radius: 50%;
+  background: var(--artenos-pessego);
+  box-shadow: 0 0 0 1px var(--artenos-pessego);
+  color: var(--artenos-marrom);
+  font: 600 40px var(--font-display);
+}
+.store-logo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+@media (max-width: 600px) {
+  .store-logo-card {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+  .store-logo-preview {
+    width: 104px;
+    height: 104px;
+  }
+}

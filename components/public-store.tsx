@@ -14,6 +14,7 @@ import { MarketplaceProductCard, ProductGridSkeleton, type MarketplaceProduct } 
 import "@/app/storefront.css";
 import "@/app/loja/public-store.css";
 import { OptimizedImage } from "@/components/optimized-image";
+import { StoreAvatar } from "@/components/store-avatar";
 
 export type PublicStore = {
   artisan_id: string;
@@ -149,7 +150,7 @@ function PublicStoreContent({ initial }: { initial: PublicStoreInitial | null })
                 {store.vacation_mode && <span className="an-badge an-badge--warm public-shop-pause">Loja em pausa: compras temporariamente desativadas</span>}
               </div>
               <div className="public-shop-profile">
-                <span className="public-shop-symbol" aria-hidden="true">{initials(store.store_name)}</span>
+                <StoreAvatar className="public-shop-symbol" artisanId={artisanId} initials={initials(store.store_name)} />
                 <div className="public-shop-identity">
                   <p className="store-eyebrow">{store.specialty || "Artesanato autoral"}</p>
                   <h1 id="loja-titulo">{store.store_name}</h1>

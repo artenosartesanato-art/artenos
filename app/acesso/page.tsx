@@ -27,7 +27,7 @@ import { siteConfig } from "@/lib/site-config";
 import { recordAccess } from "@/lib/access-log";
 import { resetTurnstile, TurnstileWidget } from "@/components/turnstile-widget";
 import { safeReturnPath } from "@/lib/navigation";
-import { STORE_SPECIALTIES } from "@/lib/store-specialties";
+import { OTHER_SPECIALTY, SPECIALTY_MAX, STORE_SPECIALTIES, resolveSpecialty } from "@/lib/store-specialties";
 import {
   fieldForServerMessage,
   validateLogin,
@@ -46,7 +46,7 @@ const TABS: { id: Tab; label: string; param: string }[] = [
 ];
 const specialties = STORE_SPECIALTIES;
 const FIELD_LABELS: Record<string, string> = {
-  fullName: "Nome completo", storeName: "Nome da loja", specialty: "Especialidade", document: "Documento",
+  fullName: "Nome completo", storeName: "Nome da loja", specialty: "Especialidade", specialtyOther: "Sua especialidade", document: "Documento",
   phone: "Telefone", cep: "CEP", address: "Endereço", number: "Número", city: "Cidade", state: "Estado",
   email: "E-mail", password: "Senha", confirmPassword: "Confirmação da senha", story: "História da loja",
   terms: "Termos de Uso",
@@ -201,6 +201,7 @@ function RegisterForm({ type, onGoToLogin }: { type: AccountType; onGoToLogin: (
   const [errors, setErrors] = useState<FieldErrors>({});
   const [done, setDone] = useState<string | null>(null);
   const [existingAccount, setExistingAccount] = useState(false);
+  const [specialtyChoice, setSpecialtyChoice] = useState("");
   const clear = (name: string) => setErrors((current) => {
     if (!current[name] && !current._form) return current;
     const next = { ...current };
@@ -220,7 +221,9 @@ function RegisterForm({ type, onGoToLogin }: { type: AccountType; onGoToLogin: (
     setErrors({});
     setPending(assisted ? "assisted" : "standard");
     try {
-      await registerWithSupabase({ ...values, type, assisted });
+      // "Outro": a especialidade salva é o que a pessoa digitou.
+      const specialty = resolveSpecialty(String(values.specialty ?? ""), String(values.specialtyOther ?? ""));
+      await registerWithSupabase({ ...values, specialty, type, assisted });
       setDone(String(values.email ?? "").trim().toLowerCase());
     } catch (error) {
       const message = error instanceof Error ? error.message : "Não foi possível concluir o cadastro. Tente novamente em instantes.";
@@ -289,12 +292,21 @@ function RegisterForm({ type, onGoToLogin }: { type: AccountType; onGoToLogin: (
             </Field>
             <Field name="specialty" label="Especialidade principal" error={errors.specialty}>
               {(props) => (
-                <select {...props} name="specialty" defaultValue="" onChange={() => clear("specialty")}>
+                <select {...props} name="specialty" value={specialtyChoice}
+                  onChange={(event) => { setSpecialtyChoice(event.target.value); clear("specialty"); clear("specialtyOther"); }}>
                   <option value="" disabled>Selecione</option>
                   {specialties.map((item) => <option key={item}>{item}</option>)}
                 </select>
               )}
             </Field>
+            {specialtyChoice === OTHER_SPECIALTY && (
+              <Field name="specialtyOther" label="Qual é a sua especialidade?" error={errors.specialtyOther} wide>
+                {(props) => (
+                  <input {...props} name="specialtyOther" maxLength={SPECIALTY_MAX} placeholder="Ex.: marchetaria, vitral, cestaria"
+                    autoFocus onInput={() => clear("specialtyOther")} />
+                )}
+              </Field>
+            )}
           </>
         )}
         <Field name="document" label={docLabel} error={errors.document} hint="Usado só para validar o cadastro; não aparece na loja.">

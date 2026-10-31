@@ -1715,3 +1715,24 @@ img {
 .existing-account-cta {
   margin: -4px 0 16px;
 }
+
+/* Aviso de termo não permitido no campo "Outro" da especialidade. */
+.specialty-field-warning {
+  color: var(--an-erro);
+  font-size: var(--an-fs-xs);
+  font-weight: 650;
+}
+
+/* Foto de perfil da loja no lugar das iniciais (mesmo tamanho do círculo). */
+.has-store-logo {
+  overflow: hidden;
+  padding: 0;
+  background: #fff;
+}
+.store-logo-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}

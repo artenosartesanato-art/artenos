@@ -28,6 +28,9 @@ import { toast } from "sonner";
 import { getSupabase } from "@/lib/supabase";
 import { meaningfulTextError } from "@/lib/text-quality";
 import { findBlockedTerm, moderationError } from "@/lib/moderation";
+import { specialtyValueError } from "@/lib/store-specialties";
+import { SpecialtyField } from "@/components/specialty-field";
+import { StoreLogoEditor } from "@/components/store-logo-editor";
 import {
   useSellerProfile,
   useSellerProfileActions,
@@ -103,6 +106,10 @@ const money = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
 });
+
+function storeInitials(name: string) {
+  return name.split(/\s+/).filter((word) => word.length > 2).slice(0, 2).map((word) => word[0]?.toUpperCase()).join("") || "A";
+}
 
 function publicCoverUrl(path: string | null) {
   if (!path) return "";
@@ -215,12 +222,12 @@ export default function StorePanelPage() {
     const shippingOriginCep = form.shippingOriginCep.replace(/\D/g, "");
     if (form.storeName.trim().length < 3)
       return toast.error("O nome da loja precisa ter pelo menos 3 caracteres.");
-    if (form.specialty.trim().length < 2)
-      return toast.error("Informe a especialidade da loja.");
+    const specialtyProblem = specialtyValueError(form.specialty);
+    if (specialtyProblem) return toast.error(specialtyProblem);
     const storyError = meaningfulTextError(form.story, "A história da loja");
     if (storyError) return toast.error(storyError);
-    if (findBlockedTerm(`${form.storeName} ${form.story} ${form.announcement}`))
-      return toast.error("O nome, a história ou o aviso da loja contém termos que não são permitidos na Artenós.");
+    if (findBlockedTerm(`${form.storeName} ${form.specialty} ${form.story} ${form.announcement}`))
+      return toast.error("O nome, a especialidade, a história ou o aviso da loja contém termos que não são permitidos na Artenós.");
     if (
       !Number.isInteger(productionDays) ||
       productionDays < 1 ||
@@ -481,6 +488,13 @@ export default function StorePanelPage() {
         </div>
       </section>
 
+      {store && (
+        <StoreLogoEditor
+          artisanId={store.artisan_id}
+          initials={storeInitials(form.storeName || store.store_name || "")}
+        />
+      )}
+
       <div className="store-panel-grid">
         <form className="store-settings-form" onSubmit={saveStore}>
           <section className="store-form-card">
@@ -504,18 +518,10 @@ export default function StorePanelPage() {
                   required
                 />
               </label>
-              <label>
-                <span>Especialidade principal</span>
-                <input
-                  value={form.specialty}
-                  onChange={(event) =>
-                    setField("specialty", event.target.value)
-                  }
-                  minLength={2}
-                  maxLength={80}
-                  required
-                />
-              </label>
+              <SpecialtyField
+                value={form.specialty}
+                onChange={(value) => setField("specialty", value)}
+              />
               <label className="is-wide">
                 <span>História da loja</span>
                 <textarea
