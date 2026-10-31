@@ -5,7 +5,7 @@ import {
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Bell, Heart, MessageCircle, Palette, ShoppingBag, Star, Truck, X } from "@/components/icons";
+import { Bell, Heart, MessageCircle, Palette, ShieldCheck, ShoppingBag, Star, Truck, X } from "@/components/icons";
 import { useMarketplace } from "@/components/marketplace-state";
 import { Dialog } from "@/components/ui/dialog";
 import { getSupabase } from "@/lib/supabase";
@@ -251,6 +251,7 @@ const KIND_ICON: Record<NotificationKind, typeof Bell> = {
   encomenda: Palette,
   produto: Heart,
   avaliacao: Star,
+  conta: ShieldCheck,
 };
 
 /** Aviso flutuante no mesmo desenho do painel (ícone, título, trecho e "Abrir"). */

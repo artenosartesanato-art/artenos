@@ -1,6 +1,6 @@
 // Regras das notificações sem dependências de React (testáveis no Node).
 
-export type NotificationKind = "mensagem" | "pedido" | "venda" | "encomenda" | "produto" | "avaliacao";
+export type NotificationKind = "mensagem" | "pedido" | "venda" | "encomenda" | "produto" | "avaliacao" | "conta";
 
 export type AppNotification = {
   id: string;
@@ -21,6 +21,7 @@ export const KIND_LABEL: Record<NotificationKind, string> = {
   encomenda: "Encomenda",
   produto: "Peça salva",
   avaliacao: "Avaliação",
+  conta: "Sua conta",
 };
 
 export const MAX_ITEMS = 40;

@@ -1736,3 +1736,30 @@ img {
   border-radius: inherit;
   object-fit: cover;
 }
+
+/* Faixa de conta suspensa (topo de todas as telas). */
+.suspension-notice {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--an-erro);
+  color: #fff;
+  font-size: var(--an-fs-sm);
+  line-height: 1.45;
+}
+.suspension-notice svg {
+  flex: none;
+  margin-top: 2px;
+}
+.suspension-notice p {
+  max-width: 1100px;
+  margin: 0;
+}
+.suspension-notice a {
+  color: #fff;
+  font-weight: 750;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

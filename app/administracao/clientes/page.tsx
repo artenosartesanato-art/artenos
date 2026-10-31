@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { UserRound } from "@/components/icons";
-import { AdminPageHead, LoadState, Pagination, SearchBar, friendlyError } from "@/components/admin-ui";
+import { AdminPageHead, Badge, LoadState, Pagination, SearchBar, friendlyError } from "@/components/admin-ui";
+import { SuspensionStatus, useAdminSuspensions } from "@/components/admin-suspensions";
 import { getSupabase } from "@/lib/supabase";
 import { PAGE_SIZE, brl, formatDate } from "@/lib/admin";
 
@@ -18,6 +19,7 @@ export default function ClientsPage() {
   const [rows, setRows] = useState<ClientRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const { suspensions, reloadSuspensions } = useAdminSuspensions();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -51,6 +53,7 @@ export default function ClientsPage() {
                   <tr>
                     <th scope="col">Cliente</th>
                     <th scope="col">Contato</th>
+                    <th scope="col">Situação</th>
                     <th scope="col">Cidade</th>
                     <th scope="col" className="is-num">Pedidos</th>
                     <th scope="col" className="is-num">Total comprado</th>
@@ -63,6 +66,11 @@ export default function ClientsPage() {
                     <tr key={row.client_id}>
                       <th scope="row"><strong>{row.full_name}</strong></th>
                       <td><span className="adm-stack"><span>{row.email || "—"}</span><small>{row.phone || ""}</small></span></td>
+                      <td>
+                        {suspensions.get(row.client_id)
+                          ? <SuspensionStatus userId={row.client_id} until={suspensions.get(row.client_id)!} onChanged={() => void reloadSuspensions()} />
+                          : <Badge tone="ok">Ativa</Badge>}
+                      </td>
                       <td>{[row.city, row.state].filter(Boolean).join("/") || "—"}</td>
                       <td className="is-num">{row.orders_count}</td>
                       <td className="is-num">{brl(row.total_spent)}</td>

@@ -175,11 +175,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </>}
           {screen === "denied" && <>
             <CircleSlash2 size={34} />
-            <h1>Acesso não autorizado</h1>
-            <p>Sua conta está conectada, mas não consta como administradora ativa.</p>
+            <h1>Área exclusiva da equipe</h1>
+            <p>O painel administrativo é só para a equipe da Artenós. A conta conectada agora não tem esse acesso.</p>
             <div>
-              <Link href="/">Voltar para a vitrine</Link>
-              <button type="button" onClick={signOut}>Sair da conta</button>
+              <Link href="/">Voltar para a loja</Link>
+              <button type="button" onClick={signOut}>Entrar com outra conta</button>
             </div>
           </>}
           {screen === "error" && <>

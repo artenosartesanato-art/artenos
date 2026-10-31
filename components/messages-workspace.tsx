@@ -27,6 +27,7 @@ import { useNotifications } from "@/components/notifications";
 import { formatClock, formatListTime, groupChat, initials } from "@/lib/message-format";
 import { findBlockedTerm, MODERATION_MESSAGE } from "@/lib/moderation";
 import { ReportConversationButton } from "@/components/report-conversation";
+import { formatSuspensionEnd, isSuspensionError } from "@/lib/suspension";
 
 type Order = { id: string; product_name: string; created_at: string };
 const topicLabel = (value: MessageTopic) =>
@@ -434,12 +435,14 @@ export function MessagesWorkspace({
 
     setSending(false);
     // O texto digitado é preservado quando o envio falha.
-    if (error) return setStatus("A mensagem não foi enviada. Confira sua conexão e tente novamente.");
+    if (error) return isSuspensionError(error)
+      ? setComposerError(error.message)
+      : setStatus("A mensagem não foi enviada. Confira sua conexão e tente novamente.");
     const outcome = result as { status: "sent" | "blocked" | "suspended"; until?: string; message?: Message };
     if (outcome.status === "blocked") return setComposerError(MODERATION_MESSAGE);
     if (outcome.status === "suspended") {
-      const until = outcome.until ? new Date(outcome.until).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "";
-      return setComposerError(`Envio de mensagens suspenso temporariamente por uso repetido de termos não permitidos${until ? ` (até ${until})` : ""}.`);
+      const until = outcome.until ? formatSuspensionEnd(outcome.until) : "";
+      return setComposerError(`O envio de mensagens está suspenso${until ? ` até ${until}` : ""}. Você ainda pode ler as conversas.`);
     }
     const data = outcome.message;
     playUiSound("sent");

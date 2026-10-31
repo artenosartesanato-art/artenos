@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { ExternalLink, Loader2, MapPin, Store } from "@/components/icons";
 import { Dialog } from "@/components/ui/dialog";
 import { useAdmin } from "@/components/admin-shell";
+import { SuspensionStatus, useAdminSuspensions } from "@/components/admin-suspensions";
 import {
   AdminPageHead, Badge, ColumnChart, FilterChips, LoadState, Pagination, SearchBar, friendlyError,
 } from "@/components/admin-ui";
@@ -226,6 +227,7 @@ function SellersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [openId, setOpenId] = useState<string | null>(params.get("loja"));
+  const { suspensions, reloadSuspensions } = useAdminSuspensions();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -275,7 +277,11 @@ function SellersPage() {
                           <small>{row.full_name} · {[row.city, row.state].filter(Boolean).join("/") || "—"}</small>
                         </button>
                       </th>
-                      <td><Badge tone={TONE[row.seller_status]}>{SELLER_STATUS_LABEL[row.seller_status]}</Badge></td>
+                      <td>
+                        {row.seller_status === "active" && suspensions.get(row.artisan_id)
+                          ? <SuspensionStatus userId={row.artisan_id} until={suspensions.get(row.artisan_id)!} onChanged={() => void reloadSuspensions()} />
+                          : <Badge tone={TONE[row.seller_status]}>{SELLER_STATUS_LABEL[row.seller_status]}</Badge>}
+                      </td>
                       <td className="is-num">{row.products_active}</td>
                       <td className="is-num">{row.orders_total}</td>
                       <td className="is-num">{brl(row.gmv)}</td>
