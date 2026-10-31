@@ -1,5 +1,5 @@
 -- Teste da suspensão de conta (rodar SOMENTE em banco local de teste, depois de
--- migrations/20261109_suspensao_conta.sql).
+-- migrations/20261109_suspensao_conta.sql e 20261110_suspensao_textos.sql).
 begin;
 set local client_min_messages = warning;
 
@@ -54,8 +54,10 @@ begin
   assert (select count(*) from public.get_my_suspension()) = 1, 'vê a própria suspensão';
   failed := false;
   begin insert into public.cart_items(client_id, product_id, quantity) values (auth.uid(), '00000000-0000-0000-0000-0000000000c9', 1);
-  exception when check_violation then failed := sqlerrm like 'Sua conta está suspensa%'; end;
-  assert failed, 'carrinho barrado';
+  exception when check_violation then failed := sqlerrm like 'Sua conta está suspensa%' and sqlerrm not like '%loja%'; end;
+  assert failed, 'carrinho barrado (texto de cliente, sem falar em loja)';
+  assert (select body from public.notifications where user_id = auth.uid() and kind = 'conta' order by created_at desc limit 1)
+    not like '%loja%', 'aviso de cliente não fala em loja';
   failed := false;
   begin insert into public.messages(conversation_id, sender_id, body) values ('00000000-0000-0000-0000-0000000000ca', auth.uid(), 'Olá');
   exception when check_violation then failed := true; end;
@@ -77,8 +79,9 @@ begin
   perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000c1', true);
   failed := false;
   begin update public.products set price = 60 where id = '00000000-0000-0000-0000-0000000000c9';
-  exception when check_violation then failed := true; end;
-  assert failed, 'loja suspensa não edita peças';
+  exception when check_violation then failed := sqlerrm like 'Sua loja está suspensa%vitrine%'; end;
+  assert failed, 'loja suspensa não edita peças (texto de loja)';
+  assert exists (select 1 from public.notifications where user_id = auth.uid() and kind = 'conta' and title = 'Loja suspensa'), 'aviso de loja';
 
   -- Retirar a suspensão devolve tudo.
   perform set_config('request.jwt.claim.sub', v_admin::text, true);

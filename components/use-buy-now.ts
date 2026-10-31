@@ -18,7 +18,7 @@ import { BUY_NOW_KEY, BUY_NOW_PATH, serializePendingBuyNow } from "@/lib/buy-now
  */
 export function useBuyNow() {
   const router = useRouter();
-  const { authReady, userId, suspendedUntil } = useMarketplace();
+  const { authReady, userId, suspendedUntil, accountType } = useMarketplace();
   const [pendingId, setPendingId] = useState<string | null>(null);
 
   /** Só registra a peça (usado também para cotar o frete no modal). */
@@ -33,7 +33,7 @@ export function useBuyNow() {
       return false;
     }
     if (isSuspended(suspendedUntil)) {
-      toast.error(suspensionMessage(suspendedUntil));
+      toast.error(suspensionMessage(suspendedUntil, accountType));
       return false;
     }
     const { error } = await getSupabase().rpc("start_buy_now", { p_product_id: productId, p_quantity: quantity });
@@ -42,7 +42,7 @@ export function useBuyNow() {
       return false;
     }
     return true;
-  }, [authReady, userId, suspendedUntil, router]);
+  }, [authReady, userId, suspendedUntil, accountType, router]);
 
   const buyNow = useCallback(async (productId: string, quantity = 1, beforeNavigate?: () => void) => {
     setPendingId(productId);
