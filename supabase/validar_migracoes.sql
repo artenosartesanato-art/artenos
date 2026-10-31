@@ -231,6 +231,11 @@ checagens as (
                        where n.nspname = 'public' and p.proname = 'account_suspension_guard' and p.prosrc ilike '%Sua loja está suspensa%')
          then 'OK' else 'FALTA: rode migrations/20261110_suspensao_textos.sql' end
   union all
+  select '20261111 taxa_pagamento_calculadora', 'função', 'taxa do Mercado Pago na calculadora',
+    case when to_regprocedure('public.get_payment_fee_settings()') is null
+           or to_regprocedure('public.save_pricing_calculation(text,numeric,numeric,numeric,numeric,numeric,numeric,uuid,text)') is null
+         then 'FALTA: rode migrations/20261111_taxa_pagamento_calculadora.sql' else 'OK' end
+  union all
   -- Sobrecargas duplicadas deixam chamadas ambíguas (acontece ao rodar um script antigo depois de um novo).
   select 'ordem dos scripts', 'sobrecarga', p.proname,
     case when count(*) > 1 then 'ATENÇÃO: ' || count(*) || ' versões; rode de novo os scripts a partir do 06' else 'OK' end

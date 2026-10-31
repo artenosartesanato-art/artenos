@@ -17,8 +17,8 @@ function numberEnv(name: string, fallback: number, min: number, max: number) {
   return value;
 }
 
-// % do Artenós sobre o valor de cada artesã (PLATFORM_FEE_PERCENT, padrão 10) e dias de espera antes do repasse
-// (PAYOUT_HOLD_DAYS, padrão 0). Ficam no servidor: o navegador nunca decide a comissão.
+// A % da Artenós vem da tela Tarifa do painel (platform_pricing_settings, padrão 8%) e fica gravada na compra.
+// PAYOUT_HOLD_DAYS (padrão 0) é a espera antes do repasse. O navegador nunca decide a comissão.
 export const payoutHoldDays = () => numberEnv('PAYOUT_HOLD_DAYS', 0, 0, 90);
 
 export type ReconcileResult = { handled: boolean; checkoutStatus?: string; reason?: string };

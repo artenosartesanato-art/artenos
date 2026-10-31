@@ -1195,3 +1195,6 @@
   align-items: flex-start;
   gap: 4px;
 }
+.adm-payment-fees {
+  margin-top: 18px;
+}
