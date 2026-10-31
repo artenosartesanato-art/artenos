@@ -1,6 +1,7 @@
 "use client";
 
-import { PublicCustomServices } from "@/components/custom-quotes";
+import { ServiceCard, useServiceDialog } from "@/components/custom-service";
+import { filterServices, type CustomService } from "@/lib/custom-services";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, LoaderCircle, PackageOpen, RefreshCw, SlidersHorizontal, SpriteIcon, X } from "@/components/icons";
 import { categoryLook } from "@/lib/category-looks";
@@ -175,6 +176,18 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
   }, [categoriesFailed]);
 
   const selectedCategory = findCategory(categories, filters.category);
+
+  // Opções sob encomenda (orçamento) das lojas: entram na mesma grade, antes
+  // das peças, e seguem os mesmos filtros (lib/custom-services.ts).
+  const [allServices, setAllServices] = useState<CustomService[]>([]);
+  const { open: openService, dialog: serviceDialog } = useServiceDialog();
+  useEffect(() => {
+    let active = true;
+    void Promise.resolve(getSupabase().rpc("list_public_custom_order_services", { p_limit: 48 }))
+      .then(({ data, error: servicesError }) => { if (active && !servicesError) setAllServices((data ?? []) as CustomService[]); })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, []);
   // Categoria pelo nome só é resolvida depois que a lista chega.
   const categoryPending = Boolean(filters.category && !selectedCategory && !loadedCategories && !categoriesFailed);
   const categoryId = selectedCategory?.id ?? null;
@@ -296,6 +309,18 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
   }, [filters, selectedCategory]);
   const filterCount = activeFilterCount(filters);
 
+  const selectedCategoryId = selectedCategory?.id ?? null;
+  const services = filters.category && !selectedCategoryId ? [] : filterServices(allServices, {
+    query: filters.query, categoryId: selectedCategoryId, min: filters.min, max: filters.max,
+    readyOnly: filters.readyOnly, madeToOrderOnly: filters.madeToOrderOnly,
+  });
+  const resultsLabel = (() => {
+    const pieces = `${total} ${total === 1 ? "peça" : "peças"}`;
+    if (!services.length) return `${pieces} ${total === 1 ? "encontrada" : "encontradas"}`;
+    const options = `${services.length} ${services.length === 1 ? "opção sob encomenda" : "opções sob encomenda"}`;
+    return total ? `${pieces} e ${options}` : options;
+  })();
+
   return (
     <div className="store-page category-page">
       <main id="conteudo" tabIndex={-1} className="store-container category-main">
@@ -323,20 +348,15 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
           <p>Peças publicadas por lojas aprovadas na Artenós. Use os filtros para encontrar pronta entrega, faixas de preço e técnicas.</p>
         </header>
 
-        {/* "Encomendar uma peça" (Só sob encomenda): as opções de orçamento das lojas vêm primeiro. */}
-        {filters.madeToOrderOnly && (
-          <PublicCustomServices limit={12} eyebrow="Peça um orçamento" title="Opções sob encomenda das lojas"
-            description="Escolha uma opção e conte o que você quer: a loja responde com preço e prazo." className="category-custom-services" />
-        )}
         <div className="category-layout">
           <section className="category-results" aria-labelledby="resultados-titulo">
             <div className="category-toolbar">
               <div>
                 <h2 id="resultados-titulo" ref={resultsHeading} tabIndex={-1}>
-                  {loading ? "Buscando peças…" : `${total} ${total === 1 ? "peça encontrada" : "peças encontradas"}`}
+                  {loading ? "Buscando peças…" : resultsLabel}
                 </h2>
                 <p aria-live="polite" className="an-visually-hidden">
-                  {loading ? "" : `${total} ${total === 1 ? "peça encontrada" : "peças encontradas"}`}
+                  {loading ? "" : resultsLabel}
                 </p>
               </div>
               <div className="category-toolbar-actions">
@@ -396,9 +416,12 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
               </div>
             ) : loading ? (
               <ProductGridSkeleton count={8} className="category-grid" />
-            ) : products.length ? (
+            ) : products.length || services.length ? (
               <>
                 <div className="category-grid">
+                  {services.map((service, index) => (
+                    <ServiceCard key={`opcao-${service.id}`} service={service} onOpen={() => openService(service)} priority={index < 2} />
+                  ))}
                   {products.map((product, index) => <MarketplaceProductCard key={product.id} product={product} priority={index < 4} />)}
                 </div>
                 {products.length < total && (
@@ -437,6 +460,7 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
             )}
           </section>
         </div>
+        {serviceDialog}
       </main>
 
       <Dialog open={filtersOpen} onClose={() => setFiltersOpen(false)} variant="drawer-left" labelledBy="filtros-titulo"

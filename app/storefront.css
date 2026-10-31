@@ -3093,3 +3093,82 @@ div.product-details-description :is(ul, ol) {
 :is(.categories-menu-grid, .categories-menu-list) a.is-empty .categories-menu-icon {
   opacity: 0.6;
 }
+
+/* Opção sob encomenda (orçamento): mesmo cartão da peça, com a foto inteira
+   (sem corte) sobre um fundo desfocado da própria foto. */
+.service-photo {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+  background: var(--artenos-perola);
+}
+.service-photo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.service-photo .service-photo-backdrop {
+  object-fit: cover;
+  filter: blur(18px) saturate(1.1);
+  opacity: 0.55;
+  transform: scale(1.15);
+}
+.service-photo .service-photo-main {
+  object-fit: contain;
+}
+.store-product-image-trigger .service-photo img {
+  transition: none;
+}
+.service-card-price small {
+  margin-right: 4px;
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-xs);
+  font-weight: 650;
+  letter-spacing: 0;
+}
+/* Detalhe da opção: mesmo formato do detalhe da peça. */
+.service-details-modal .service-details-image {
+  aspect-ratio: 4 / 5;
+}
+.service-details-modal .service-details-image .service-photo {
+  border-radius: inherit;
+}
+.service-details-price {
+  font-size: var(--an-fs-xl);
+}
+.service-details-actions {
+  grid-template-columns: minmax(0, 1fr);
+}
+.service-request-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 4px;
+}
+.service-request-back {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--artenos-marrom);
+  font: inherit;
+  font-size: var(--an-fs-sm);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.service-details-modal .pd-store-avatar {
+  font-size: 0;
+}
+.service-details-modal .custom-modal.service-request-form {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
