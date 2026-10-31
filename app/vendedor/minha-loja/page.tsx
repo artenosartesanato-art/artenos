@@ -28,6 +28,8 @@ import { toast } from "sonner";
 import { getSupabase } from "@/lib/supabase";
 import { meaningfulTextError } from "@/lib/text-quality";
 import { findBlockedTerm, moderationError } from "@/lib/moderation";
+import { specialtyValueError } from "@/lib/store-specialties";
+import { SpecialtyField } from "@/components/specialty-field";
 import {
   useSellerProfile,
   useSellerProfileActions,
@@ -215,12 +217,12 @@ export default function StorePanelPage() {
     const shippingOriginCep = form.shippingOriginCep.replace(/\D/g, "");
     if (form.storeName.trim().length < 3)
       return toast.error("O nome da loja precisa ter pelo menos 3 caracteres.");
-    if (form.specialty.trim().length < 2)
-      return toast.error("Informe a especialidade da loja.");
+    const specialtyProblem = specialtyValueError(form.specialty);
+    if (specialtyProblem) return toast.error(specialtyProblem);
     const storyError = meaningfulTextError(form.story, "A história da loja");
     if (storyError) return toast.error(storyError);
-    if (findBlockedTerm(`${form.storeName} ${form.story} ${form.announcement}`))
-      return toast.error("O nome, a história ou o aviso da loja contém termos que não são permitidos na Artenós.");
+    if (findBlockedTerm(`${form.storeName} ${form.specialty} ${form.story} ${form.announcement}`))
+      return toast.error("O nome, a especialidade, a história ou o aviso da loja contém termos que não são permitidos na Artenós.");
     if (
       !Number.isInteger(productionDays) ||
       productionDays < 1 ||
@@ -504,18 +506,10 @@ export default function StorePanelPage() {
                   required
                 />
               </label>
-              <label>
-                <span>Especialidade principal</span>
-                <input
-                  value={form.specialty}
-                  onChange={(event) =>
-                    setField("specialty", event.target.value)
-                  }
-                  minLength={2}
-                  maxLength={80}
-                  required
-                />
-              </label>
+              <SpecialtyField
+                value={form.specialty}
+                onChange={(value) => setField("specialty", value)}
+              />
               <label className="is-wide">
                 <span>História da loja</span>
                 <textarea

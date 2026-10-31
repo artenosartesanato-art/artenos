@@ -6,7 +6,8 @@ import { Clock3, LoaderCircle, Store } from "@/components/icons";
 import { getSupabase } from "@/lib/supabase";
 import { findBlockedTerm } from "@/lib/moderation";
 import { playUiSound } from "@/lib/ui-sound";
-import { STORE_SPECIALTIES } from "@/lib/store-specialties";
+import { specialtyValueError } from "@/lib/store-specialties";
+import { SpecialtyField } from "@/components/specialty-field";
 
 type SellerRequest = {
   status: "pending_review" | "under_review" | "changes_requested" | "approved" | "rejected" | "suspended" | null;
@@ -58,6 +59,8 @@ export function SellerUpgrade() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (sending) return;
+    const specialtyProblem = specialtyValueError(specialty);
+    if (specialtyProblem) return setError(specialtyProblem);
     if (findBlockedTerm(`${storeName} ${specialty} ${story}`)) return setError("Os dados da loja contêm termos que não são permitidos na Artenós.");
     setSending(true);
     setError("");
@@ -135,15 +138,7 @@ export function SellerUpgrade() {
             <input value={storeName} onChange={(event) => setStoreName(event.target.value)} maxLength={80} required
               placeholder="Ex.: Ateliê da Ana" data-autofocus />
           </label>
-          <label className="an-field">
-            <span>Especialidade</span>
-            <select value={specialty} onChange={(event) => setSpecialty(event.target.value)} required>
-              <option value="" disabled>Selecione</option>
-              {/* Lista do cadastro de vendedor; mantém um valor antigo fora dela. */}
-              {[...STORE_SPECIALTIES, ...(specialty && !STORE_SPECIALTIES.includes(specialty) ? [specialty] : [])]
-                .map((item) => <option key={item}>{item}</option>)}
-            </select>
-          </label>
+          <SpecialtyField value={specialty} onChange={setSpecialty} labelClassName="an-field" label="Especialidade" />
           <label className="an-field">
             <span>História da loja</span>
             <textarea value={story} onChange={(event) => setStory(event.target.value)} rows={4} maxLength={1200} required
