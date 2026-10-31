@@ -26,7 +26,7 @@ import { formatDeletionDate, reactivationMailto } from "@/lib/account-deletion";
 import { siteConfig } from "@/lib/site-config";
 import { recordAccess } from "@/lib/access-log";
 import { resetTurnstile, TurnstileWidget } from "@/components/turnstile-widget";
-import { safeReturnPath } from "@/lib/navigation";
+import { returnPathForAccount, safeReturnPath } from "@/lib/navigation";
 import { OTHER_SPECIALTY, SPECIALTY_MAX, STORE_SPECIALTIES, resolveSpecialty } from "@/lib/store-specialties";
 import {
   fieldForServerMessage,
@@ -427,9 +427,12 @@ function LoginForm({ returnTo, onRecover, onRegister }: { returnTo: string | nul
       toast.success(result.approvalStatus === "active"
         ? `Boas-vindas, ${result.firstName}!`
         : `Olá, ${result.firstName}. Acompanhe aqui a análise do seu cadastro.`);
-      const destination = result.approvalStatus !== "active" || result.redirectTo === "/administracao"
+      // O "voltar" pode ter ficado de outra sessão (ex.: a da equipe expirou no
+      // painel): só é usado se esta conta puder abrir a página.
+      const account = result.redirectTo === "/administracao" ? "admin" : result.accountType === "artisan" ? "seller" : "client";
+      const destination = result.approvalStatus !== "active"
         ? result.redirectTo
-        : returnTo || favoriteIntentReturnPath() || result.redirectTo;
+        : returnPathForAccount(returnTo, account) || (account === "admin" ? null : favoriteIntentReturnPath()) || result.redirectTo;
       router.replace(destination);
       // Se a troca de página não andar (ex.: aba aberta numa versão antiga do
       // site, cujos arquivos já não existem), recarrega direto no destino.
@@ -466,7 +469,7 @@ function LoginForm({ returnTo, onRecover, onRegister }: { returnTo: string | nul
       <div className="form-heading">
         <p className="eyebrow">Que bom ter você de volta</p>
         <h2>Entre na sua conta</h2>
-        <p>{returnTo ? "Depois de entrar, você volta para onde estava." : "Use o e-mail e a senha do seu cadastro."}</p>
+        <p>{returnTo && !returnTo.startsWith("/administracao") ? "Depois de entrar, você volta para onde estava." : "Use o e-mail e a senha do seu cadastro."}</p>
       </div>
       <ErrorSummary errors={errors} title="Não foi possível entrar" />
       <Field name="email" label="E-mail" error={errors.email}>
