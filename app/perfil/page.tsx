@@ -24,6 +24,7 @@ import "./profile.css";
 import { endSession, rememberDevice } from "@/lib/session";
 import { Dialog } from "@/components/ui/dialog";
 import { AccountPrivacy } from "@/components/account-privacy";
+import { SellerUpgrade } from "@/components/seller-upgrade";
 
 type Profile = {
   id: string;
@@ -813,6 +814,8 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
                   <LogOut size={16} /> Sair de todos os aparelhos
                 </button>
               </section>
+              {/* Cliente pode abrir a loja na mesma conta (sem novo cadastro). */}
+              {!sellerMode && profile?.account_type === "client" && <SellerUpgrade />}
               <AccountPrivacy />
               <Dialog open={confirmEverywhere} onClose={() => { if (!endingAll) setConfirmEverywhere(false); }}
                 labelledBy="sair-todos-titulo" describedBy="sair-todos-texto" className="profile-confirm-dialog">

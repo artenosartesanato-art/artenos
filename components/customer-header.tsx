@@ -248,7 +248,7 @@ export function CustomerHeader() {
           ))}
         </div>
         {!sellerPanelAvailable && (
-          <Link className="store-nav-sell" href={userSignedIn ? "/como-funciona#vender" : "/acesso?aba=artesa"}>
+          <Link className="store-nav-sell" href={userSignedIn ? "/perfil?loja=1#abrir-loja" : "/acesso?aba=artesa"}>
             <Store size={16} /> <span className="store-nav-sell-label">Venda na Artenós</span>
           </Link>
         )}
@@ -293,7 +293,7 @@ export function CustomerHeader() {
               </Link>
             )}
             {!sellerPanelAvailable && (
-              <Link className="an-btn an-btn--moss an-btn--block" href={userSignedIn ? "/como-funciona#vender" : "/acesso?aba=artesa"}
+              <Link className="an-btn an-btn--moss an-btn--block" href={userSignedIn ? "/perfil?loja=1#abrir-loja" : "/acesso?aba=artesa"}
                 onClick={() => setMenuOpen(false)}>
                 <Store size={18} /> Venda na Artenós
               </Link>

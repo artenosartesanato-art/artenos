@@ -204,6 +204,12 @@ checagens as (
                          and p.prosrc ilike '%updated_at%') then 'FALTA: rode migrations/20261105_frete_assinatura.sql'
          else 'OK' end
   union all
+  select '20261106 cliente_vira_vendedor', 'função', 'cliente abre loja na mesma conta',
+    case when to_regprocedure('public.request_seller_profile(text,text,text)') is null
+           or not exists (select 1 from pg_constraint where conname = 'artisan_applications_submission_type_check'
+                            and pg_get_constraintdef(oid) ilike '%upgrade%')
+         then 'FALTA: rode migrations/20261106_cliente_vira_vendedor.sql' else 'OK' end
+  union all
   -- Sobrecargas duplicadas deixam chamadas ambíguas (acontece ao rodar um script antigo depois de um novo).
   select 'ordem dos scripts', 'sobrecarga', p.proname,
     case when count(*) > 1 then 'ATENÇÃO: ' || count(*) || ' versões; rode de novo os scripts a partir do 06' else 'OK' end
