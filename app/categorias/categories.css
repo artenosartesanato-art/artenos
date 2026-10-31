@@ -320,3 +320,8 @@
   color: var(--artenos-marrom);
   box-shadow: var(--an-shadow-sm);
 }
+
+/* "Encomendar uma peça": opções de orçamento das lojas antes das peças. */
+.category-custom-services {
+  margin: 24px 0 8px;
+}

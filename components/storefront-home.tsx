@@ -19,6 +19,7 @@ import { MarketplaceProductCard, ProductGridSkeleton, type MarketplaceProduct } 
 import { budgetHref, loadBudgets, type Budget } from "@/lib/budgets";
 import { loadBestSellers, type BestSeller } from "@/lib/best-seller";
 import { HeroCarousel } from "@/components/hero-carousel";
+import { PublicCustomServices } from "@/components/custom-quotes";
 import "@/app/storefront.css";
 import { OptimizedImage } from "@/components/optimized-image";
 
@@ -329,6 +330,9 @@ export function StorefrontHome({ initial }: { initial: HomeData | null }) {
             loading={loading} href="/categorias?pronta=1" hrefLabel="Ver pronta entrega"
             empty="Nenhuma peça pronta para envio no momento." />
         </div>
+
+        {/* Opções sob encomenda das lojas (orçamento): antes só na página de cada loja. */}
+        <PublicCustomServices className="store-section store-container" />
 
         {budgets.some((budget) => budget.count > 0) && (
           <section className="store-section store-container" aria-labelledby="orcamento-titulo">
