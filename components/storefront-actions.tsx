@@ -8,6 +8,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { SoundToggle } from "@/components/sound-toggle";
 import { addProductToCart } from "@/lib/cart";
 import { playUiSound } from "@/lib/ui-sound";
+import { isSuspended, suspensionMessage } from "@/lib/suspension";
 import { accessHref, currentPath } from "@/lib/navigation";
 import { useMarketplace } from "@/components/marketplace-state";
 import { confirmFavoriteRemoved, confirmFavoriteSaved } from "@/components/marketplace-feedback";
@@ -42,7 +43,7 @@ const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL
 export function StorefrontActionsProvider({ children }: { children: ReactNode }) {
   const {
     authReady, userId, cartCount, cartSubtotalCents, refreshCart, pulseCart,
-    toggleFavorite: saveFavorite, addGuestToCart,
+    toggleFavorite: saveFavorite, addGuestToCart, suspendedUntil,
   } = useMarketplace();
   const pending = useRef(new Set<string>());
   const [pendingCartIds, setPendingCartIds] = useState<ReadonlySet<string>>(new Set());
@@ -72,6 +73,11 @@ export function StorefrontActionsProvider({ children }: { children: ReactNode })
         return false;
       }
     }
+    if (isSuspended(suspendedUntil)) {
+      playUiSound("error");
+      toast.error(suspensionMessage(suspendedUntil));
+      return false;
+    }
     if (pending.current.has(product.id)) return false;
     pending.current.add(product.id);
     setPendingCartIds(new Set(pending.current));
@@ -91,7 +97,7 @@ export function StorefrontActionsProvider({ children }: { children: ReactNode })
       pending.current.delete(product.id);
       setPendingCartIds(new Set(pending.current));
     }
-  }, [authReady, userId, refreshCart, pulseCart, addGuestToCart]);
+  }, [authReady, userId, suspendedUntil, refreshCart, pulseCart, addGuestToCart]);
 
   const toggleFavorite = useCallback(async (product: ActionProduct) => {
     try {

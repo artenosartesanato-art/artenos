@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import { ScrollReveal } from "@/components/scroll-reveal";
 import { MarketplaceProvider } from "@/components/marketplace-state";
 import { StorefrontActionsProvider } from "@/components/storefront-actions";
+import { SuspensionNotice } from "@/components/suspension-notice";
 import { SiteChrome } from "@/components/site-chrome";
 import { CookieConsentBanner } from "@/components/cookie-consent";
 
@@ -46,6 +47,7 @@ export default function RootLayout({
       <body className="antialiased">
         <MarketplaceProvider>
           <StorefrontActionsProvider>
+            <SuspensionNotice />
             <SiteChrome>{children}</SiteChrome>
           </StorefrontActionsProvider>
         </MarketplaceProvider>

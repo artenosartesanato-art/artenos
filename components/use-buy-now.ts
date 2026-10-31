@@ -6,6 +6,7 @@ import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { useMarketplace } from "@/components/marketplace-state";
 import { getCartErrorMessage } from "@/lib/cart";
+import { isSuspended, suspensionMessage } from "@/lib/suspension";
 import { getSupabase } from "@/lib/supabase";
 import { accessHref } from "@/lib/navigation";
 import { BUY_NOW_KEY, BUY_NOW_PATH, serializePendingBuyNow } from "@/lib/buy-now-intent";
@@ -17,7 +18,7 @@ import { BUY_NOW_KEY, BUY_NOW_PATH, serializePendingBuyNow } from "@/lib/buy-now
  */
 export function useBuyNow() {
   const router = useRouter();
-  const { authReady, userId } = useMarketplace();
+  const { authReady, userId, suspendedUntil } = useMarketplace();
   const [pendingId, setPendingId] = useState<string | null>(null);
 
   /** Só registra a peça (usado também para cotar o frete no modal). */
@@ -31,13 +32,17 @@ export function useBuyNow() {
       router.push(accessHref(BUY_NOW_PATH));
       return false;
     }
+    if (isSuspended(suspendedUntil)) {
+      toast.error(suspensionMessage(suspendedUntil));
+      return false;
+    }
     const { error } = await getSupabase().rpc("start_buy_now", { p_product_id: productId, p_quantity: quantity });
     if (error) {
       toast.error(getCartErrorMessage(error));
       return false;
     }
     return true;
-  }, [authReady, userId, router]);
+  }, [authReady, userId, suspendedUntil, router]);
 
   const buyNow = useCallback(async (productId: string, quantity = 1, beforeNavigate?: () => void) => {
     setPendingId(productId);

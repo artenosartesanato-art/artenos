@@ -1154,6 +1154,13 @@
   color: var(--an-erro);
   font-weight: 650;
 }
+.adm-report-suspended {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--an-r-md);
+  background: rgb(176 58 46 / 0.08);
+  font-size: var(--an-fs-sm);
+}
 .adm-report-messages {
   display: grid;
   gap: 6px;
@@ -1183,4 +1190,8 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+.adm-suspension {
+  align-items: flex-start;
+  gap: 4px;
 }

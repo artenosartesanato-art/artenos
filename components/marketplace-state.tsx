@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
 import { guestCartAdd, guestCartTotals, type GuestCartLine, type GuestProduct } from "@/lib/guest-cart";
 import { toast } from "sonner";
+import { isSuspended, suspensionMessage } from "@/lib/suspension";
 
 type MarketplaceState = {
   authReady: boolean;
@@ -15,6 +16,8 @@ type MarketplaceState = {
   accountType: "client" | "artisan" | null;
   /** Conta da equipe (administração): o cabeçalho e as rotas se adaptam. */
   isAdmin: boolean;
+  /** Fim da suspensão da conta (decisão da administração); null = conta liberada. */
+  suspendedUntil: string | null;
   cartCount: number;
   /** Soma dos produtos no carrinho, em centavos (sem frete). */
   cartSubtotalCents: number;
@@ -100,6 +103,8 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
   const [sellerPanelAvailable, setSellerPanelAvailable] = useState(false);
   const [accountType, setAccountType] = useState<"client" | "artisan" | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [suspendedUntil, setSuspendedUntil] = useState<string | null>(null);
+  const suspendedRef = useRef<string | null>(null);
   const [cartCount, setCartCount] = useState(0);
   const [cartSubtotalCents, setCartSubtotalCents] = useState(0);
   const [cartPulse, setCartPulse] = useState(0);
@@ -131,14 +136,20 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
     if (!account) return;
     const supabase = getSupabase();
     // Perfil e papel de administração juntos (em paralelo).
-    const [{ data, error }, adminCheck] = await Promise.all([
+    const [{ data, error }, adminCheck, suspension] = await Promise.all([
       supabase.from("profiles")
         .select("full_name,account_type,approval_status,avatar_path,cep")
         .eq("id", account).maybeSingle(),
       Promise.resolve(supabase.rpc("is_active_admin")).catch(() => ({ data: false })),
+      // Sem a função no banco (migração não rodada): segue sem o aviso.
+      Promise.resolve(supabase.rpc("get_my_suspension")).catch(() => ({ data: null })),
     ]);
     if (request !== generation.current || identity !== identityRequest.current || account !== accountRef.current) return;
     setIsAdmin(adminCheck.data === true);
+    const suspensionRow = (Array.isArray(suspension.data) ? suspension.data[0] : suspension.data) as { suspended_until?: string } | null;
+    const until = isSuspended(suspensionRow?.suspended_until) ? suspensionRow!.suspended_until! : null;
+    suspendedRef.current = until;
+    setSuspendedUntil(until);
     const registeredCep = String(data?.cep ?? "").replace(/\D/g, "");
     if (error || registeredCep.length !== 8) {
       setCep("");
@@ -210,6 +221,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
       setGuestFavorites(next);
       return !saved;
     }
+    if (isSuspended(suspendedRef.current)) throw new Error(suspensionMessage(suspendedRef.current));
     if (favoritePending.current.has(productId)) throw new Error("Aguarde a atualização deste favorito.");
     favoritePending.current.add(productId);
     setPendingFavoriteIds(new Set(favoritePending.current));
@@ -269,6 +281,8 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
       setSellerPanelAvailable(false);
       setAccountType(null);
       setIsAdmin(false);
+      suspendedRef.current = null;
+      setSuspendedUntil(null);
       setCartCount(0);
       setCartSubtotalCents(0);
       if (nextId) {
@@ -362,7 +376,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
   const guestFavoriteIds = useMemo(() => new Set(guestFavorites.map((item) => item.id)), [guestFavorites]);
   const guest = authReady && !userId;
   const value = useMemo(() => ({ authReady, userId, displayName, avatarUrl,
-    sellerPanelAvailable, accountType, isAdmin,
+    sellerPanelAvailable, accountType, isAdmin, suspendedUntil,
     cartCount: guest ? guestTotals.count : cartCount,
     cartSubtotalCents: guest ? guestTotals.subtotalCents : cartSubtotalCents,
     cartPulse, cep, cepStatus, cepError, setGuestCep,
@@ -370,7 +384,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
     favoritesReady: guest ? true : favoritesReady,
     pendingFavoriteIds, refreshCart, pulseCart, refreshFavorites, toggleFavorite,
     guestCart, guestFavorites, addGuestToCart, setGuestQuantity }),
-  [authReady, userId, displayName, avatarUrl, sellerPanelAvailable, accountType, isAdmin, cartCount, cartSubtotalCents, cartPulse,
+  [authReady, userId, displayName, avatarUrl, sellerPanelAvailable, accountType, isAdmin, suspendedUntil, cartCount, cartSubtotalCents, cartPulse,
     cep, cepStatus, cepError, setGuestCep, favoriteIds, favoritesReady, pendingFavoriteIds, refreshCart, pulseCart,
     refreshFavorites, toggleFavorite, guest, guestTotals, guestFavoriteIds, guestCart, guestFavorites, addGuestToCart,
     setGuestQuantity]);
