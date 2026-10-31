@@ -45,6 +45,8 @@ create unique index if not exists notifications_unread_ref_idx
   where read_at is null and ref_id is not null;
 
 alter table public.notifications enable row level security;
+-- Leitura pela API para quem está conectado (a RLS abaixo limita aos próprios avisos).
+grant select on public.notifications to authenticated;
 drop policy if exists "Cada pessoa lê as próprias notificações" on public.notifications;
 create policy "Cada pessoa lê as próprias notificações" on public.notifications
   for select using (user_id = (select auth.uid()));
