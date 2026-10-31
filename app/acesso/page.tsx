@@ -27,6 +27,7 @@ import { siteConfig } from "@/lib/site-config";
 import { recordAccess } from "@/lib/access-log";
 import { resetTurnstile, TurnstileWidget } from "@/components/turnstile-widget";
 import { safeReturnPath } from "@/lib/navigation";
+import { STORE_SPECIALTIES } from "@/lib/store-specialties";
 import {
   fieldForServerMessage,
   validateLogin,
@@ -43,10 +44,7 @@ const TABS: { id: Tab; label: string; param: string }[] = [
   { id: "client", label: "Criar conta", param: "cliente" },
   { id: "artisan", label: "Vender", param: "artesa" },
 ];
-const specialties = [
-  "Crochê e tricô", "Cerâmica", "Costura criativa", "Joias e acessórios",
-  "Papelaria", "Decoração", "Cosméticos naturais", "Outro",
-];
+const specialties = STORE_SPECIALTIES;
 const FIELD_LABELS: Record<string, string> = {
   fullName: "Nome completo", storeName: "Nome da loja", specialty: "Especialidade", document: "Documento",
   phone: "Telefone", cep: "CEP", address: "Endereço", number: "Número", city: "Cidade", state: "Estado",
@@ -202,6 +200,7 @@ function RegisterForm({ type, onGoToLogin }: { type: AccountType; onGoToLogin: (
   const [pending, setPending] = useState<"standard" | "assisted" | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [done, setDone] = useState<string | null>(null);
+  const [existingAccount, setExistingAccount] = useState(false);
   const clear = (name: string) => setErrors((current) => {
     if (!current[name] && !current._form) return current;
     const next = { ...current };
@@ -225,6 +224,14 @@ function RegisterForm({ type, onGoToLogin }: { type: AccountType; onGoToLogin: (
       setDone(String(values.email ?? "").trim().toLowerCase());
     } catch (error) {
       const message = error instanceof Error ? error.message : "Não foi possível concluir o cadastro. Tente novamente em instantes.";
+      // Vendedor com e-mail ou CPF de uma conta que já existe: não cria outra
+      // conta; a pessoa entra e abre a loja na conta dela (mesmos dados).
+      if (type === "artisan" && /já está cadastrad|já foi cadastrad/i.test(message)) {
+        setExistingAccount(true);
+        setErrors({ _form: "Você já tem uma conta com esse e-mail ou CPF. Entre nela e abra sua loja em Meu perfil: seus dados, compras e favoritos continuam na mesma conta." });
+        resetTurnstile();
+        return;
+      }
       const field = fieldForServerMessage(message);
       setErrors(field ? { [field]: message } : { _form: message });
       resetTurnstile();
@@ -263,6 +270,13 @@ function RegisterForm({ type, onGoToLogin }: { type: AccountType; onGoToLogin: (
       </div>
       <p className="form-required-note">Todos os campos são obrigatórios.</p>
       <ErrorSummary errors={errors} />
+      {existingAccount && (
+        <p className="existing-account-cta">
+          <a className="an-btn an-btn--secondary" href={`/acesso?aba=entrar&voltar=${encodeURIComponent("/perfil?loja=1#abrir-loja")}`}>
+            Entrar e abrir minha loja
+          </a>
+        </p>
+      )}
       <div className="fields-grid">
         <p className="form-section-title">Seus dados</p>
         <Field name="fullName" label="Nome completo" error={errors.fullName} wide>

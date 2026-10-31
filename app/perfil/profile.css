@@ -634,3 +634,44 @@
   text-underline-offset: 3px;
   cursor: pointer;
 }
+
+/* "Venda na Artenós": cliente abre a loja na mesma conta. */
+.seller-upgrade-status {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 4px 0 12px;
+  padding: 12px 14px;
+  border-radius: var(--an-r-md);
+  background: var(--an-surface-warm);
+  color: var(--an-text);
+  font-size: var(--an-fs-sm);
+  line-height: 1.5;
+}
+.seller-upgrade-status.is-review {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--an-sucesso-fundo);
+}
+.seller-upgrade-status.is-review > div {
+  display: grid;
+  gap: 2px;
+}
+.seller-upgrade-status span {
+  color: var(--an-text-muted);
+}
+.seller-upgrade-form {
+  display: grid;
+  gap: 12px;
+  max-width: 640px;
+}
+.seller-upgrade-count {
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-xs);
+}
+.seller-upgrade-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

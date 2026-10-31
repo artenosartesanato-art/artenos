@@ -1710,3 +1710,8 @@ img {
 .seller-messages-count {
   margin-left: auto;
 }
+
+/* Cadastro de vendedor com dados de conta existente: botão para entrar e abrir a loja. */
+.existing-account-cta {
+  margin: -4px 0 16px;
+}
