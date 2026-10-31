@@ -1,49 +1,44 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { TrendingUp } from "@/components/icons";
+import { useEffect, useRef, useState } from "react";
+import { Sparkles, TrendingUp } from "@/components/icons";
 import { OptimizedImage } from "@/components/optimized-image";
 import { ProductDetailsButton } from "@/components/product-details-button";
 import type { BestSeller } from "@/lib/best-seller";
 
 const INTERVAL_MS = 5000;
+function tagFor(product: BestSeller, mode: "best" | "featured") {
+  if (mode === "featured") return product.category_name ? `Em destaque em ${product.category_name}` : "Em destaque";
+  return product.category_name ? `Mais vendida em ${product.category_name}` : "Mais vendida";
+}
+
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
 /**
- * Carrossel do topo: a mais vendida de cada categoria, trocando sozinho a cada
- * 5 s. Pausa com o mouse em cima, com o foco dentro, com a aba escondida e para
- * quem pediu menos movimento no sistema (aí só troca pelos pontos).
+ * Carrossel do topo: uma peça por vez, trocando sozinho a cada 5 s, sem botões
+ * para passar. Mostra a mais vendida de cada categoria; sem vendas ainda, as
+ * peças em destaque. Pausa com o mouse em cima, com o foco dentro e com a aba
+ * escondida; para quem pediu menos movimento, troca sem animação.
  */
-export function HeroCarousel({ products }: { products: BestSeller[] }) {
+export function HeroCarousel({ products, mode = "best" }: { products: BestSeller[]; mode?: "best" | "featured" }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
-  const [reduced, setReduced] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const count = products.length;
 
   useEffect(() => {
-    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const update = () => setReduced(query.matches);
-    update();
-    query.addEventListener("change", update);
-    return () => query.removeEventListener("change", update);
-  }, []);
-
-  const go = useCallback((next: number) => setIndex(((next % count) + count) % count), [count]);
-
-  useEffect(() => {
-    if (count < 2 || paused || reduced) return;
+    if (count < 2 || paused) return;
     const timer = window.setInterval(() => {
       if (document.visibilityState === "visible") setIndex((value) => (value + 1) % count);
     }, INTERVAL_MS);
     return () => window.clearInterval(timer);
-  }, [count, paused, reduced]);
+  }, [count, paused]);
 
   if (!count) return null;
   const current = Math.min(index, count - 1);
   return (
     <div ref={rootRef} className="hero-carousel" role="region" aria-roledescription="carrossel"
-      aria-label="Mais vendidas de cada categoria"
+      aria-label={mode === "best" ? "Mais vendidas de cada categoria" : "Peças em destaque"}
       onPointerEnter={() => setPaused(true)} onPointerLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
       onBlur={(event) => { if (!rootRef.current?.contains(event.relatedTarget as Node)) setPaused(false); }}>
@@ -55,10 +50,10 @@ export function HeroCarousel({ products }: { products: BestSeller[] }) {
             <ProductDetailsButton product={product}>
               {(openDetails) => (
                 <button type="button" className="hero-slide-button" onClick={openDetails}
-                  aria-label={`Mais vendida em ${product.category_name ?? "sua categoria"}: ${product.name}, ${money.format(Number(product.price))}. Ver detalhes`}>
+                  aria-label={`${tagFor(product, mode)}: ${product.name}, ${money.format(Number(product.price))}. Ver detalhes`}>
                   <OptimizedImage src={product.image_url!} alt="" width={900} height={760} priority={position === 0}
                     sizes="(max-width: 900px) 100vw, 900px" />
-                  <span className="hero-slide-tag"><TrendingUp size={13} /> Mais vendida{product.category_name ? ` em ${product.category_name}` : ""}</span>
+                  <span className="hero-slide-tag">{mode === "best" ? <TrendingUp size={13} /> : <Sparkles size={13} />} {tagFor(product, mode)}</span>
                   <span className="hero-slide-caption">
                     <strong>{product.name}</strong>
                     <span>{money.format(Number(product.price))}{product.shop_name ? ` · ${product.shop_name}` : ""}</span>
@@ -69,14 +64,6 @@ export function HeroCarousel({ products }: { products: BestSeller[] }) {
           </div>
         );
       })}
-      {count > 1 && (
-        <div className="hero-dots">
-          {products.map((product, position) => (
-            <button key={product.id} type="button" aria-label={`Mostrar ${product.name}`}
-              aria-current={position === current ? "true" : undefined} onClick={() => go(position)} />
-          ))}
-        </div>
-      )}
     </div>
   );
 }

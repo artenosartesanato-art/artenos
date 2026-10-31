@@ -6,6 +6,7 @@ import { ArrowRight, MapPin, RefreshCw, Search, Store } from "@/components/icons
 import { getSupabase } from "@/lib/supabase";
 import "@/app/storefront.css";
 import "@/app/lojas/shops.css";
+import { StoreAvatar } from "@/components/store-avatar";
 
 export type Shop = { id: string; store_name: string; specialty: string | null; story: string | null; city: string | null; state: string | null };
 
@@ -102,7 +103,7 @@ export function ShopsDirectory({ initial }: { initial: Shop[] | null }) {
           <section className="shops-grid" aria-label="Lojas">
             {visible.map((shop) => (
               <Link prefetch={false} href={`/loja?id=${encodeURIComponent(shop.id)}`} key={shop.id}>
-                <span className="shops-symbol" aria-hidden="true">{initials(shop.store_name)}</span>
+                <StoreAvatar className="shops-symbol" artisanId={shop.id} initials={initials(shop.store_name)} />
                 <small>{shop.specialty || "Artesanato autoral"}</small>
                 <h2>{shop.store_name}</h2>
                 <p>{shop.story || "Conheça as peças e o trabalho desta loja."}</p>

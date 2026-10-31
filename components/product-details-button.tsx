@@ -33,6 +33,7 @@ import { useBuyNow } from "@/components/use-buy-now";
 import { StarRating } from "@/components/stars";
 import { ReviewsList } from "@/components/reviews-list";
 import { AVAILABILITY_LABEL, availabilityFor, maxQuantityFor, productionLabel, type Availability } from "@/lib/availability";
+import { StoreAvatar } from "@/components/store-avatar";
 
 type ProductDetails = {
   id: string;
@@ -311,7 +312,7 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
 
         {product.shop_id && (
           <section className="pd-block pd-store" aria-label="Sobre a loja">
-            <span className="pd-store-avatar" aria-hidden="true">{storeInitials}</span>
+            <StoreAvatar className="pd-store-avatar" artisanId={product.shop_id} initials={storeInitials} />
             <div>
               <strong>{product.shop_name || store?.store_name || "Loja Artenós"}</strong>
               {storeLocation && <span className="pd-store-location"><MapPin size={13} /> {storeLocation}</span>}

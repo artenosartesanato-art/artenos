@@ -30,6 +30,7 @@ import { meaningfulTextError } from "@/lib/text-quality";
 import { findBlockedTerm, moderationError } from "@/lib/moderation";
 import { specialtyValueError } from "@/lib/store-specialties";
 import { SpecialtyField } from "@/components/specialty-field";
+import { StoreLogoEditor } from "@/components/store-logo-editor";
 import {
   useSellerProfile,
   useSellerProfileActions,
@@ -105,6 +106,10 @@ const money = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
 });
+
+function storeInitials(name: string) {
+  return name.split(/\s+/).filter((word) => word.length > 2).slice(0, 2).map((word) => word[0]?.toUpperCase()).join("") || "A";
+}
 
 function publicCoverUrl(path: string | null) {
   if (!path) return "";
@@ -482,6 +487,13 @@ export default function StorePanelPage() {
           <small>JPG, PNG ou WebP · até 5 MB</small>
         </div>
       </section>
+
+      {store && (
+        <StoreLogoEditor
+          artisanId={store.artisan_id}
+          initials={storeInitials(form.storeName || store.store_name || "")}
+        />
+      )}
 
       <div className="store-panel-grid">
         <form className="store-settings-form" onSubmit={saveStore}>

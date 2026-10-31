@@ -22,6 +22,7 @@ import { HeroCarousel } from "@/components/hero-carousel";
 import { PublicCustomServices } from "@/components/custom-quotes";
 import "@/app/storefront.css";
 import { OptimizedImage } from "@/components/optimized-image";
+import { StoreAvatar } from "@/components/store-avatar";
 
 export type Category = { id: string; name: string; slug: string; image_url: string | null };
 export type Collection = { id: string; title: string; description: string | null; image_url: string | null };
@@ -189,6 +190,8 @@ export function StorefrontHome({ initial }: { initial: HomeData | null }) {
 
   const banner = banners[0];
   const firstProducts = featured.length ? featured : latest.length ? latest : ready;
+  // Sem vendas ainda: o carrossel passa pelas peças em destaque (uma por vez).
+  const heroProducts = firstProducts.filter((product) => product.image_url).slice(0, 6);
   const heroImages = [banner?.image_url, ...firstProducts.map((product) => product.image_url)]
     .filter((url): url is string => Boolean(url)).slice(0, 3);
 
@@ -223,6 +226,8 @@ export function StorefrontHome({ initial }: { initial: HomeData | null }) {
                 <span className="an-skeleton store-hero-art-skeleton" />
               ) : bestSellers.length ? (
                 <HeroCarousel products={bestSellers} />
+              ) : heroProducts.length ? (
+                <HeroCarousel products={heroProducts} mode="featured" />
               ) : heroImages.length ? (
                 heroImages.map((url, index) => (
                   <OptimizedImage key={url + index} src={url} alt="" className={`store-hero-photo photo-${index + 1}`}
@@ -407,7 +412,7 @@ export function StorefrontHome({ initial }: { initial: HomeData | null }) {
             <div className="store-shops">
               {shops.map((shop) => (
                 <Link prefetch={false} href={`/loja?id=${encodeURIComponent(shop.id)}`} key={shop.id}>
-                  <span className="store-shop-symbol" aria-hidden="true">{initials(shop.store_name)}</span>
+                  <StoreAvatar className="store-shop-symbol" artisanId={shop.id} initials={initials(shop.store_name)} />
                   <small>{shop.specialty || "Artesanato autoral"}</small>
                   <h3>{shop.store_name}</h3>
                   {shop.story && <p>{shop.story}</p>}
