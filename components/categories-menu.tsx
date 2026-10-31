@@ -8,7 +8,7 @@ import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } f
 import { ArrowRight, ChevronDown, LoaderCircle, RefreshCw, SpriteIcon } from "@/components/icons";
 import { categoryLook } from "@/lib/category-looks";
 import { Dialog } from "@/components/ui/dialog";
-import { categoryHref, topCategories, useStorefrontCategories, type StorefrontCategory } from "@/lib/storefront-categories";
+import { categoryCountLabel, categoryHref, topCategories, useStorefrontCategories, type StorefrontCategory } from "@/lib/storefront-categories";
 
 const MOBILE_QUERY = "(max-width: 768px)";
 
@@ -36,7 +36,7 @@ function CategoryLinks({ categories, onNavigate, columns }: {
             className={category.product_count === 0 ? "is-empty" : undefined}>
             <SpriteIcon name={categoryLook(category).icon} size={16} className="categories-menu-icon" />
             <span>{category.name}</span>
-            <small aria-label={`${category.product_count} ${category.product_count === 1 ? "peça" : "peças"}`}>{category.product_count}</small>
+            <small aria-label={categoryCountLabel(category)} title={categoryCountLabel(category)}>{category.product_count}</small>
           </Link>
         </li>
       ))}

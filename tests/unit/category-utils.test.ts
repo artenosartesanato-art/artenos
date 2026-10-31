@@ -29,3 +29,12 @@ test("aceita só referências seguras", () => {
 test("destaques são as categorias com mais peças", () => {
   assert.deepEqual(topCategories(list, 2).map((category) => category.slug), ["bordado-e-renda", "croche-e-trico"]);
 });
+
+test("contador da categoria descreve peças e opções sob encomenda", async () => {
+  const { categoryCountLabel } = await import("../../lib/category-utils.ts");
+  const base = { id: "1", name: "Arte e Pintura", slug: "arte-e-pintura", image_url: null };
+  assert.equal(categoryCountLabel({ ...base, product_count: 1, piece_count: 0, service_count: 1 }), "1 item: 1 opção sob encomenda");
+  assert.equal(categoryCountLabel({ ...base, product_count: 3, piece_count: 2, service_count: 1 }), "3 itens: 2 peças e 1 opção sob encomenda");
+  // Função antiga (só peças, sem os campos novos).
+  assert.equal(categoryCountLabel({ ...base, product_count: 2 }), "2 peças");
+});

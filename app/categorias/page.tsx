@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { CategoriesBrowser, PAGE_SIZE, type CategoriesInitial } from "@/components/categories-browser";
+import { fetchStorefrontCategories } from "@/lib/category-counts";
 
 // Primeira página do catálogo (sem filtros) vem pronta do servidor e é
 // regenerada a cada minuto. Com filtros na URL, o navegador busca como antes.
@@ -12,7 +13,7 @@ async function loadInitial(): Promise<CategoriesInitial | null> {
   try {
     const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
     const [categories, products] = await Promise.all([
-      supabase.rpc("list_storefront_categories_with_products"),
+      fetchStorefrontCategories(supabase),
       supabase.rpc("browse_storefront_products", {
         p_query: null, p_category_id: null, p_min_price: null, p_max_price: null,
         p_ready_only: false, p_sort: "newest", p_limit: PAGE_SIZE, p_offset: 0,
