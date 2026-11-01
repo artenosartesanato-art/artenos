@@ -26,6 +26,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { AccountPrivacy } from "@/components/account-privacy";
 import { SellerUpgrade } from "@/components/seller-upgrade";
 import { HEIC_HELP, PickedFileError, describeFile, detectImage, prepareForEditing, readPickedFile } from "@/lib/image-file";
+import { AdjustFramingButton } from "@/components/adjust-framing-button";
 
 type Profile = {
   id: string;
@@ -620,10 +621,8 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
                     />
                   </label>
                   {profile.avatar_path && avatarUrl && (
-                    <button type="button" className="profile-photo-adjust" onClick={adjustAvatar}
-                      disabled={uploading || loadingOriginal} aria-busy={loadingOriginal}>
-                      {loadingOriginal ? "Abrindo…" : "Ajustar enquadramento"}
-                    </button>
+                    <AdjustFramingButton className="profile-photo-adjust" onClick={() => void adjustAvatar()}
+                      disabled={uploading} busy={loadingOriginal} />
                   )}
                   <small>JPG, PNG, WebP ou foto do iPhone · até 40 MB</small>
                   {avatarError && (

@@ -48,6 +48,7 @@ export const Download = icon("download");
 export const Edit3 = icon("pencil-square");
 export const ExternalLink = icon("box-arrow-up-right");
 export const ArrowUpRight = icon("arrow-up-right");
+export const Crop = icon("crop");
 export const Eye = icon("eye");
 export const EyeOff = icon("eye-slash");
 export const FileCheck2 = icon("file-earmark-check");

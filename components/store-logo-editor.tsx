@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Camera, LoaderCircle, Trash2 } from "@/components/icons";
 import { getSupabase } from "@/lib/supabase";
 import { STORE_ASSETS_BUCKET, rememberStoreLogo, storeAssetUrl } from "@/lib/store-logos";
-import { HEIC_HELP, IMAGE_EXT, IMAGE_MIME, PickedFileError, detectImage, readPickedFile } from "@/lib/image-file";
-
-const MAX_LOGO_BYTES = 2 * 1024 * 1024;
+import { CROP_FORMATS } from "@/components/avatar-cropper";
+import { AdjustFramingButton } from "@/components/adjust-framing-button";
+import { useImageCropFlow } from "@/components/image-crop-flow";
+import { originalPathFor } from "@/lib/avatar-crop";
 
 /** Foto de perfil da loja (Minha loja): aparece no lugar das iniciais em todo o site. */
 export function StoreLogoEditor({ artisanId, initials }: { artisanId: string; initials: string }) {
@@ -25,46 +26,34 @@ export function StoreLogoEditor({ artisanId, initials }: { artisanId: string; in
     return () => { active = false; };
   }, []);
 
-  async function upload(event: ChangeEvent<HTMLInputElement>) {
-    if (busy) {
-      event.currentTarget.value = "";
-      return;
-    }
-    // Lê a foto antes de limpar o campo (Android: a permissão da galeria é temporária).
-    const file = await readPickedFile(event.currentTarget).catch((error: unknown) => {
-      toast.error(error instanceof PickedFileError ? `O celular não liberou a leitura desta foto. Tente escolher de novo (${error.reason}).` : "Não foi possível abrir a foto.");
-      return null;
-    });
-    if (!file) return;
-    // Formato pelo conteúdo: alguns celulares mandam a foto sem o tipo.
-    const kind = await detectImage(file);
-    if (kind === "heic") return toast.error(HEIC_HELP);
-    if (!kind) return toast.error("Escolha uma imagem JPG, PNG ou WebP.");
-    if (file.size > MAX_LOGO_BYTES) return toast.error("A foto deve ter no máximo 2 MB.");
-    const contentType = IMAGE_MIME[kind];
-    const newPath = `${artisanId}/logo-${crypto.randomUUID()}.${IMAGE_EXT[kind]}`;
+  // Escolher → enquadrar em círculo → enviar a foto recortada (e o original, para reenquadrar).
+  const crop = useImageCropFlow(CROP_FORMATS.storeLogo, async ({ avatar, original }) => {
+    const extension = avatar.type === "image/webp" ? "webp" : "jpg";
+    const newPath = `${artisanId}/logo-${crypto.randomUUID()}.${extension}`;
     const oldPath = path;
     setBusy(true);
     try {
       const supabase = getSupabase();
-      const { error: uploadError } = await supabase.storage.from(STORE_ASSETS_BUCKET)
-        .upload(newPath, file, { contentType, cacheControl: "3600", upsert: false });
+      const bucket = supabase.storage.from(STORE_ASSETS_BUCKET);
+      const { error: uploadError } = await bucket.upload(newPath, avatar, { contentType: avatar.type, cacheControl: "3600", upsert: false });
       if (uploadError) throw uploadError;
       const { error: saveError } = await supabase.rpc("set_my_store_logo", { p_logo_path: newPath });
       if (saveError) {
-        await supabase.storage.from(STORE_ASSETS_BUCKET).remove([newPath]);
+        await bucket.remove([newPath]);
         throw saveError;
       }
+      // O original é opcional: sem ele, reenquadrar usa a própria foto.
+      await bucket.upload(originalPathFor(newPath), original, { contentType: original.type, cacheControl: "3600", upsert: true }).catch(() => null);
       setPath(newPath);
       rememberStoreLogo(artisanId, newPath);
-      if (oldPath) await supabase.storage.from(STORE_ASSETS_BUCKET).remove([oldPath]);
+      if (oldPath) await bucket.remove([oldPath, originalPathFor(oldPath)]);
       toast.success("Foto da loja atualizada.");
     } catch {
-      toast.error("Não foi possível enviar a foto. Use JPG, PNG ou WebP e tente novamente.");
+      toast.error("Não foi possível enviar a foto. Tente novamente.");
     } finally {
       setBusy(false);
     }
-  }
+  });
 
   async function remove() {
     if (!path || busy || !window.confirm("Remover a foto de perfil da loja?")) return;
@@ -76,7 +65,7 @@ export function StoreLogoEditor({ artisanId, initials }: { artisanId: string; in
       if (error) throw error;
       setPath(null);
       rememberStoreLogo(artisanId, null);
-      await supabase.storage.from(STORE_ASSETS_BUCKET).remove([oldPath]);
+      await supabase.storage.from(STORE_ASSETS_BUCKET).remove([oldPath, originalPathFor(oldPath)]);
       toast.success("Foto removida. A loja volta a mostrar as iniciais.");
     } catch {
       toast.error("Não foi possível remover a foto.");
@@ -101,18 +90,23 @@ export function StoreLogoEditor({ artisanId, initials }: { artisanId: string; in
         </p>
         <div className="store-cover-actions">
           <label>
-            {busy ? <LoaderCircle className="seller-spin" size={16} /> : <Camera size={16} />}
-            {busy ? "Enviando..." : url ? "Trocar foto" : "Adicionar foto"}
-            <input type="file" accept="image/jpeg,image/png,image/webp" onChange={upload} disabled={busy || !available} />
+            {busy || crop.preparing ? <LoaderCircle className="seller-spin" size={16} /> : <Camera size={16} />}
+            {busy ? "Enviando..." : crop.preparing ? "Abrindo..." : url ? "Trocar foto" : "Adicionar foto"}
+            <input type="file" accept="image/*" onChange={(event) => void crop.pick(event)} disabled={busy || crop.preparing || !available} />
           </label>
+          {url && path && (
+            <AdjustFramingButton disabled={busy || crop.preparing}
+              onClick={() => void crop.adjust([storeAssetUrl(originalPathFor(path))!, url])} />
+          )}
           {url && (
             <button type="button" onClick={remove} disabled={busy}>
               <Trash2 size={15} /> Remover
             </button>
           )}
         </div>
-        <small>JPG, PNG ou WebP · até 2 MB</small>
+        <small>JPG, PNG, WebP ou foto do celular · você enquadra antes de salvar</small>
       </div>
+      {crop.element}
     </section>
   );
 }
