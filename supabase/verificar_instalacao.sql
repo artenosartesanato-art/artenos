@@ -49,6 +49,13 @@ with checks(ordem, script, item, ok) as (
     to_regprocedure('public.admin_manage_artisan_application(uuid, text, text, text)') is not null),
   (22, 'tarifa_plataforma.sql', 'Tarifa da plataforma',
     to_regprocedure('public.get_admin_platform_fee()') is not null),
+  -- supabase/login_google.sql --------------------------------------------
+  (25, 'login_google.sql', 'Conclusão do cadastro com Google (validada no banco)',
+    to_regprocedure('public.complete_oauth_signup(text, text, text, text, text, text, text, text, text, text, text, text, text, boolean)') is not null
+    and to_regprocedure('public.my_signup_status()') is not null),
+  (26, 'login_google.sql', 'Validação de CPF, CNPJ e telefone no banco',
+    to_regprocedure('public.valid_cpf(text)') is not null and to_regprocedure('public.valid_cnpj(text)') is not null
+    and to_regprocedure('public.valid_brazilian_phone(text)') is not null),
   -- supabase/criar_admin.sql ---------------------------------------------
   (30, 'criar_admin.sql', 'Conta artenosartesanato@gmail.com existe e tem e-mail confirmado',
     exists (select 1 from auth.users where lower(email) = 'artenosartesanato@gmail.com'

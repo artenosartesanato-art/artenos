@@ -346,7 +346,17 @@ export async function loginWithSupabase(values: Record<string, unknown>) {
     .from("profiles")
     .select("account_type,approval_status,full_name")
     .eq("id", data.user.id)
-    .single();
+    .maybeSingle();
+  // Conta sem profile (criada pelo Google e não concluída): termina o cadastro.
+  if (!profileError && !profile) {
+    return {
+      firstName: text(data.user.user_metadata?.full_name).split(" ")[0] || "por aqui",
+      accountType: "client" as const,
+      approvalStatus: "active" as const,
+      redirectTo: "/concluir-cadastro",
+      needsCompletion: true,
+    };
+  }
   if (profileError || !profile) {
     await getSupabase().auth.signOut();
     throw new Error(

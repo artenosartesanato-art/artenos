@@ -2064,7 +2064,8 @@
   background: var(--artenos-musgo);
   color: var(--artenos-perola);
 }
-@media (max-width: 760px) {
+/* Até tablet a navegação não tem espaço para o atalho; ele fica no menu. */
+@media (max-width: 1100px) {
   .store-nav-sell {
     display: none;
   }

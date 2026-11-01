@@ -21,7 +21,7 @@ export const ADMIN_IDLE_LIMIT_MS = 15 * 60_000;
 export const IDLE_WARNING_MS = 60_000;
 
 /** Rotas que exigem conta: ao perder a sessão, a pessoa vai para o login. */
-export const PROTECTED_PREFIXES = ["/perfil", "/pedidos", "/mensagens", "/vendedor", "/administracao", "/pagamento", "/cadastro-em-analise", "/repasses"];
+export const PROTECTED_PREFIXES = ["/perfil", "/pedidos", "/mensagens", "/vendedor", "/administracao", "/pagamento", "/cadastro-em-analise", "/repasses", "/concluir-cadastro"];
 
 export function isProtectedPath(pathname: string) {
   return PROTECTED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));

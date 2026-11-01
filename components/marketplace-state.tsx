@@ -13,6 +13,8 @@ type MarketplaceState = {
   avatarUrl: string | null;
   sellerPanelAvailable: boolean;
   accountType: "client" | "artisan" | null;
+  /** Conectado, mas sem profile (cadastro com Google não concluído). */
+  profileMissing: boolean;
   cartCount: number;
   /** Soma dos produtos no carrinho, em centavos (sem frete). */
   cartSubtotalCents: number;
@@ -97,6 +99,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
   const avatarUrlRef = useRef<string | null>(null);
   const [sellerPanelAvailable, setSellerPanelAvailable] = useState(false);
   const [accountType, setAccountType] = useState<"client" | "artisan" | null>(null);
+  const [profileMissing, setProfileMissing] = useState(false);
   const [cartCount, setCartCount] = useState(0);
   const [cartSubtotalCents, setCartSubtotalCents] = useState(0);
   const [cartPulse, setCartPulse] = useState(0);
@@ -144,6 +147,15 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
       setCepError("");
     }
     if (error) return;
+    if (!data) {
+      // Sem profile: administração não tem (e não precisa); as demais contas
+      // precisam concluir o cadastro.
+      const { data: admin } = await supabase.rpc("is_active_admin");
+      if (request !== generation.current || identity !== identityRequest.current || account !== accountRef.current) return;
+      setProfileMissing(admin !== true);
+    } else {
+      setProfileMissing(false);
+    }
     setAccountType(data?.account_type === "artisan" ? "artisan" : data?.account_type === "client" ? "client" : null);
     setDisplayName(String(data?.full_name ?? "").trim().split(/\s+/)[0] || null);
     setSellerPanelAvailable(data?.account_type === "artisan" && data.approval_status === "active");
@@ -152,13 +164,15 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
       const result = await supabase.storage.from("artenos-profile-avatars").download(data.avatar_path);
       if (result.data) nextUrl = URL.createObjectURL(result.data);
     }
+    // Sem foto enviada: usa a foto da conta Google, se houver.
+    const googlePhoto = nextUrl ? null : (await supabase.auth.getSession()).data.session?.user.user_metadata?.avatar_url;
     if (request !== generation.current || identity !== identityRequest.current || account !== accountRef.current) {
       if (nextUrl) URL.revokeObjectURL(nextUrl);
       return;
     }
     if (avatarUrlRef.current) URL.revokeObjectURL(avatarUrlRef.current);
     avatarUrlRef.current = nextUrl;
-    setAvatarUrl(nextUrl);
+    setAvatarUrl(nextUrl ?? (typeof googlePhoto === "string" && /^https:\/\//.test(googlePhoto) ? googlePhoto : null));
   }, []);
 
   const refreshCart = useCallback(async () => {
@@ -260,6 +274,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
       setAvatarUrl(null);
       setSellerPanelAvailable(false);
       setAccountType(null);
+      setProfileMissing(false);
       setCartCount(0);
       setCartSubtotalCents(0);
       if (nextId) {
@@ -353,7 +368,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
   const guestFavoriteIds = useMemo(() => new Set(guestFavorites.map((item) => item.id)), [guestFavorites]);
   const guest = authReady && !userId;
   const value = useMemo(() => ({ authReady, userId, displayName, avatarUrl,
-    sellerPanelAvailable, accountType,
+    sellerPanelAvailable, accountType, profileMissing,
     cartCount: guest ? guestTotals.count : cartCount,
     cartSubtotalCents: guest ? guestTotals.subtotalCents : cartSubtotalCents,
     cartPulse, cep, cepStatus, cepError, setGuestCep,
@@ -361,7 +376,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
     favoritesReady: guest ? true : favoritesReady,
     pendingFavoriteIds, refreshCart, pulseCart, refreshFavorites, toggleFavorite,
     guestCart, guestFavorites, addGuestToCart, setGuestQuantity }),
-  [authReady, userId, displayName, avatarUrl, sellerPanelAvailable, accountType, cartCount, cartSubtotalCents, cartPulse,
+  [authReady, userId, displayName, avatarUrl, sellerPanelAvailable, accountType, profileMissing, cartCount, cartSubtotalCents, cartPulse,
     cep, cepStatus, cepError, setGuestCep, favoriteIds, favoritesReady, pendingFavoriteIds, refreshCart, pulseCart,
     refreshFavorites, toggleFavorite, guest, guestTotals, guestFavoriteIds, guestCart, guestFavorites, addGuestToCart,
     setGuestQuantity]);

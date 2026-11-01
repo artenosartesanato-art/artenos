@@ -7,7 +7,7 @@ import { getSupabase } from "@/lib/supabase";
 import { validateNewPassword, type FieldErrors } from "@/lib/registration-validation";
 import "../storefront.css";
 
-type Stage = "checking" | "ready" | "invalid" | "done";
+type Stage = "checking" | "ready" | "invalid" | "expired" | "done";
 
 const UPDATE_ERRORS: Record<string, string> = {
   weak_password: "A senha é muito fraca. Use pelo menos 8 caracteres e evite sequências fáceis.",
@@ -16,7 +16,20 @@ const UPDATE_ERRORS: Record<string, string> = {
   over_request_rate_limit: "Muitas tentativas em pouco tempo. Aguarde alguns minutos.",
 };
 
+/** Lido no primeiro render, antes de o cliente do Supabase limpar a URL. */
+function linkFromUrl() {
+  if (typeof window === "undefined") return { recovery: false, error: null as string | null };
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const query = new URLSearchParams(window.location.search);
+  const errorCode = hash.get("error_code") ?? query.get("error_code") ?? hash.get("error") ?? query.get("error");
+  return {
+    recovery: hash.get("type") === "recovery" || query.has("code") || query.get("type") === "recovery",
+    error: errorCode,
+  };
+}
+
 export default function ResetPasswordPage() {
+  const [link] = useState(linkFromUrl);
   const [stage, setStage] = useState<Stage>("checking");
   const [pending, setPending] = useState(false);
   const [visible, setVisible] = useState({ password: false, confirmPassword: false });
@@ -24,20 +37,25 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     let active = true;
+    // Link com erro (expirado, já usado): nem tenta.
+    if (link.error) {
+      queueMicrotask(() => { if (active) setStage(link.error === "otp_expired" ? "expired" : "invalid"); });
+      return () => { active = false; };
+    }
     const supabase = getSupabase();
     // O cliente lê o token do link (detectSessionInUrl) e avisa com
-    // PASSWORD_RECOVERY. Sem sessão em alguns segundos, o link é inválido.
-    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!active) return;
-      if (event === "PASSWORD_RECOVERY" || (session && /type=recovery|code=/.test(window.location.href))) setStage("ready");
+    // PASSWORD_RECOVERY. Só um link de recuperação libera a troca: estar
+    // conectado não basta (troca de senha sem link pede a senha atual).
+    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+      if (active && event === "PASSWORD_RECOVERY") setStage("ready");
     });
     const timer = window.setTimeout(async () => {
       const { data } = await supabase.auth.getSession();
       if (!active) return;
-      setStage((current) => (current === "checking" ? (data.session ? "ready" : "invalid") : current));
+      setStage((current) => (current === "checking" ? (data.session && link.recovery ? "ready" : "invalid") : current));
     }, 2500);
     return () => { active = false; window.clearTimeout(timer); listener.subscription.unsubscribe(); };
-  }, []);
+  }, [link]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -66,18 +84,20 @@ export default function ResetPasswordPage() {
       <main id="conteudo" tabIndex={-1} className="store-container reset-main">
         {stage === "checking" ? (
           <div className="an-state" role="status"><Loader2 size={28} className="spin" /><h1>Validando o link…</h1></div>
-        ) : stage === "invalid" ? (
-          <div className="an-state">
+        ) : stage === "invalid" || stage === "expired" ? (
+          <div className="an-state" role="alert">
             <AlertTriangle size={32} />
-            <h1>Este link não é mais válido</h1>
-            <p>Links de recuperação expiram e só podem ser usados uma vez. Peça um novo para continuar.</p>
-            <div className="an-state-actions"><Link className="an-btn" href="/acesso?aba=entrar">Pedir novo link</Link></div>
+            <h1>{stage === "expired" ? "Este link expirou" : "Este link não é válido"}</h1>
+            <p>{stage === "expired"
+              ? "Por segurança, o link de recuperação vale por tempo limitado. Peça um novo para criar sua senha."
+              : "O link já foi usado, está incompleto ou não é de recuperação de senha. Peça um novo para continuar."}</p>
+            <div className="an-state-actions"><Link className="an-btn" href="/acesso?aba=entrar&recuperar=1">Pedir novo link</Link></div>
           </div>
         ) : stage === "done" ? (
           <div className="an-state" role="status">
             <ShieldCheck size={32} />
             <h1>Senha atualizada</h1>
-            <p>Sua nova senha já está valendo neste e nos próximos acessos.</p>
+            <p>Sua nova senha já está valendo. Nos próximos acessos, entre com o e-mail e a nova senha.</p>
             <div className="an-state-actions"><Link className="an-btn" href="/">Continuar na Artenós</Link></div>
           </div>
         ) : (

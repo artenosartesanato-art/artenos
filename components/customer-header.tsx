@@ -136,6 +136,8 @@ export function CustomerHeader() {
   const router = useRouter();
   const pathname = usePathname();
   const { authReady, userId, displayName, avatarUrl, sellerPanelAvailable, cartCount, cartPulse } = useMarketplace();
+  // Foto que não carrega (ex.: link do Google expirado) volta para o ícone.
+  const [brokenAvatar, setBrokenAvatar] = useState<string | null>(null);
   const userSignedIn = authReady && !!userId;
   const [menuOpen, setMenuOpen] = useState(false);
   const [pulsing, setPulsing] = useState(false);
@@ -216,9 +218,10 @@ export function CustomerHeader() {
           </Link>
           <Link className="store-header-link store-account" href={accountHref}
             aria-label={userSignedIn ? `Minha conta, ${displayName || "perfil"}` : "Entrar ou criar conta"}>
-            {avatarUrl && userSignedIn
+            {avatarUrl && userSignedIn && brokenAvatar !== avatarUrl
               // eslint-disable-next-line @next/next/no-img-element
-              ? <img className="store-account-avatar" src={avatarUrl} alt="" width={30} height={30} />
+              ? <img className="store-account-avatar" src={avatarUrl} alt="" width={30} height={30}
+                referrerPolicy="no-referrer" onError={() => setBrokenAvatar(avatarUrl)} />
               : <UserRound size={21} />}
             <span className="store-account-name">{accountLabel}</span>
           </Link>

@@ -25,6 +25,8 @@ esta branch em build de produção na porta 3002; mesmo banco e mesmos dados.
 | `tests/e2e/mensagens-vendedor.cjs` | — | ok (10/10): `/mensagens` leva a artesã ao painel com a mesma conversa; links do cabeçalho e rodapé; compra de outra loja aberta no painel ("Sua compra"); com o Realtime bloqueado o aviso chega em até 40 s; sininho na cor do texto |
 | `tests/e2e/admin.cjs` | — | ok (31/31): cliente barrado; números da visão geral iguais ao banco; troca de período; menu leva às 10 telas; suspender/reativar loja (perfil sai e volta do ar, fica na Atividade); filtro de pedidos = banco; foto de categoria enviada ao Storage; dar/retirar acesso na Equipe; 390 px sem rolagem lateral e menu em gaveta |
 | `audit.cjs` com as 10 telas do admin (390 e 1440 px, movimento reduzido) | — | **0** ocorrências axe, **0** overflow em 94 combinações |
+| `tests/e2e/google.cjs` (Supabase local com provedor Google e Mailpit) | — | ok (50/50): botão com a logo nas 3 abas; clique abre o Google com o app configurado, `prompt=select_account` e volta para `/acesso/google` (a página real do Google não é carregada); volta sem cadastro → `/concluir-cadastro` com nome/e-mail do Google e perfil mantido; páginas internas bloqueadas; banco recusa carrinho e CPF inválido; sair e voltar retoma; cliente concluído → vitrine, artesã → análise; segundo acesso sem duplicar conta; recuperação com e-mail real no Mailpit, mesma resposta para e-mail inexistente, mostrar/ocultar, validações, nova senha e login com ela; link expirado/usado/sem link; 390/768/1440 px sem rolagem lateral |
+| `audit.cjs` em 390, 768 e 1440 px (movimento reduzido) | — | **0** ocorrências axe, **0** overflow em 141 combinações |
 | `tests/e2e/journey.cjs` (390 e 1440 px) | — | ok |
 | `tests/e2e/auth.cjs` | — | ok (inclui cadastro real no Supabase local) |
 | `tests/e2e/interacoes.cjs` | — | ok |
@@ -165,5 +167,11 @@ O que piorou e por quê:
   para o IP deste ambiente e o Openverse não respondeu; nenhuma imagem foi
   baixada contornando bloqueios. As categorias sem foto continuam com o
   ícone.
+- Login com Google: o caminho até o Google e a volta foram testados no
+  Supabase local com um ID de cliente de teste; a autenticação na tela real do
+  Google exige o ID e a chave do projeto no Google Cloud (ver
+  `LOGIN-GOOGLE.md`) e não foi feita. A volta do Google foi reproduzida com uma
+  conta "google" criada pela API administrativa local. A vinculação com uma
+  conta de senha já existente é feita pelo Supabase e não foi reproduzida.
 - Nenhuma compra real, e-mail real ou alteração em dados de produção foi
   feita.

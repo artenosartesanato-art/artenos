@@ -1,21 +1,20 @@
 "use client";
 
-import { Suspense, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { Suspense, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
   ArrowLeft,
-  Eye,
-  EyeOff,
   HandHeart,
   Loader2,
-  LockKeyhole,
   Mail,
   MapPin,
   ShieldCheck,
   Store,
 } from "@/components/icons";
+import { AuthDivider, GoogleButton } from "@/components/google-button";
+import { AddressFields, ErrorSummary, Field, PasswordInput, maskDocument, maskPhone, specialties } from "@/components/auth-fields";
 import { toast } from "sonner";
 import { favoriteIntentReturnPath } from "@/components/marketplace-state";
 import { markActivity, setRememberDevice } from "@/lib/session";
@@ -38,162 +37,7 @@ const TABS: { id: Tab; label: string; param: string }[] = [
   { id: "client", label: "Criar conta", param: "cliente" },
   { id: "artisan", label: "Vender", param: "artesa" },
 ];
-const specialties = [
-  "Crochê e tricô", "Cerâmica", "Costura criativa", "Joias e acessórios",
-  "Papelaria", "Decoração", "Cosméticos naturais", "Outro",
-];
-const FIELD_LABELS: Record<string, string> = {
-  fullName: "Nome completo", storeName: "Nome da loja", specialty: "Especialidade", document: "Documento",
-  phone: "Telefone", cep: "CEP", address: "Endereço", number: "Número", city: "Cidade", state: "Estado",
-  email: "E-mail", password: "Senha", confirmPassword: "Confirmação da senha", story: "História da loja",
-  terms: "Termos de Uso",
-};
-
-const digits = (value: string) => value.replace(/\D/g, "");
-const maskCep = (value: string) => digits(value).slice(0, 8).replace(/(\d{5})(\d)/, "$1-$2");
-const maskPhone = (value: string) =>
-  digits(value).slice(0, 11).replace(/(\d{2})(\d)/, "($1) $2").replace(/(\d{5})(\d)/, "$1-$2");
-function maskDocument(value: string) {
-  const number = digits(value).slice(0, 14);
-  return number.length <= 11
-    ? number.replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})$/, "$1-$2")
-    : number.replace(/(\d{2})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1/$2").replace(/(\d{4})(\d{1,2})$/, "$1-$2");
-}
-
-/** Campo com rótulo visível, dica e erro associados por aria-describedby. */
-function Field({ name, label, error, hint, wide = false, children }: {
-  name: string;
-  label: string;
-  error?: string;
-  hint?: string;
-  wide?: boolean;
-  children: (props: { id: string; "aria-invalid"?: true; "aria-describedby"?: string }) => ReactNode;
-}) {
-  const id = `campo-${name}`;
-  const describedBy = [hint ? `${id}-dica` : "", error ? `${id}-erro` : ""].filter(Boolean).join(" ") || undefined;
-  return (
-    <div className={`field${wide ? " field-wide" : ""}`}>
-      <label htmlFor={id}>{label}</label>
-      {children({ id, "aria-invalid": error ? true : undefined, "aria-describedby": describedBy })}
-      {/* Dica abaixo do campo: rótulos e campos ficam na mesma altura em cada linha. */}
-      {hint && <small className="field-hint" id={`${id}-dica`}>{hint}</small>}
-      {error && <small className="field-error" id={`${id}-erro`}><AlertTriangle size={13} /> {error}</small>}
-    </div>
-  );
-}
-
-function PasswordInput({ id, name, autoComplete, invalid, describedBy, placeholder }: {
-  id: string; name: string; autoComplete: string; invalid?: true; describedBy?: string; placeholder?: string;
-}) {
-  const [visible, setVisible] = useState(false);
-  return (
-    <span className="input-wrap">
-      <LockKeyhole size={18} className="input-icon" />
-      <input id={id} name={name} type={visible ? "text" : "password"} autoComplete={autoComplete}
-        className="with-icon with-action" aria-invalid={invalid} aria-describedby={describedBy} placeholder={placeholder} />
-      <button type="button" className="icon-button" onClick={() => setVisible(!visible)}
-        aria-label={visible ? "Ocultar senha" : "Mostrar senha"} aria-pressed={visible}>
-        {visible ? <EyeOff size={18} /> : <Eye size={18} />}
-      </button>
-    </span>
-  );
-}
-
-function ErrorSummary({ errors, title = "Revise os campos destacados" }: { errors: FieldErrors; title?: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const entries = Object.entries(errors).filter(([key]) => key !== "_form");
-  const key = entries.map(([field]) => field).join("|") + (errors._form ?? "");
-  useEffect(() => { ref.current?.focus(); }, [key]);
-  if (!entries.length && !errors._form) return null;
-  return (
-    <div className="an-alert an-alert--error form-error-summary" role="alert" tabIndex={-1} ref={ref}>
-      <AlertTriangle size={18} />
-      <div>
-        <strong>{errors._form ?? title}</strong>
-        {entries.length > 0 && (
-          <ul>
-            {entries.map(([field, message]) => (
-              <li key={field}><a href={`#campo-${field}`}>{FIELD_LABELS[field] ? `${FIELD_LABELS[field]}: ` : ""}{message}</a></li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function AddressFields({ errors, onClear }: { errors: FieldErrors; onClear: (name: string) => void }) {
-  const [loading, setLoading] = useState(false);
-  const [notice, setNotice] = useState("");
-  const lastCep = useRef("");
-
-  async function lookupCep(input: HTMLInputElement) {
-    const cep = digits(input.value);
-    if (cep.length !== 8 || cep === lastCep.current) return;
-    const form = input.form;
-    lastCep.current = cep;
-    setLoading(true);
-    setNotice("");
-    try {
-      const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-      if (!response.ok) throw new Error();
-      const data = await response.json();
-      if (data.erro) throw new Error();
-      if (form) {
-        const set = (name: string, value: string) => {
-          const field = form.elements.namedItem(name) as HTMLInputElement | null;
-          if (field && value) { field.value = value; onClear(name); }
-        };
-        set("address", data.logradouro || "");
-        set("city", data.localidade || "");
-        set("state", data.uf || "");
-        setNotice(`Endereço encontrado: ${data.localidade}/${data.uf}. Confira e informe o número.`);
-      }
-    } catch {
-      lastCep.current = "";
-      setNotice("Não encontramos esse CEP automaticamente. Preencha o endereço abaixo.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <>
-      <Field name="cep" label="CEP" error={errors.cep}>
-        {(props) => (
-          <span className="input-wrap">
-            <input {...props} name="cep" inputMode="numeric" autoComplete="postal-code" placeholder="00000-000"
-              onChange={(event) => {
-                event.currentTarget.value = maskCep(event.currentTarget.value);
-                onClear("cep");
-                if (digits(event.currentTarget.value).length === 8) void lookupCep(event.currentTarget);
-              }}
-              onBlur={(event) => void lookupCep(event.currentTarget)} />
-            {loading && <Loader2 size={17} className="spin input-status" />}
-          </span>
-        )}
-      </Field>
-      <Field name="state" label="Estado (UF)" error={errors.state}>
-        {(props) => (
-          <input {...props} name="state" autoComplete="address-level1" maxLength={2} placeholder="SP"
-            onInput={(event) => { event.currentTarget.value = event.currentTarget.value.toUpperCase(); onClear("state"); }} />
-        )}
-      </Field>
-      <p className="field field-cep-notice" aria-live="polite">{notice}</p>
-      <Field name="address" label="Endereço" error={errors.address} wide>
-        {(props) => <input {...props} name="address" autoComplete="address-line1" placeholder="Rua, avenida ou estrada" onInput={() => onClear("address")} />}
-      </Field>
-      <Field name="number" label="Número" error={errors.number}>
-        {(props) => <input {...props} name="number" autoComplete="address-line2" placeholder="123 ou s/n" onInput={() => onClear("number")} />}
-      </Field>
-      <Field name="city" label="Cidade" error={errors.city}>
-        {(props) => <input {...props} name="city" autoComplete="address-level2" placeholder="Sua cidade" onInput={() => onClear("city")} />}
-      </Field>
-    </>
-  );
-}
-
-function RegisterForm({ type, onGoToLogin }: { type: AccountType; onGoToLogin: () => void }) {
+function RegisterForm({ type, returnTo, onGoToLogin }: { type: AccountType; returnTo: string | null; onGoToLogin: () => void }) {
   const [pending, setPending] = useState<"standard" | "assisted" | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [done, setDone] = useState<string | null>(null);
@@ -255,6 +99,13 @@ function RegisterForm({ type, onGoToLogin }: { type: AccountType; onGoToLogin: (
             : "Conte sobre o seu trabalho. A equipe Artenós analisa cada solicitação antes de a loja ir ao ar."}
         </p>
       </div>
+      <GoogleButton perfil={type} voltar={returnTo} onError={(message) => setErrors({ _form: message })} />
+      <p className="google-note">
+        {type === "artisan"
+          ? "Com o Google você não precisa criar senha; depois completamos os dados da loja."
+          : "Com o Google você não precisa criar senha; depois pedimos só os dados que faltam."}
+      </p>
+      <AuthDivider label="ou cadastre com e-mail" />
       <p className="form-required-note">Todos os campos são obrigatórios.</p>
       <ErrorSummary errors={errors} />
       <div className="fields-grid">
@@ -357,6 +208,7 @@ function LoginForm({ returnTo, onRecover, onRegister }: { returnTo: string | nul
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
+  const rememberRef = useRef<HTMLInputElement>(null);
   const clear = (name: string) => setErrors((current) => {
     if (!current[name] && !current._form) return current;
     const next = { ...current };
@@ -388,6 +240,11 @@ function LoginForm({ returnTo, onRecover, onRegister }: { returnTo: string | nul
       const result = await loginWithSupabase(values);
       saveThrottle(registerSuccess(loadThrottle(), email));
       markActivity(true);
+      if ("needsCompletion" in result && result.needsCompletion) {
+        toast.info("Falta pouco: complete seu cadastro para continuar.");
+        router.replace(returnTo ? `/concluir-cadastro?voltar=${encodeURIComponent(returnTo)}` : "/concluir-cadastro");
+        return;
+      }
       toast.success(result.approvalStatus === "active"
         ? `Boas-vindas, ${result.firstName}!`
         : `Olá, ${result.firstName}. Acompanhe aqui a análise do seu cadastro.`);
@@ -409,9 +266,12 @@ function LoginForm({ returnTo, onRecover, onRegister }: { returnTo: string | nul
       <div className="form-heading">
         <p className="eyebrow">Que bom ter você de volta</p>
         <h2>Entre na sua conta</h2>
-        <p>{returnTo ? "Depois de entrar, você volta para onde estava." : "Use o e-mail e a senha do seu cadastro."}</p>
+        <p>{returnTo ? "Depois de entrar, você volta para onde estava." : "Entre com o Google ou com o e-mail e a senha do seu cadastro."}</p>
       </div>
       <ErrorSummary errors={errors} title="Não foi possível entrar" />
+      <GoogleButton perfil={null} voltar={returnTo} onError={(message) => setErrors({ _form: message })}
+        getRemember={() => Boolean(rememberRef.current?.checked)} />
+      <AuthDivider label="ou entre com e-mail" />
       <Field name="email" label="E-mail" error={errors.email}>
         {(props) => (
           <span className="input-wrap">
@@ -426,11 +286,11 @@ function LoginForm({ returnTo, onRecover, onRegister }: { returnTo: string | nul
       </Field>
       <div className="login-row">
         <label className="remember-device">
-          <input type="checkbox" name="remember" className="check" defaultChecked={rememberDeviceDefault()}
+          <input type="checkbox" name="remember" className="check" defaultChecked={rememberDeviceDefault()} ref={rememberRef}
             aria-describedby="lembrar-ajuda" />
           <span>Manter conectado neste aparelho</span>
         </label>
-        <button type="button" className="link-button" onClick={onRecover}>Esqueci minha senha</button>
+        <button type="button" className="link-button" onClick={onRecover}>Esqueceu sua senha?</button>
       </div>
       <p className="remember-help" id="lembrar-ajuda">
         Desmarcado, você sai ao fechar o navegador ou após 30 min sem uso. Em computador compartilhado, deixe desmarcado.
@@ -483,7 +343,8 @@ function RecoveryForm({ onBack }: { onBack: () => void }) {
       <div className="success-state" role="status">
         <span className="success-icon"><Mail size={26} /></span>
         <h2>Confira seu e-mail</h2>
-        <p>Se houver uma conta Artenós com <strong>{sentTo}</strong>, você vai receber um link para criar uma nova senha. Ele vale por tempo limitado; confira também o spam.</p>
+        <p>Se houver uma conta Artenós com <strong>{sentTo}</strong>, você vai receber um link para criar uma nova senha. Ele vale por 1 hora e só pode ser usado uma vez; confira também o spam.</p>
+        <p className="google-note">Se a conta foi criada com o Google, é só entrar pelo botão do Google.</p>
         <div className="form-actions"><button type="button" className="secondary-button" onClick={onBack}>Voltar para o login</button></div>
       </div>
     );
@@ -493,9 +354,12 @@ function RecoveryForm({ onBack }: { onBack: () => void }) {
       <button type="button" className="link-button recovery-back" onClick={onBack}><ArrowLeft size={14} /> Voltar para o login</button>
       <div className="form-heading">
         <p className="eyebrow">Recuperar acesso</p>
-        <h2>Esqueceu a senha?</h2>
-        <p>Informe o e-mail da sua conta e enviaremos um link para criar uma nova senha.</p>
+        <h2>Esqueceu sua senha?</h2>
+        <p>Informe o e-mail da sua conta e enviaremos um link seguro para criar uma nova senha.</p>
       </div>
+      <p className="google-note google-note--box">
+        Criou a conta com o Google? Você não precisa de senha: volte e use <strong>Continuar com o Google</strong>.
+      </p>
       <ErrorSummary errors={errors} title="Revise o e-mail" />
       <Field name="email" label="E-mail" error={errors.email}>
         {(props) => (
@@ -525,7 +389,8 @@ function AccessContent() {
   const tabsId = useId();
   const initial = TABS.find((tab) => tab.param === params.get("aba"))?.id ?? "login";
   const [tab, setTab] = useState<Tab>(initial);
-  const [recovering, setRecovering] = useState(false);
+  // "Pedir novo link" da página de redefinição abre direto a recuperação.
+  const [recovering, setRecovering] = useState(params.get("recuperar") === "1");
   const tabRefs = useRef<Record<Tab, HTMLButtonElement | null>>({ login: null, client: null, artisan: null });
   // `retorno` é aceito por compatibilidade com links antigos de mensagens.
   const returnTo = safeReturnPath(params.get("voltar") ?? params.get("retorno"));
@@ -589,7 +454,7 @@ function AccessContent() {
                 ? <RecoveryForm onBack={() => setRecovering(false)} />
                 : <LoginForm returnTo={returnTo} onRecover={() => setRecovering(true)} onRegister={() => choose("client", true)} />
             ) : (
-              <RegisterForm key={tab} type={tab} onGoToLogin={() => choose("login", true)} />
+              <RegisterForm key={tab} type={tab} returnTo={returnTo} onGoToLogin={() => choose("login", true)} />
             )}
           </div>
         </div>

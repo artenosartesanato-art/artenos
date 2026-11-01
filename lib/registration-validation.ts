@@ -32,9 +32,14 @@ export function validateNewPassword(values: Record<string, unknown>): FieldError
   return errors;
 }
 
-export function validateRegistration(values: Record<string, unknown>, type: "client" | "artisan"): FieldErrors {
-  const errors: FieldErrors = {};
-  if (text(values.fullName).length < 3) errors.fullName = "Informe seu nome completo.";
+/**
+ * Dados do perfil exigidos em qualquer cadastro (tradicional ou com Google).
+ * O banco valida as mesmas regras em complete_oauth_signup.
+ */
+function validateProfileFields(values: Record<string, unknown>, type: "client" | "artisan", errors: FieldErrors) {
+  const name = text(values.fullName).replace(/\s+/g, " ");
+  if (name.length < 3) errors.fullName = "Informe seu nome completo.";
+  else if (!/\S+\s+\S+/.test(name)) errors.fullName = "Informe nome e sobrenome.";
   if (type === "artisan") {
     if (!text(values.storeName)) errors.storeName = "Informe o nome da sua loja.";
     if (!text(values.specialty)) errors.specialty = "Escolha a especialidade principal.";
@@ -51,6 +56,16 @@ export function validateRegistration(values: Record<string, unknown>, type: "cli
   if (!text(values.number)) errors.number = "Informe o número (ou s/n).";
   if (!text(values.city)) errors.city = "Informe a cidade.";
   if (!/^[A-Za-z]{2}$/.test(text(values.state))) errors.state = "Use a sigla do estado, como SP.";
+  if (type === "artisan") {
+    const story = text(values.story);
+    if (story.length < 40) errors.story = `Conte um pouco mais: faltam ${40 - story.length} caracteres (mínimo de 40).`;
+  }
+  if (values.terms !== "accepted") errors.terms = "Para criar a conta, aceite os Termos de Uso e a Política de Privacidade.";
+}
+
+export function validateRegistration(values: Record<string, unknown>, type: "client" | "artisan"): FieldErrors {
+  const errors: FieldErrors = {};
+  validateProfileFields(values, type, errors);
   const email = text(values.email).toLowerCase();
   if (!email) errors.email = "Informe seu e-mail.";
   else if (!validEmail(email)) errors.email = "Informe um e-mail completo, como nome@gmail.com.";
@@ -58,11 +73,13 @@ export function validateRegistration(values: Record<string, unknown>, type: "cli
   if (password.length < 8) errors.password = "Use pelo menos 8 caracteres.";
   if (!text(values.confirmPassword)) errors.confirmPassword = "Repita a senha.";
   else if (password !== text(values.confirmPassword)) errors.confirmPassword = "As senhas não são iguais.";
-  if (type === "artisan") {
-    const story = text(values.story);
-    if (story.length < 40) errors.story = `Conte um pouco mais: faltam ${40 - story.length} caracteres (mínimo de 40).`;
-  }
-  if (values.terms !== "accepted") errors.terms = "Para criar a conta, aceite os Termos de Uso e a Política de Privacidade.";
+  return errors;
+}
+
+/** Conclusão do cadastro com Google: sem e-mail (vem do Google) e sem senha. */
+export function validateCompletion(values: Record<string, unknown>, type: "client" | "artisan"): FieldErrors {
+  const errors: FieldErrors = {};
+  validateProfileFields(values, type, errors);
   return errors;
 }
 
@@ -73,5 +90,9 @@ export function fieldForServerMessage(message: string): string | null {
   if (/telefone/i.test(message)) return "phone";
   if (/cep/i.test(message)) return "cep";
   if (/senha/i.test(message)) return "password";
+  if (/nome completo|sobrenome/i.test(message)) return "fullName";
+  if (/endereço/i.test(message)) return "address";
+  if (/loja|especialidade|história/i.test(message)) return "storeName";
+  if (/termos/i.test(message)) return "terms";
   return null;
 }

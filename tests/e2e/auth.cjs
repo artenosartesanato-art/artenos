@@ -48,7 +48,7 @@ const { chromium } = require('playwright');
   // 9. recuperação (deslogado)
   const c2 = await b.newContext({ viewport: { width: 1440, height: 900 } }); const q = await c2.newPage();
   await q.goto(base + '/acesso', { waitUntil: 'networkidle' }); await q.screenshot({ path: (process.env.OUT_DIR || '.') + '/a_4_login_desktop.png' });
-  await q.getByRole('button', { name: 'Esqueci minha senha' }).click();
+  await q.getByRole('button', { name: 'Esqueceu sua senha?' }).click();
   await q.fill('#campo-email', 'cliente@sandbox.artenos.test'); await q.locator('.recovery-form .primary-button').click(); await q.waitForTimeout(3000);
   log.push('recovery: ' + (await q.locator('.success-state, .form-error-summary').first().innerText()).slice(0, 160));
   console.log(log.join('\n')); await b.close();

@@ -6,6 +6,7 @@ import { CustomerHeader } from "@/components/customer-header";
 import { HeaderSearchProvider } from "@/components/header-search";
 import { NotificationsProvider } from "@/components/notifications";
 import { SessionGuard } from "@/components/session-guard";
+import { ProfileCompletionGuard } from "@/components/profile-completion-guard";
 
 /** Cabeçalho e rodapé únicos para todas as páginas (vitrine, conta, painel da loja e administração). */
 export function SiteChrome({ children }: { children: React.ReactNode }) {
@@ -18,6 +19,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           <CustomerFooter />
         </div>
         <SessionGuard />
+        <ProfileCompletionGuard />
       </NotificationsProvider>
     </HeaderSearchProvider>
   );

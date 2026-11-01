@@ -1511,3 +1511,191 @@ img {
 .an-state--page h1 {
   font-size: var(--an-fs-3xl);
 }
+
+/* Continuar com o Google: mesmo tamanho e cantos dos botões do formulário,
+   fundo claro e a logo oficial (guia de marca do Google). */
+.google-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 50px;
+  padding: 0 22px;
+  border: 1px solid var(--an-line-strong);
+  border-radius: 12px;
+  background: #fff;
+  color: #1f1f1f;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color var(--an-dur-fast) ease,
+    border-color var(--an-dur-fast) ease,
+    transform var(--an-dur-instant) var(--an-ease-out);
+}
+.google-button:hover:not(:disabled) {
+  border-color: var(--artenos-marrom);
+  background: var(--artenos-perola);
+}
+.google-button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.google-button:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+.google-button svg {
+  flex: none;
+}
+.google-note {
+  margin: 8px 0 0;
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-xs);
+  line-height: 1.5;
+  text-align: center;
+}
+.google-note--box {
+  margin: 0 0 18px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--an-surface-warm);
+  color: var(--artenos-marrom);
+  font-size: var(--an-fs-sm);
+  text-align: left;
+}
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--an-line);
+}
+.register-form > .google-button {
+  max-width: 420px;
+  margin: 0 auto;
+  display: flex;
+}
+.register-form > .google-note {
+  max-width: 420px;
+  margin-inline: auto;
+}
+
+/* Concluir cadastro (conta criada com o Google) */
+.complete-main {
+  padding-block: 36px 80px;
+}
+.complete-card {
+  padding: 28px clamp(18px, 4vw, 40px) 32px;
+  border-radius: var(--an-r-xl);
+  background: var(--an-surface);
+  box-shadow: var(--an-shadow-md);
+}
+.complete-card h1 {
+  margin: 0;
+  font: 500 var(--an-fs-3xl) / var(--an-lh-tight) var(--font-display);
+}
+.complete-account {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 22px;
+  padding: 12px 14px;
+  border: 1px solid var(--an-line);
+  border-radius: 12px;
+  background: var(--an-surface-soft);
+}
+.complete-account img,
+.complete-account > span {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #fff;
+  object-fit: cover;
+}
+.complete-account div {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+.complete-account small {
+  overflow-wrap: anywhere;
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-xs);
+}
+.complete-account > svg {
+  flex: none;
+  color: var(--an-sucesso);
+}
+.complete-type {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 0 0 22px;
+  padding: 0;
+  border: 0;
+}
+.complete-type legend {
+  margin-bottom: 10px;
+  font-weight: 750;
+}
+.complete-type label {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--an-line-strong);
+  border-radius: 12px;
+  background: var(--an-surface);
+  cursor: pointer;
+}
+.complete-type label.is-selected {
+  border-color: var(--artenos-marrom);
+  box-shadow: inset 0 0 0 1px var(--artenos-marrom);
+  background: var(--an-surface-warm);
+}
+.complete-type label:focus-within {
+  outline: 3px solid var(--artenos-musgo);
+  outline-offset: 2px;
+}
+.complete-type input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.complete-type label > svg {
+  flex: none;
+  margin-top: 2px;
+}
+.complete-type span {
+  display: grid;
+  gap: 2px;
+}
+.complete-type small {
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-xs);
+  line-height: 1.4;
+}
+.complete-card .form-switch .link-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+@media (max-width: 560px) {
+  .complete-type {
+    grid-template-columns: 1fr;
+  }
+}
