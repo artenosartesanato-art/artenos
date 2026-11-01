@@ -90,7 +90,8 @@ export async function prepareForEditing(file: File, reasons: string[] = []): Pro
       return image ? await drawToBlob(image, image.naturalWidth, image.naturalHeight) : null;
     } finally { URL.revokeObjectURL(url); }
   }]);
-  for (const [source, attempt] of attempts) {
+  // Duas rodadas: no Android a primeira decodificação às vezes falha logo após a escolha.
+  for (const [source, attempt] of [...attempts, ...attempts.map(([name, run]) => [`${name}-2`, run] as const)]) {
     try {
       const result = await attempt();
       if (result && result.width > 1 && result.height > 1) return { ...result, source };
@@ -124,7 +125,14 @@ export async function readPickedFile(input: HTMLInputElement): Promise<File | nu
   const picked = input.files?.[0];
   if (!picked) return null;
   try {
-    const data = await picked.arrayBuffer();
+    // Alguns Android falham na primeira leitura logo após a escolha: tenta de novo.
+    let data: ArrayBuffer;
+    try {
+      data = await picked.arrayBuffer();
+    } catch {
+      await new Promise((resolve) => window.setTimeout(resolve, 400));
+      data = await picked.arrayBuffer();
+    }
     return new File([data], picked.name || "foto", { type: picked.type, lastModified: picked.lastModified });
   } catch (error) {
     const reason = error instanceof Error ? error.name || error.message : "erro de leitura";

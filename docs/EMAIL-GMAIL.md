@@ -125,3 +125,11 @@ Authentication → Emails → **Confirm signup** → cole o arquivo inteiro em
 **Body** e use o assunto "Confirme seu e-mail na Artenós". As variáveis
 `{{ .ConfirmationURL }}`, `{{ .Email }}` e `{{ .SiteURL }}` são preenchidas
 pelo Supabase.
+
+O de redefinição de senha está em `supabase/email-templates/redefinir-senha.html`:
+Supabase → Authentication → Emails → **Reset password**, assunto
+"Redefinir sua senha na Artenós".
+
+O aviso de senha alterada está em `supabase/email-templates/senha-alterada.html`:
+Supabase → Authentication → Emails → notificações de segurança → **Password
+changed** (ative a notificação), assunto "Sua senha da Artenós foi alterada".
