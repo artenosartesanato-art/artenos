@@ -298,7 +298,7 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
                   <div><Ruler size={16} /><span><dt>Embalagem (C × L × A)</dt><dd>{decimal.format(Number(shipping.length_cm))} × {decimal.format(Number(shipping.width_cm))} × {decimal.format(Number(shipping.height_cm))} cm</dd></span></div>
                 )}
                 {weight && <div><Scale size={16} /><span><dt>Peso com embalagem</dt><dd>{weight}</dd></span></div>}
-                {shipping.package_count != null && <div><Boxes size={16} /><span><dt>Volumes</dt><dd>{shipping.package_count}</dd></span></div>}
+                {shipping.package_count != null && <div><Boxes size={16} /><span><dt>Caixas no envio</dt><dd>{shipping.package_count}</dd></span></div>}
                 {originCep && <div><MapPin size={16} /><span><dt>Enviado de</dt><dd>CEP {originCep}</dd></span></div>}
               </dl>
               {!shipping.shipping_data_complete && (
