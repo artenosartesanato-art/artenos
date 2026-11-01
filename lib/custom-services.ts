@@ -48,3 +48,45 @@ export function filterServices(services: CustomService[], filters: ServiceFilter
     return true;
   });
 }
+
+export type CatalogEntry<P> = { kind: "product"; item: P } | { kind: "service"; item: CustomService };
+
+/**
+ * Junta peças e opções sob encomenda na ordem escolhida no filtro.
+ * Preço: as duas entram na mesma ordem (a opção usa o "a partir de"; sem preço,
+ * vai para o fim). Enquanto houver mais peças para carregar, só entram as
+ * opções que já cabem antes da última peça carregada (as outras aparecem
+ * quando as próximas peças chegarem), para a ordem nunca ficar errada.
+ * Mais recentes: opções primeiro (a lista delas já vem da mais nova).
+ * Mais bem avaliados: opções depois das peças (ainda não têm avaliação).
+ */
+export function mergeCatalog<P extends { price: number | string }>(
+  products: P[], services: CustomService[], sort: string, hasMore: boolean,
+): CatalogEntry<P>[] {
+  const productEntries = products.map((item) => ({ kind: "product" as const, item }));
+  const serviceEntries = services.map((item) => ({ kind: "service" as const, item }));
+  if (sort !== "price_asc" && sort !== "price_desc") {
+    return sort === "rating" ? [...productEntries, ...serviceEntries] : [...serviceEntries, ...productEntries];
+  }
+  const ascending = sort === "price_asc";
+  const priceOf = (entry: CatalogEntry<P>) => {
+    const raw = entry.kind === "product" ? entry.item.price : entry.item.starting_price;
+    const value = raw === null || raw === undefined || raw === "" ? NaN : Number(raw);
+    return Number.isFinite(value) ? value : null;
+  };
+  const lastPrice = productEntries.length ? priceOf(productEntries[productEntries.length - 1]) : null;
+  const eligible = serviceEntries.filter((entry) => {
+    if (!hasMore) return true;
+    const price = priceOf(entry);
+    if (price === null || lastPrice === null) return false;
+    return ascending ? price <= lastPrice : price >= lastPrice;
+  });
+  return [...productEntries, ...eligible].sort((a, b) => {
+    const pa = priceOf(a);
+    const pb = priceOf(b);
+    if (pa === null && pb === null) return 0;
+    if (pa === null) return 1;
+    if (pb === null) return -1;
+    return ascending ? pa - pb : pb - pa;
+  });
+}

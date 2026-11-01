@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useId, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 import { ArrowLeft, ArrowRight, Clock3, MessageCircle, Palette, ShieldCheck, Store } from "@/components/icons";
 import { Dialog } from "@/components/ui/dialog";
@@ -79,6 +79,15 @@ function ServiceDetailsDialog({ service, onClose, startWithForm }: { service: Cu
   const [date, setDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const ownStore = Boolean(userId && userId === service.artisan_id);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Ao abrir o pedido, leva a tela até o formulário (no celular ele fica abaixo da foto).
+  useEffect(() => {
+    if (step !== "form") return;
+    const form = formRef.current;
+    form?.scrollIntoView({ block: "start" });
+    form?.querySelector<HTMLTextAreaElement>("textarea")?.focus({ preventScroll: true });
+  }, [step]);
 
   function startRequest() {
     if (!userId) {
@@ -113,7 +122,8 @@ function ServiceDetailsDialog({ service, onClose, startWithForm }: { service: Cu
 
   const storeHref = `/loja?id=${encodeURIComponent(service.artisan_id)}`;
   return (
-    <Dialog open onClose={onClose} labelledBy={titleId} className="an-dialog--wide product-details-modal service-details-modal"
+    <Dialog open onClose={onClose} labelledBy={titleId}
+      className={`an-dialog--wide product-details-modal service-details-modal${step === "form" ? " is-requesting" : ""}`}
       closeLabel="Fechar detalhes da opção">
       <div className="pd-col pd-col--aside">
         <div className="pd-block pd-gallery">
@@ -180,35 +190,45 @@ function ServiceDetailsDialog({ service, onClose, startWithForm }: { service: Cu
             </section>
           </>
         ) : (
-          <form className="pd-block custom-modal service-request-form" onSubmit={submit}>
+          <form ref={formRef} className="pd-block custom-modal service-request-form" onSubmit={submit}>
             <button type="button" className="service-request-back" onClick={() => setStep("details")}>
               <ArrowLeft size={15} /> Voltar aos detalhes
             </button>
-            <label>
-              Título da encomenda
-              <input data-autofocus value={title} onChange={(event) => setTitle(event.target.value)} minLength={3} maxLength={120} required />
-            </label>
+            <div className="service-request-intro">
+              <strong>Pedir orçamento para {service.store_name || "a loja"}</strong>
+              <ol>
+                <li>Você conta como imagina a peça</li>
+                <li>A loja responde com preço e prazo</li>
+                <li>Se aceitar, vocês combinam os detalhes pelo chat</li>
+              </ol>
+            </div>
             <label>
               Conte como você imagina a peça
               <small>Cores, tamanho, materiais e para que a peça será usada (mínimo de 20 caracteres).</small>
               <textarea value={description} onChange={(event) => setDescription(event.target.value)} minLength={20} maxLength={3000} required
                 placeholder="Ex.: bolsa média em tons de verde, com alça de madeira, para usar no dia a dia." />
+              <small className="service-request-count">{description.trim().length} de 20 caracteres mínimos</small>
             </label>
             <div className="custom-form-row">
               <label>
                 Quantidade
-                <input type="number" min="1" max="999" value={quantity} onChange={(event) => setQuantity(event.target.value)} required />
+                <input type="number" min="1" max="999" inputMode="numeric" value={quantity} onChange={(event) => setQuantity(event.target.value)} required />
               </label>
               <label>
                 Quanto quer investir
-                <input type="number" min="0.01" step="0.01" value={budget} onChange={(event) => setBudget(event.target.value)} placeholder="Opcional" />
+                <input type="number" min="0.01" step="0.01" inputMode="decimal" value={budget} onChange={(event) => setBudget(event.target.value)} placeholder="Opcional" />
               </label>
             </div>
             <label>
-              Data desejada
+              Para quando precisa (opcional)
               <input type="date" min={new Date().toISOString().slice(0, 10)} value={date} onChange={(event) => setDate(event.target.value)} />
             </label>
-            <p className="custom-modal-note">Nada é cobrado nesta etapa: a loja responde com uma proposta de valor e prazo.</p>
+            <label>
+              Nome do pedido
+              <small>Um nome curto para você e a loja identificarem o pedido.</small>
+              <input value={title} onChange={(event) => setTitle(event.target.value)} minLength={3} maxLength={120} required />
+            </label>
+            <p className="custom-modal-note">Nada é cobrado agora. Você acompanha a resposta em Pedidos › Orçamentos e recebe um aviso quando a loja responder.</p>
             <button className="an-btn an-btn--lg an-btn--block product-details-buy-now" type="submit" disabled={submitting} aria-busy={submitting}>
               {submitting ? "Enviando…" : "Enviar pedido de orçamento"}
             </button>

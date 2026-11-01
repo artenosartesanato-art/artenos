@@ -31,6 +31,7 @@ import { findBlockedTerm, moderationError } from "@/lib/moderation";
 import { specialtyValueError } from "@/lib/store-specialties";
 import { SpecialtyField } from "@/components/specialty-field";
 import { StoreLogoEditor } from "@/components/store-logo-editor";
+import { StoryChecklist } from "@/components/story-checklist";
 import { HEIC_HELP, IMAGE_EXT, IMAGE_MIME, PickedFileError, detectImage, readPickedFile } from "@/lib/image-file";
 import {
   useSellerProfile,
@@ -538,6 +539,7 @@ export default function StorePanelPage() {
                   rows={7}
                   required
                 />
+                <StoryChecklist value={form.story} />
                 <small>{form.story.length}/1200 caracteres</small>
               </label>
             </div>

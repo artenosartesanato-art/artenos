@@ -1967,3 +1967,44 @@ img {
   align-self: stretch;
   min-height: 38px;
 }
+
+/* Proteção geral: textos escritos pelas pessoas (histórias, descrições,
+   mensagens) quebram a linha em palavras ou links muito longos em vez de
+   sair dos cards. */
+p, li, dd, dt, h1, h2, h3, h4, blockquote, figcaption, label, td, th {
+  overflow-wrap: break-word;
+}
+
+/* Requisitos da história da loja (marcados enquanto a pessoa digita). */
+.story-checklist {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--an-text-muted);
+}
+.story-checklist li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.story-checklist li > span[aria-hidden] {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--an-line-strong);
+  border-radius: 50%;
+}
+.story-checklist li.is-done {
+  color: var(--artenos-musgo);
+}
+.story-checklist li.is-done > span[aria-hidden] {
+  border-color: var(--artenos-musgo);
+  background: var(--artenos-musgo);
+  color: #fff;
+}

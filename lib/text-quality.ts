@@ -28,3 +28,15 @@ export function meaningfulTextError(value: string, label = "O texto", minLength 
     return `${label} não parece um texto em português. Escreva frases completas.`;
   return null;
 }
+
+/** Itens da regra, para mostrar enquanto a pessoa digita (✓ / pendente). */
+export function storyChecklist(value: string, minLength = STORY_MIN_LENGTH) {
+  const text = value.trim();
+  const words = strip(text).split(/\s+/).filter((word) => /\p{L}/u.test(word));
+  const distinct = new Set(words.map((word) => word.replace(/[^\p{L}]/gu, "")).filter((word) => word.length >= 3));
+  return [
+    { label: `Pelo menos ${minLength} caracteres (${Math.min(text.length, minLength)}/${minLength})`, done: text.length >= minLength },
+    { label: `Pelo menos ${MIN_WORDS} palavras (${Math.min(words.length, MIN_WORDS)}/${MIN_WORDS})`, done: words.length >= MIN_WORDS },
+    { label: `Pelo menos ${MIN_DISTINCT_WORDS} palavras diferentes (${Math.min(distinct.size, MIN_DISTINCT_WORDS)}/${MIN_DISTINCT_WORDS})`, done: distinct.size >= MIN_DISTINCT_WORDS },
+  ];
+}

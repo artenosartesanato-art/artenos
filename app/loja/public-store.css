@@ -104,7 +104,7 @@
 }
 .public-shop-about {
   display: grid;
-  grid-template-columns: minmax(200px, 1fr) 2fr;
+  grid-template-columns: minmax(200px, 1fr) minmax(0, 2fr);
   gap: 32px;
   margin-top: 44px;
   padding: clamp(24px, 4vw, 44px);
@@ -128,6 +128,13 @@
   flex: none;
   margin-top: 3px;
   color: var(--artenos-musgo);
+}
+.public-shop-about > * {
+  min-width: 0;
+}
+.public-shop-story,
+.public-shop-announcement span {
+  overflow-wrap: anywhere;
 }
 .public-shop-story {
   margin: 0;

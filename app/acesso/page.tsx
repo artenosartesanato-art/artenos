@@ -36,6 +36,7 @@ import {
   type FieldErrors,
 } from "@/lib/registration-validation";
 import "../storefront.css";
+import { StoryChecklist } from "@/components/story-checklist";
 
 type AccountType = "client" | "artisan";
 type Tab = "login" | AccountType;
@@ -202,6 +203,7 @@ function RegisterForm({ type, onGoToLogin }: { type: AccountType; onGoToLogin: (
   const [done, setDone] = useState<string | null>(null);
   const [existingAccount, setExistingAccount] = useState(false);
   const [specialtyChoice, setSpecialtyChoice] = useState("");
+  const [storyDraft, setStoryDraft] = useState("");
   const clear = (name: string) => setErrors((current) => {
     if (!current[name] && !current._form) return current;
     const next = { ...current };
@@ -343,8 +345,14 @@ function RegisterForm({ type, onGoToLogin }: { type: AccountType; onGoToLogin: (
         {type === "artisan" && (
           <Field name="story" label="Conte a história da sua loja" error={errors.story} wide
             hint="Como você começou, o que inspira suas peças e o que torna seu trabalho especial (40 a 1.200 caracteres).">
-            {(props) => <textarea {...props} name="story" maxLength={1200} rows={5}
-              placeholder="Ex.: comecei a bordar com minha avó, uso linhas de algodão e cada peça leva uma semana…" onInput={() => clear("story")} />}
+            {(props) => (
+              <>
+                <textarea {...props} name="story" maxLength={1200} rows={5}
+                  placeholder="Ex.: comecei a bordar com minha avó, uso linhas de algodão e cada peça leva uma semana…"
+                  onInput={(event) => { setStoryDraft(event.currentTarget.value); clear("story"); }} />
+                <StoryChecklist value={storyDraft} />
+              </>
+            )}
           </Field>
         )}
       </div>
