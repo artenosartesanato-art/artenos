@@ -3160,3 +3160,93 @@ div.product-details-description :is(ul, ol) {
     margin-right: 2px;
   }
 }
+
+/* Pedido de orçamento (detalhe da opção sob encomenda) ------------------- */
+.service-details-modal .custom-modal.service-request-form {
+  width: auto;
+  max-width: none;
+  max-height: none;
+  min-width: 0;
+  overflow: visible;
+  scroll-margin-top: 16px;
+}
+.service-request-form label,
+.service-request-form input,
+.service-request-form textarea {
+  min-width: 0;
+  max-width: 100%;
+}
+.service-request-form input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 46px;
+}
+.service-request-intro {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: var(--an-r-md);
+  background: var(--artenos-perola);
+}
+.service-request-intro strong {
+  color: var(--artenos-marrom);
+  font-size: var(--an-fs-sm);
+}
+.service-request-intro ol {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: passo;
+}
+.service-request-intro li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-sm);
+  counter-increment: passo;
+}
+.service-request-intro li::before {
+  content: counter(passo);
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--artenos-marrom);
+  color: var(--artenos-perola);
+  font-size: 11px;
+  font-weight: 800;
+}
+.service-request-form small {
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-xs);
+  font-weight: 500;
+}
+.service-request-count {
+  justify-self: end;
+}
+@media (max-width: 860px) {
+  /* Durante o pedido: só o cabeçalho da opção e o formulário. */
+  .service-details-modal.is-requesting :is(.pd-gallery, .pd-info, .pd-store, .pd-about) {
+    display: none;
+  }
+  .service-details-modal.is-requesting .pd-head {
+    margin-top: 56px;
+  }
+  .service-details-modal .service-request-form {
+    order: 3;
+    margin-top: 16px;
+    margin-bottom: 20px;
+  }
+  .service-details-modal .custom-form-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+/* Diálogos de peça/opção nunca rolam para o lado (sem faixa branca no celular). */
+.product-details-modal.an-dialog--wide {
+  overflow-x: hidden;
+}

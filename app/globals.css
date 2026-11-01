@@ -1967,3 +1967,10 @@ img {
   align-self: stretch;
   min-height: 38px;
 }
+
+/* Proteção geral: textos escritos pelas pessoas (histórias, descrições,
+   mensagens) quebram a linha em palavras ou links muito longos em vez de
+   sair dos cards. */
+p, li, dd, dt, h1, h2, h3, h4, blockquote, figcaption, label, td, th {
+  overflow-wrap: break-word;
+}
