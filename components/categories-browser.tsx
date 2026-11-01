@@ -1,7 +1,7 @@
 "use client";
 
 import { ServiceCard, useServiceDialog } from "@/components/custom-service";
-import { filterServices, type CustomService } from "@/lib/custom-services";
+import { filterServices, mergeCatalog, type CustomService } from "@/lib/custom-services";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, LoaderCircle, PackageOpen, RefreshCw, SlidersHorizontal, SpriteIcon, X } from "@/components/icons";
 import { categoryLook } from "@/lib/category-looks";
@@ -419,10 +419,10 @@ export function CategoriesBrowser({ initial }: { initial: CategoriesInitial | nu
             ) : products.length || services.length ? (
               <>
                 <div className="category-grid">
-                  {services.map((service, index) => (
-                    <ServiceCard key={`opcao-${service.id}`} service={service} onOpen={() => openService(service)} priority={index < 2} />
-                  ))}
-                  {products.map((product, index) => <MarketplaceProductCard key={product.id} product={product} priority={index < 4} />)}
+                  {/* Peças e opções sob encomenda na mesma ordem do filtro (ex.: menor preço). */}
+                  {mergeCatalog(products, services, filters.sort, products.length < total).map((entry, index) => entry.kind === "service"
+                    ? <ServiceCard key={`opcao-${entry.item.id}`} service={entry.item} onOpen={() => openService(entry.item)} priority={index < 4} />
+                    : <MarketplaceProductCard key={entry.item.id} product={entry.item} priority={index < 4} />)}
                 </div>
                 {products.length < total && (
                   <div className="category-more-wrap">
