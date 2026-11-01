@@ -15,3 +15,12 @@ test("recusa textos sem sentido ou curtos", () => {
   assert.notEqual(meaningfulTextError("Muito curto."), null);
   assert.notEqual(meaningfulTextError("Que loja linda aaaaaaaaa feita com amor e carinho total"), null);
 });
+
+test("o caso real: 45 caracteres e 6 palavras, mas repetidas", async () => {
+  const { meaningfulTextError, storyChecklist } = await import("../../lib/text-quality.ts");
+  const text = "teste teste teste teste teste véi teste teste";
+  assert.match(String(meaningfulTextError(text, "A história da loja")), /repetir as mesmas palavras/);
+  const list = storyChecklist(text);
+  assert.deepEqual(list.map((item) => item.done), [true, true, false]);
+  assert.equal(meaningfulTextError("Faço bolsas de crochê com linhas de algodão há dez anos, sempre à mão.", "A história"), null);
+});

@@ -8,6 +8,8 @@ import { findBlockedTerm } from "@/lib/moderation";
 import { playUiSound } from "@/lib/ui-sound";
 import { specialtyValueError } from "@/lib/store-specialties";
 import { SpecialtyField } from "@/components/specialty-field";
+import { StoryChecklist } from "@/components/story-checklist";
+import { meaningfulTextError } from "@/lib/text-quality";
 
 type SellerRequest = {
   status: "pending_review" | "under_review" | "changes_requested" | "approved" | "rejected" | "suspended" | null;
@@ -61,6 +63,8 @@ export function SellerUpgrade() {
     if (sending) return;
     const specialtyProblem = specialtyValueError(specialty);
     if (specialtyProblem) return setError(specialtyProblem);
+    const storyProblem = meaningfulTextError(story, "A história da loja");
+    if (storyProblem) return setError(storyProblem);
     if (findBlockedTerm(`${storeName} ${specialty} ${story}`)) return setError("Os dados da loja contêm termos que não são permitidos na Artenós.");
     setSending(true);
     setError("");
@@ -143,7 +147,7 @@ export function SellerUpgrade() {
             <span>História da loja</span>
             <textarea value={story} onChange={(event) => setStory(event.target.value)} rows={4} maxLength={1200} required
               placeholder="Conte como você começou, as técnicas e os materiais que usa (pelo menos 40 caracteres)." />
-            <small className="seller-upgrade-count">{story.trim().length} caracteres</small>
+            <StoryChecklist value={story} />
           </label>
           {error && <p className="an-field-error" role="alert">{error}</p>}
           <div className="seller-upgrade-actions">
