@@ -31,6 +31,7 @@ import { findBlockedTerm, moderationError } from "@/lib/moderation";
 import { specialtyValueError } from "@/lib/store-specialties";
 import { SpecialtyField } from "@/components/specialty-field";
 import { StoreLogoEditor } from "@/components/store-logo-editor";
+import { HEIC_HELP, IMAGE_EXT, IMAGE_MIME, detectImage } from "@/lib/image-file";
 import {
   useSellerProfile,
   useSellerProfileActions,
@@ -87,11 +88,6 @@ type StoreProduct = {
 
 const STORE_BUCKET = "artenos-store-assets";
 const MAX_COVER_BYTES = 5 * 1024 * 1024;
-const IMAGE_EXTENSIONS: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-};
 const emptyForm: StoreForm = {
   storeName: "",
   specialty: "",
@@ -290,8 +286,11 @@ export default function StorePanelPage() {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file || !store || uploading) return;
-    const extension = IMAGE_EXTENSIONS[file.type];
-    if (!extension) return toast.error("Escolha uma imagem JPG, PNG ou WebP.");
+    // Formato pelo conteúdo: alguns celulares mandam a foto sem o tipo.
+    const kind = await detectImage(file);
+    if (kind === "heic") return toast.error(HEIC_HELP);
+    if (!kind) return toast.error("Escolha uma imagem JPG, PNG ou WebP.");
+    const extension = IMAGE_EXT[kind];
     if (file.size > MAX_COVER_BYTES)
       return toast.error("A imagem deve ter no máximo 5 MB.");
 
@@ -303,7 +302,7 @@ export default function StorePanelPage() {
       const { error: uploadError } = await supabase.storage
         .from(STORE_BUCKET)
         .upload(newPath, file, {
-          contentType: file.type,
+          contentType: IMAGE_MIME[kind],
           cacheControl: "3600",
           upsert: false,
         });

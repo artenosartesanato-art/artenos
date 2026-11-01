@@ -5,9 +5,9 @@ import { toast } from "sonner";
 import { Camera, LoaderCircle, Trash2 } from "@/components/icons";
 import { getSupabase } from "@/lib/supabase";
 import { STORE_ASSETS_BUCKET, rememberStoreLogo, storeAssetUrl } from "@/lib/store-logos";
+import { HEIC_HELP, IMAGE_EXT, IMAGE_MIME, detectImage } from "@/lib/image-file";
 
 const MAX_LOGO_BYTES = 2 * 1024 * 1024;
-const EXTENSIONS: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
 
 /** Foto de perfil da loja (Minha loja): aparece no lugar das iniciais em todo o site. */
 export function StoreLogoEditor({ artisanId, initials }: { artisanId: string; initials: string }) {
@@ -29,16 +29,19 @@ export function StoreLogoEditor({ artisanId, initials }: { artisanId: string; in
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file || busy) return;
-    const extension = EXTENSIONS[file.type];
-    if (!extension) return toast.error("Escolha uma imagem JPG, PNG ou WebP.");
+    // Formato pelo conteúdo: alguns celulares mandam a foto sem o tipo.
+    const kind = await detectImage(file);
+    if (kind === "heic") return toast.error(HEIC_HELP);
+    if (!kind) return toast.error("Escolha uma imagem JPG, PNG ou WebP.");
     if (file.size > MAX_LOGO_BYTES) return toast.error("A foto deve ter no máximo 2 MB.");
-    const newPath = `${artisanId}/logo-${crypto.randomUUID()}.${extension}`;
+    const contentType = IMAGE_MIME[kind];
+    const newPath = `${artisanId}/logo-${crypto.randomUUID()}.${IMAGE_EXT[kind]}`;
     const oldPath = path;
     setBusy(true);
     try {
       const supabase = getSupabase();
       const { error: uploadError } = await supabase.storage.from(STORE_ASSETS_BUCKET)
-        .upload(newPath, file, { contentType: file.type, cacheControl: "3600", upsert: false });
+        .upload(newPath, file, { contentType, cacheControl: "3600", upsert: false });
       if (uploadError) throw uploadError;
       const { error: saveError } = await supabase.rpc("set_my_store_logo", { p_logo_path: newPath });
       if (saveError) {

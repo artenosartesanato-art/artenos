@@ -25,6 +25,7 @@ import { endSession, rememberDevice } from "@/lib/session";
 import { Dialog } from "@/components/ui/dialog";
 import { AccountPrivacy } from "@/components/account-privacy";
 import { SellerUpgrade } from "@/components/seller-upgrade";
+import { HEIC_HELP, canDisplay, detectImage } from "@/lib/image-file";
 
 type Profile = {
   id: string;
@@ -258,20 +259,30 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
     }
   }, [router, sellerMode]);
 
-  /** Escolheu um arquivo: valida e abre o editor de enquadramento. */
-  function chooseAvatar(event: React.ChangeEvent<HTMLInputElement>) {
+  /**
+   * Escolheu um arquivo: confere o formato pelo conteúdo (alguns celulares não
+   * informam o tipo) e abre o editor de enquadramento. Problemas aparecem
+   * junto da foto, não só num aviso passageiro.
+   */
+  async function chooseAvatar(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file || !user || !profile || uploading) return;
-    if (!IMAGE_EXTENSIONS[file.type]) {
-      toast.error("Escolha uma imagem JPG, PNG ou WebP.");
-      return;
+    setAvatarError("");
+    const fail = (message: string) => {
+      setAvatarError(message);
+      toast.error(message);
+    };
+    if (file.size > MAX_AVATAR_BYTES) return fail("A foto deve ter no máximo 15 MB.");
+    const kind = await detectImage(file);
+    if (!kind) return fail("Este arquivo não é uma foto. Escolha uma imagem JPG, PNG, WebP ou do iPhone (HEIC).");
+    const url = URL.createObjectURL(file);
+    // HEIC abre em iPhone/Mac; nos demais navegadores não dá para enquadrar.
+    if (kind === "heic" && !(await canDisplay(url))) {
+      URL.revokeObjectURL(url);
+      return fail(HEIC_HELP);
     }
-    if (file.size > MAX_AVATAR_BYTES) {
-      toast.error("A foto deve ter no máximo 15 MB.");
-      return;
-    }
-    openCropper(URL.createObjectURL(file), true);
+    openCropper(url, true);
   }
 
   function openCropper(url: string, revoke: boolean) {
@@ -578,8 +589,8 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
                     )}
                     <input
                       type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={chooseAvatar}
+                      accept="image/*"
+                      onChange={(event) => void chooseAvatar(event)}
                       disabled={uploading}
                       aria-label="Selecionar foto de perfil"
                     />
@@ -590,7 +601,7 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
                       {loadingOriginal ? "Abrindo…" : "Ajustar enquadramento"}
                     </button>
                   )}
-                  <small>JPG, PNG ou WebP · até 15 MB</small>
+                  <small>JPG, PNG, WebP ou foto do iPhone · até 15 MB</small>
                   {avatarError && (
                     <p className="profile-photo-error" role="alert">
                       {avatarError}
