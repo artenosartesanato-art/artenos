@@ -25,7 +25,7 @@ import { endSession, rememberDevice } from "@/lib/session";
 import { Dialog } from "@/components/ui/dialog";
 import { AccountPrivacy } from "@/components/account-privacy";
 import { SellerUpgrade } from "@/components/seller-upgrade";
-import { HEIC_HELP, canDisplay, detectImage } from "@/lib/image-file";
+import { HEIC_HELP, describeFile, detectImage, prepareForEditing } from "@/lib/image-file";
 
 type Profile = {
   id: string;
@@ -53,7 +53,7 @@ const AvatarCropper = dynamic(() => import("@/components/avatar-cropper").then((
 const AVATAR_BUCKET = "artenos-profile-avatars";
 // A foto é recortada e reduzida no navegador antes do envio (512 px + original
 // até 1600 px), então aceitamos arquivos maiores, como os de celular.
-const MAX_AVATAR_BYTES = 15 * 1024 * 1024;
+const MAX_AVATAR_BYTES = 40 * 1024 * 1024;
 const IMAGE_EXTENSIONS: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
@@ -141,6 +141,7 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
   const [profileError, setProfileError] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [avatarError, setAvatarError] = useState("");
+  const [preparingPhoto, setPreparingPhoto] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [editingContact, setEditingContact] = useState(false);
   const [contactBusy, setContactBusy] = useState(false);
@@ -267,22 +268,26 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
   async function chooseAvatar(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
-    if (!file || !user || !profile || uploading) return;
+    if (!file || !user || !profile || uploading || preparingPhoto) return;
     setAvatarError("");
     const fail = (message: string) => {
       setAvatarError(message);
       toast.error(message);
     };
-    if (file.size > MAX_AVATAR_BYTES) return fail("A foto deve ter no máximo 15 MB.");
+    if (file.size > MAX_AVATAR_BYTES) return fail("A foto deve ter no máximo 40 MB.");
     const kind = await detectImage(file);
-    if (!kind) return fail("Este arquivo não é uma foto. Escolha uma imagem JPG, PNG, WebP ou do iPhone (HEIC).");
-    const url = URL.createObjectURL(file);
-    // HEIC abre em iPhone/Mac; nos demais navegadores não dá para enquadrar.
-    if (kind === "heic" && !(await canDisplay(url))) {
-      URL.revokeObjectURL(url);
-      return fail(HEIC_HELP);
+    if (!kind) return fail(`Este arquivo não é uma foto. Escolha uma imagem JPG, PNG, WebP ou do iPhone (HEIC). (${describeFile(file, kind)})`);
+    // Abre a foto já reduzida para enquadrar: fotos de câmeras de 50–200 MP
+    // (comuns em Samsung) às vezes não abrem inteiras no navegador do celular.
+    setPreparingPhoto(true);
+    const prepared = await prepareForEditing(file);
+    setPreparingPhoto(false);
+    if (!prepared) {
+      return fail(kind === "heic"
+        ? HEIC_HELP
+        : `Não conseguimos abrir esta foto neste aparelho. Tente outra foto, ou uma captura de tela dela. (${describeFile(file, kind)})`);
     }
-    openCropper(url, true);
+    openCropper(URL.createObjectURL(prepared.blob), true);
   }
 
   function openCropper(url: string, revoke: boolean) {
@@ -581,6 +586,8 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
                   <label className="profile-photo-button">
                     {uploading ? (
                       "Enviando foto..."
+                    ) : preparingPhoto ? (
+                      "Abrindo foto..."
                     ) : (
                       <>
                         <Camera size={16} />{" "}
@@ -601,7 +608,7 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
                       {loadingOriginal ? "Abrindo…" : "Ajustar enquadramento"}
                     </button>
                   )}
-                  <small>JPG, PNG, WebP ou foto do iPhone · até 15 MB</small>
+                  <small>JPG, PNG, WebP ou foto do iPhone · até 40 MB</small>
                   {avatarError && (
                     <p className="profile-photo-error" role="alert">
                       {avatarError}
