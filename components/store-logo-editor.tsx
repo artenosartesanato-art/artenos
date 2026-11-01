@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Camera, LoaderCircle, Trash2 } from "@/components/icons";
 import { getSupabase } from "@/lib/supabase";
 import { STORE_ASSETS_BUCKET, rememberStoreLogo, storeAssetUrl } from "@/lib/store-logos";
-import { HEIC_HELP, IMAGE_EXT, IMAGE_MIME, detectImage } from "@/lib/image-file";
+import { HEIC_HELP, IMAGE_EXT, IMAGE_MIME, PickedFileError, detectImage, readPickedFile } from "@/lib/image-file";
 
 const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 
@@ -26,9 +26,16 @@ export function StoreLogoEditor({ artisanId, initials }: { artisanId: string; in
   }, []);
 
   async function upload(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file || busy) return;
+    if (busy) {
+      event.currentTarget.value = "";
+      return;
+    }
+    // Lê a foto antes de limpar o campo (Android: a permissão da galeria é temporária).
+    const file = await readPickedFile(event.currentTarget).catch((error: unknown) => {
+      toast.error(error instanceof PickedFileError ? `O celular não liberou a leitura desta foto. Tente escolher de novo (${error.reason}).` : "Não foi possível abrir a foto.");
+      return null;
+    });
+    if (!file) return;
     // Formato pelo conteúdo: alguns celulares mandam a foto sem o tipo.
     const kind = await detectImage(file);
     if (kind === "heic") return toast.error(HEIC_HELP);
