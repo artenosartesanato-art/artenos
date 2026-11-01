@@ -31,7 +31,7 @@ import { findBlockedTerm, moderationError } from "@/lib/moderation";
 import { specialtyValueError } from "@/lib/store-specialties";
 import { SpecialtyField } from "@/components/specialty-field";
 import { StoreLogoEditor } from "@/components/store-logo-editor";
-import { HEIC_HELP, IMAGE_EXT, IMAGE_MIME, detectImage } from "@/lib/image-file";
+import { HEIC_HELP, IMAGE_EXT, IMAGE_MIME, PickedFileError, detectImage, readPickedFile } from "@/lib/image-file";
 import {
   useSellerProfile,
   useSellerProfileActions,
@@ -283,9 +283,16 @@ export default function StorePanelPage() {
   }
 
   async function uploadCover(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file || !store || uploading) return;
+    if (!store || uploading) {
+      event.currentTarget.value = "";
+      return;
+    }
+    // Lê a foto antes de limpar o campo (Android: a permissão da galeria é temporária).
+    const file = await readPickedFile(event.currentTarget).catch((error: unknown) => {
+      toast.error(error instanceof PickedFileError ? `O celular não liberou a leitura desta foto. Tente escolher de novo (${error.reason}).` : "Não foi possível abrir a foto.");
+      return null;
+    });
+    if (!file) return;
     // Formato pelo conteúdo: alguns celulares mandam a foto sem o tipo.
     const kind = await detectImage(file);
     if (kind === "heic") return toast.error(HEIC_HELP);

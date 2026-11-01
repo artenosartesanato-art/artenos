@@ -62,7 +62,7 @@ function loadImage(url: string, timeoutMs = 15000) {
  * ordem, abrir já reduzida, abrir inteira e, por último, pela tag <img>.
  * Devolve null se nenhum jeito funcionar.
  */
-export async function prepareForEditing(file: File): Promise<PreparedImage | null> {
+export async function prepareForEditing(file: File, reasons: string[] = []): Promise<PreparedImage | null> {
   const attempts: [string, () => Promise<{ blob: Blob; width: number; height: number } | null>][] = [];
   if (typeof createImageBitmap === "function") {
     attempts.push(["bitmap-reduzido", async () => {
@@ -94,7 +94,10 @@ export async function prepareForEditing(file: File): Promise<PreparedImage | nul
     try {
       const result = await attempt();
       if (result && result.width > 1 && result.height > 1) return { ...result, source };
-    } catch { /* tenta o próximo jeito */ }
+      reasons.push(`${source}: sem imagem`);
+    } catch (error) {
+      reasons.push(`${source}: ${error instanceof Error ? error.name || error.message : "erro"}`);
+    }
   }
   return null;
 }
@@ -103,4 +106,30 @@ export async function prepareForEditing(file: File): Promise<PreparedImage | nul
 export function describeFile(file: File, kind: string | null) {
   const mb = (file.size / 1024 / 1024).toLocaleString("pt-BR", { maximumFractionDigits: 1 });
   return `Arquivo: ${file.name || "sem nome"} · ${kind ?? "formato desconhecido"} · ${file.type || "sem tipo"} · ${mb} MB`;
+}
+
+export class PickedFileError extends Error {
+  constructor(public readonly file: File, public readonly reason: string) {
+    super(`Não conseguimos ler esta foto no aparelho (${reason}).`);
+  }
+}
+
+/**
+ * Lê a foto escolhida para a memória ANTES de limpar o campo de arquivo.
+ * No Chrome do Android, a galeria/seletor de fotos entrega só uma permissão
+ * de leitura temporária; limpar o campo antes (ou esperar) pode invalidar o
+ * arquivo e a foto "não abre" — no computador isso não acontece.
+ */
+export async function readPickedFile(input: HTMLInputElement): Promise<File | null> {
+  const picked = input.files?.[0];
+  if (!picked) return null;
+  try {
+    const data = await picked.arrayBuffer();
+    return new File([data], picked.name || "foto", { type: picked.type, lastModified: picked.lastModified });
+  } catch (error) {
+    const reason = error instanceof Error ? error.name || error.message : "erro de leitura";
+    throw new PickedFileError(picked, reason);
+  } finally {
+    input.value = "";
+  }
 }

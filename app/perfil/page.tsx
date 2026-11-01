@@ -25,7 +25,7 @@ import { endSession, rememberDevice } from "@/lib/session";
 import { Dialog } from "@/components/ui/dialog";
 import { AccountPrivacy } from "@/components/account-privacy";
 import { SellerUpgrade } from "@/components/seller-upgrade";
-import { HEIC_HELP, describeFile, detectImage, prepareForEditing } from "@/lib/image-file";
+import { HEIC_HELP, PickedFileError, describeFile, detectImage, prepareForEditing, readPickedFile } from "@/lib/image-file";
 
 type Profile = {
   id: string;
@@ -266,28 +266,45 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
    * junto da foto, não só num aviso passageiro.
    */
   async function chooseAvatar(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file || !user || !profile || uploading || preparingPhoto) return;
-    setAvatarError("");
+    const input = event.currentTarget;
     const fail = (message: string) => {
       setAvatarError(message);
       toast.error(message);
     };
-    if (file.size > MAX_AVATAR_BYTES) return fail("A foto deve ter no máximo 40 MB.");
-    const kind = await detectImage(file);
-    if (!kind) return fail(`Este arquivo não é uma foto. Escolha uma imagem JPG, PNG, WebP ou do iPhone (HEIC). (${describeFile(file, kind)})`);
-    // Abre a foto já reduzida para enquadrar: fotos de câmeras de 50–200 MP
-    // (comuns em Samsung) às vezes não abrem inteiras no navegador do celular.
-    setPreparingPhoto(true);
-    const prepared = await prepareForEditing(file);
-    setPreparingPhoto(false);
-    if (!prepared) {
-      return fail(kind === "heic"
-        ? HEIC_HELP
-        : `Não conseguimos abrir esta foto neste aparelho. Tente outra foto, ou uma captura de tela dela. (${describeFile(file, kind)})`);
+    if (!user || !profile || uploading || preparingPhoto) {
+      input.value = "";
+      return;
     }
-    openCropper(URL.createObjectURL(prepared.blob), true);
+    setAvatarError("");
+    const size = input.files?.[0]?.size ?? 0;
+    if (size > MAX_AVATAR_BYTES) {
+      input.value = "";
+      return fail("A foto deve ter no máximo 40 MB.");
+    }
+    setPreparingPhoto(true);
+    try {
+      // Lê a foto antes de limpar o campo (Android: a permissão da galeria é temporária).
+      const file = await readPickedFile(input);
+      if (!file) return;
+      const kind = await detectImage(file);
+      if (!kind) return fail(`Este arquivo não é uma foto. Escolha uma imagem JPG, PNG, WebP ou do iPhone (HEIC). (${describeFile(file, kind)})`);
+      // Abre a foto já reduzida para enquadrar (fotos de 50–200 MP pesam na memória do celular).
+      const reasons: string[] = [];
+      const prepared = await prepareForEditing(file, reasons);
+      if (!prepared) {
+        return fail(kind === "heic"
+          ? HEIC_HELP
+          : `Não conseguimos abrir esta foto neste aparelho. Tente outra foto, ou uma captura de tela dela. (${describeFile(file, kind)} · ${reasons.join("; ")})`);
+      }
+      openCropper(URL.createObjectURL(prepared.blob), true);
+    } catch (error) {
+      if (error instanceof PickedFileError) {
+        return fail(`O celular não liberou a leitura desta foto. Tente escolher de novo pela Galeria (ou Arquivos). (${describeFile(error.file, null)} · ${error.reason})`);
+      }
+      fail("Não foi possível abrir a foto. Tente novamente.");
+    } finally {
+      setPreparingPhoto(false);
+    }
   }
 
   function openCropper(url: string, revoke: boolean) {

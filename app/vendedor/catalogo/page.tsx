@@ -28,7 +28,7 @@ import { plainSummary } from "@/lib/rich-text";
 import { useSellerProfile } from "@/components/seller-shell";
 import "./product-catalog.css";
 import { estimatePackage } from "@/lib/shipping-estimate";
-import { HEIC_HELP, IMAGE_EXT, IMAGE_MIME, detectImage } from "@/lib/image-file";
+import { HEIC_HELP, IMAGE_EXT, IMAGE_MIME, PickedFileError, detectImage, readPickedFile } from "@/lib/image-file";
 
 type CatalogStatus = "all" | "published" | "draft" | "out_of_stock" | "ready";
 
@@ -325,8 +325,11 @@ export default function ProductCatalogPage() {
   }
 
   async function selectImage(event: React.ChangeEvent<HTMLInputElement>) {
-    const picked = event.target.files?.[0];
-    event.target.value = "";
+    // Lê a foto antes de limpar o campo (Android: a permissão da galeria é temporária).
+    const picked = await readPickedFile(event.currentTarget).catch((error: unknown) => {
+      toast.error(error instanceof PickedFileError ? `O celular não liberou a leitura desta foto. Tente escolher de novo (${error.reason}).` : "Não foi possível abrir a foto.");
+      return null;
+    });
     if (!picked) return;
     // Formato pelo conteúdo: alguns celulares mandam a foto sem o tipo.
     const kind = await detectImage(picked);
