@@ -236,6 +236,10 @@ checagens as (
            or to_regprocedure('public.save_pricing_calculation(text,numeric,numeric,numeric,numeric,numeric,numeric,uuid,text)') is null
          then 'FALTA: rode migrations/20261111_taxa_pagamento_calculadora.sql' else 'OK' end
   union all
+  select '20261112 notificacoes_lidas_por_conversa', 'função', 'contador de mensagens zera ao abrir a conversa',
+    case when to_regprocedure('public.mark_notifications_read_by_ref(uuid)') is null
+         then 'FALTA: rode migrations/20261112_notificacoes_lidas_por_conversa.sql' else 'OK' end
+  union all
   -- Sobrecargas duplicadas deixam chamadas ambíguas (acontece ao rodar um script antigo depois de um novo).
   select 'ordem dos scripts', 'sobrecarga', p.proname,
     case when count(*) > 1 then 'ATENÇÃO: ' || count(*) || ' versões; rode de novo os scripts a partir do 06' else 'OK' end

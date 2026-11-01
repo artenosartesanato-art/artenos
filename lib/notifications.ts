@@ -64,6 +64,11 @@ export function readOnVisit(items: AppNotification[], pathname: string) {
     .map((item) => item.id);
 }
 
+/** Avisos não lidos de uma conversa (ou pedido) específica. */
+export function unreadForRef(items: AppNotification[], ref: string) {
+  return items.filter((item) => !item.read_at && item.ref_id === ref).map((item) => item.id);
+}
+
 /** Não lidas por conversa, para o contador na lista do chat. */
 export function unreadByRef(items: AppNotification[]) {
   const map = new Map<string, number>();
