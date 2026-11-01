@@ -214,7 +214,7 @@ export function AvatarCropper({ src, onCancel, onSave }: Props) {
             <img className="crop-image" src={src} alt="" draggable={false} style={imageStyle(stage)} />
           )}
           {!natural && !failed && <span className="crop-loading"><LoaderCircle size={28} className="seller-spin" /> Carregando foto…</span>}
-          {failed && <span className="crop-loading">Não foi possível abrir esta imagem. Escolha outra foto.</span>}
+          {failed && <span className="crop-loading is-error" role="alert">Não foi possível abrir esta foto neste aparelho. Feche e tente outra foto, ou uma captura de tela dela.</span>}
           <span className="crop-mask" aria-hidden="true" />
           <span className="crop-grid" aria-hidden="true" />
         </div>

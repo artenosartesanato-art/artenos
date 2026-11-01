@@ -675,3 +675,15 @@
   justify-content: flex-end;
   gap: 8px;
 }
+
+/* Erro ao abrir a foto: texto legível sobre o fundo claro do enquadramento. */
+.crop-loading.is-error {
+  margin: auto;
+  max-width: 80%;
+  height: fit-content;
+  border-radius: 12px;
+  background: rgb(255 255 255 / 0.94);
+  color: var(--an-erro);
+  font-weight: 700;
+  line-height: 1.45;
+}
