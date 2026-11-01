@@ -23,3 +23,19 @@ test("resumo sem marcações e com reticências", () => {
   assert.ok(long.endsWith("…"));
   assert.equal(plainSummary(null), "");
 });
+
+test("editor visual: ida e volta preserva o texto salvo", async () => {
+  const { blocksToRichText, parseRichText, richTextToHtml } = await import("../../lib/rich-text.ts");
+  const source = "Bolsa de **crochê** feita à mão.\nAlça de madeira.\n\n- Algodão cru\n- **Forro** interno\n\n1. Lave à mão\n2. Seque à sombra";
+  assert.equal(blocksToRichText(parseRichText(source)), source);
+  assert.equal(richTextToHtml("Use <b>tags</b> & **negrito**"), "<p>Use &lt;b&gt;tags&lt;/b&gt; &amp; <b>negrito</b></p>");
+});
+
+test("editor visual: junta trechos e não deixa ** vazio ou com espaço", async () => {
+  const { blocksToRichText } = await import("../../lib/rich-text.ts");
+  const text = blocksToRichText([
+    { type: "paragraph", lines: [[{ text: "Peça ", bold: false }, { text: "muito ", bold: true }, { text: "linda ", bold: true }, { text: "", bold: true }, { text: "aqui", bold: false }]] },
+    { type: "list", ordered: false, items: [[{ text: "  ", bold: false }], [{ text: "item", bold: false }]] },
+  ]);
+  assert.equal(text, "Peça **muito linda** aqui\n\n- item");
+});

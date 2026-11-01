@@ -11,7 +11,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { getSupabase } from "@/lib/supabase";
 import { formatListTime } from "@/lib/message-format";
 import {
-  badgeText, freshUnread, readOnVisit, titleWithCount, unreadByRef, unreadMessages, unreadTotal, upsertNotification,
+  badgeText, freshUnread, readOnVisit, titleWithCount, unreadByRef, unreadForRef, unreadMessages, unreadTotal, upsertNotification,
   MAX_ITEMS, type AppNotification, type NotificationKind,
 } from "@/lib/notifications";
 import {
@@ -63,15 +63,30 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     const now = new Date().toISOString();
     setItems((current) => current.map((item) =>
       !item.read_at && (!ids || ids.includes(item.id)) ? { ...item, read_at: now } : item));
-    void Promise.resolve(getSupabase().rpc("mark_notifications_read", { p_ids: ids ?? null })).catch(() => undefined);
+    // Grava no servidor; se falhar, tenta mais uma vez (senão o contador volta na próxima página).
+    const save = () => Promise.resolve(getSupabase().rpc("mark_notifications_read", { p_ids: ids ?? null }));
+    void save().then(({ error }) => { if (error) window.setTimeout(() => void save(), 1500); }).catch(() => undefined);
+  }, []);
+
+  /** Tudo o que é desta conversa (inclusive avisos que ainda não chegaram à tela). */
+  const markRefRead = useCallback((ref: string) => {
+    const now = new Date().toISOString();
+    setItems((current) => current.map((item) => (!item.read_at && item.ref_id === ref ? { ...item, read_at: now } : item)));
+    void Promise.resolve(getSupabase().rpc("mark_notifications_read_by_ref", { p_ref: ref }))
+      .then(({ error }) => {
+        // Banco sem a função nova: marca pelos avisos carregados.
+        if (error) {
+          const ids = itemsRef.current.filter((item) => item.ref_id === ref).map((item) => item.id);
+          if (ids.length) void getSupabase().rpc("mark_notifications_read", { p_ids: ids });
+        }
+      })
+      .catch(() => undefined);
   }, []);
 
   const setActiveRef = useCallback((ref: string | null) => {
     activeRef.current = ref;
-    if (!ref) return;
-    const ids = itemsRef.current.filter((item) => !item.read_at && item.ref_id === ref).map((item) => item.id);
-    if (ids.length) markRead(ids);
-  }, [markRead]);
+    if (ref) markRefRead(ref);
+  }, [markRefRead]);
 
   // Libera o áudio no primeiro clique/tecla (exigência dos navegadores).
   useEffect(() => {
@@ -212,6 +227,16 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
 
   // Trocar de página também confere se chegou algo (barato: uma consulta).
   useEffect(() => { refreshRef.current?.(); }, [pathname]);
+
+  // Conversa aberta: avisos dela que chegarem depois (carga inicial, consulta
+  // de segurança) também contam como vistos. Antes, se a conversa abria antes
+  // de os avisos carregarem, o contador ficava preso em 1.
+  useEffect(() => {
+    const ref = activeRef.current;
+    if (!ref || document.visibilityState !== "visible") return;
+    const ids = unreadForRef(items, ref);
+    if (ids.length) queueMicrotask(() => markRead(ids));
+  }, [items, markRead]);
 
   // Abrir a página do aviso (ex.: /pedidos) já conta como visto.
   useEffect(() => {

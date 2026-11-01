@@ -2037,3 +2037,132 @@ button.adjust-framing-btn.adjust-framing-btn:disabled {
   opacity: 0.55;
   cursor: progress;
 }
+
+/* Números sempre "modernos" (altura das maiúsculas). A fonte dos títulos usa,
+   por padrão, algarismos de estilo antigo: o 1 parecia um I e o 0 um o. */
+html {
+  font-variant-numeric: lining-nums;
+}
+
+/* Editor de texto com barra de ferramentas (descrição da peça). */
+.rte {
+  display: grid;
+  gap: 7px;
+  color: var(--artenos-marrom);
+}
+.rte-label {
+  font-size: 12px;
+  font-weight: 750;
+}
+.rte-box {
+  overflow: hidden;
+  border: 1px solid var(--artenos-pessego);
+  border-radius: 10px;
+  background: #fff;
+  transition: border-color var(--an-dur-fast) ease, box-shadow var(--an-dur-fast) ease;
+}
+.rte-box:focus-within {
+  border-color: var(--artenos-argila);
+  box-shadow: 0 0 0 3px #b26b4f1c;
+}
+.rte-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 6px;
+  border-bottom: 1px solid var(--artenos-pessego);
+  background: var(--artenos-perola);
+}
+.rte-tool {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--artenos-marrom);
+  cursor: pointer;
+}
+.rte-tool:hover {
+  background: color-mix(in srgb, var(--artenos-pessego) 55%, transparent);
+}
+.rte-tool[aria-pressed="true"] {
+  background: var(--artenos-marrom);
+  color: var(--artenos-perola);
+}
+.rte-tool:focus-visible {
+  outline: 2px solid var(--artenos-musgo);
+  outline-offset: 1px;
+}
+.rte-tool--sep {
+  margin-left: 6px;
+  position: relative;
+}
+.rte-tool--sep::before {
+  content: "";
+  position: absolute;
+  left: -5px;
+  top: 7px;
+  bottom: 7px;
+  width: 1px;
+  background: var(--artenos-pessego);
+}
+.rte-bold-icon {
+  font: 800 16px/1 var(--font-body);
+}
+.rte-area {
+  min-height: 150px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding: 12px 14px;
+  outline: none;
+  color: var(--an-text, var(--artenos-marrom));
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.rte-area p {
+  margin: 0 0 10px;
+}
+.rte-area ul,
+.rte-area ol {
+  margin: 0 0 10px;
+  padding-left: 22px;
+}
+.rte-area li {
+  margin: 2px 0;
+}
+.rte-area[data-empty="true"]::before {
+  content: attr(data-placeholder);
+  color: var(--an-text-muted);
+  pointer-events: none;
+  position: absolute;
+}
+.rte-area[data-empty="true"] {
+  position: relative;
+}
+.rte-help {
+  color: var(--an-argila-texto);
+  font-size: 12px;
+  font-weight: 500;
+}
+.rte-help.is-over {
+  color: var(--an-erro);
+  font-weight: 700;
+}
+@media (pointer: coarse) {
+  .rte-help span {
+    display: none;
+  }
+  .rte-area {
+    font-size: 16px; /* evita o zoom automático do iPhone */
+  }
+  .rte-tool {
+    width: 42px;
+    height: 40px;
+  }
+}

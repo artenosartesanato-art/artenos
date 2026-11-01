@@ -63,3 +63,47 @@ export function plainSummary(source: string | null | undefined, max = 160): stri
   const cut = text.slice(0, max - 1);
   return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), max * 0.6)).trimEnd()}…`;
 }
+
+const escapeHtml = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const inlineHtml = (parts: Inline[]) => parts.map((part) => part.bold ? `<b>${escapeHtml(part.text)}</b>` : escapeHtml(part.text)).join("");
+
+/** Texto salvo → HTML do editor visual (escapado: nada do texto vira marcação). */
+export function richTextToHtml(source: string | null | undefined): string {
+  return parseRichText(source).map((block) => block.type === "paragraph"
+    ? `<p>${block.lines.map(inlineHtml).join("<br>")}</p>`
+    : `<${block.ordered ? "ol" : "ul"}>${block.items.map((item) => `<li>${inlineHtml(item)}</li>`).join("")}</${block.ordered ? "ol" : "ul"}>`,
+  ).join("");
+}
+
+const inlineText = (parts: Inline[]) => {
+  // Junta pedaços vizinhos com o mesmo estilo e tira negrito vazio.
+  const merged: Inline[] = [];
+  for (const part of parts) {
+    if (!part.text) continue;
+    const last = merged[merged.length - 1];
+    if (last && last.bold === part.bold) last.text += part.text;
+    else merged.push({ ...part });
+  }
+  return merged.map((part) => {
+    if (!part.bold || !part.text.trim()) return part.text;
+    // Espaços ficam fora do ** (senão a marcação não fecha certo).
+    const [, lead, core, tail] = part.text.match(/^(\s*)([\s\S]*?)(\s*)$/)!;
+    return `${lead}**${core}**${tail}`;
+  }).join("").replace(/[ \t]+$/g, "");
+};
+
+/** Blocos lidos do editor visual → texto salvo (o mesmo formato de sempre). */
+export function blocksToRichText(blocks: Block[]): string {
+  const out: string[] = [];
+  for (const block of blocks) {
+    if (block.type === "paragraph") {
+      const lines = block.lines.map(inlineText);
+      if (!lines.some((line) => line.trim())) continue;
+      out.push(lines.join("\n").trim());
+    } else {
+      const items = block.items.map(inlineText).map((item) => item.trim()).filter(Boolean);
+      if (items.length) out.push(items.map((item, index) => (block.ordered ? `${index + 1}. ` : "- ") + item).join("\n"));
+    }
+  }
+  return out.join("\n\n");
+}
