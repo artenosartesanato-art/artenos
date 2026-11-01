@@ -32,7 +32,10 @@ import { specialtyValueError } from "@/lib/store-specialties";
 import { SpecialtyField } from "@/components/specialty-field";
 import { StoreLogoEditor } from "@/components/store-logo-editor";
 import { StoryChecklist } from "@/components/story-checklist";
-import { HEIC_HELP, IMAGE_EXT, IMAGE_MIME, PickedFileError, detectImage, readPickedFile } from "@/lib/image-file";
+import { CROP_FORMATS } from "@/components/avatar-cropper";
+import { AdjustFramingButton } from "@/components/adjust-framing-button";
+import { useImageCropFlow } from "@/components/image-crop-flow";
+import { originalPathFor } from "@/lib/avatar-crop";
 import {
   useSellerProfile,
   useSellerProfileActions,
@@ -88,7 +91,6 @@ type StoreProduct = {
 };
 
 const STORE_BUCKET = "artenos-store-assets";
-const MAX_COVER_BYTES = 5 * 1024 * 1024;
 const emptyForm: StoreForm = {
   storeName: "",
   specialty: "",
@@ -283,58 +285,42 @@ export default function StorePanelPage() {
     }
   }
 
-  async function uploadCover(event: React.ChangeEvent<HTMLInputElement>) {
-    if (!store || uploading) {
-      event.currentTarget.value = "";
-      return;
-    }
-    // Lê a foto antes de limpar o campo (Android: a permissão da galeria é temporária).
-    const file = await readPickedFile(event.currentTarget).catch((error: unknown) => {
-      toast.error(error instanceof PickedFileError ? `O celular não liberou a leitura desta foto. Tente escolher de novo (${error.reason}).` : "Não foi possível abrir a foto.");
-      return null;
-    });
-    if (!file) return;
-    // Formato pelo conteúdo: alguns celulares mandam a foto sem o tipo.
-    const kind = await detectImage(file);
-    if (kind === "heic") return toast.error(HEIC_HELP);
-    if (!kind) return toast.error("Escolha uma imagem JPG, PNG ou WebP.");
-    const extension = IMAGE_EXT[kind];
-    if (file.size > MAX_COVER_BYTES)
-      return toast.error("A imagem deve ter no máximo 5 MB.");
-
+  // Capa: escolher → enquadrar no formato largo da página da loja → enviar.
+  const coverCrop = useImageCropFlow(CROP_FORMATS.storeCover, async ({ avatar, original }) => {
+    if (!store) return;
     const oldPath = store.cover_path;
+    const extension = avatar.type === "image/webp" ? "webp" : "jpg";
     const newPath = `${store.artisan_id}/cover-${crypto.randomUUID()}.${extension}`;
     setUploading(true);
     try {
       const supabase = getSupabase();
-      const { error: uploadError } = await supabase.storage
-        .from(STORE_BUCKET)
-        .upload(newPath, file, {
-          contentType: IMAGE_MIME[kind],
-          cacheControl: "3600",
-          upsert: false,
-        });
+      const bucket = supabase.storage.from(STORE_BUCKET);
+      const { error: uploadError } = await bucket.upload(newPath, avatar, {
+        contentType: avatar.type,
+        cacheControl: "3600",
+        upsert: false,
+      });
       if (uploadError) throw uploadError;
       const { error: saveError } = await supabase.rpc("set_my_store_cover", {
         p_cover_path: newPath,
       });
       if (saveError) {
-        await supabase.storage.from(STORE_BUCKET).remove([newPath]);
+        await bucket.remove([newPath]);
         throw saveError;
       }
+      // Original guardado para reenquadrar depois (opcional).
+      await bucket.upload(originalPathFor(newPath), original, { contentType: original.type, cacheControl: "3600", upsert: true }).catch(() => null);
       setStore((previous) =>
         previous ? { ...previous, cover_path: newPath } : previous,
       );
-      if (oldPath) await supabase.storage.from(STORE_BUCKET).remove([oldPath]);
+      if (oldPath) await bucket.remove([oldPath, originalPathFor(oldPath)]);
       toast.success("Capa da loja atualizada.");
     } catch {
-      toast.error(
-        "Não foi possível enviar a capa. Use JPG, PNG ou WebP e tente novamente.",
-      );
+      toast.error("Não foi possível enviar a capa. Tente novamente.");
     } finally {
       setUploading(false);
     }
-  }
+  });
 
   async function removeCover() {
     if (
@@ -356,7 +342,7 @@ export default function StorePanelPage() {
       );
       const { error: deleteError } = await supabase.storage
         .from(STORE_BUCKET)
-        .remove([oldPath]);
+        .remove([oldPath, originalPathFor(oldPath)]);
       if (deleteError)
         toast.info(
           "A capa foi removida da loja, mas o arquivo antigo ainda precisa ser limpo no Storage.",
@@ -468,31 +454,40 @@ export default function StorePanelPage() {
           <p>Use uma foto horizontal que represente o trabalho da sua loja.</p>
           <div className="store-cover-actions">
             <label>
-              {uploading ? (
+              {uploading || coverCrop.preparing ? (
                 <LoaderCircle className="seller-spin" size={16} />
               ) : (
                 <Camera size={16} />
               )}
               {uploading
                 ? "Enviando..."
-                : coverUrl
-                  ? "Trocar capa"
-                  : "Adicionar capa"}
+                : coverCrop.preparing
+                  ? "Abrindo..."
+                  : coverUrl
+                    ? "Trocar capa"
+                    : "Adicionar capa"}
               <input
                 type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={uploadCover}
-                disabled={uploading}
+                accept="image/*"
+                onChange={(event) => void coverCrop.pick(event)}
+                disabled={uploading || coverCrop.preparing}
               />
             </label>
+            {coverUrl && store?.cover_path && (
+              <AdjustFramingButton
+                disabled={uploading || coverCrop.preparing}
+                onClick={() => void coverCrop.adjust([publicCoverUrl(originalPathFor(store.cover_path!)), coverUrl])}
+              />
+            )}
             {coverUrl && (
               <button type="button" onClick={removeCover} disabled={uploading}>
                 <Trash2 size={15} /> Remover
               </button>
             )}
           </div>
-          <small>JPG, PNG ou WebP · até 5 MB</small>
+          <small>JPG, PNG, WebP ou foto do celular · você enquadra antes de salvar</small>
         </div>
+        {coverCrop.element}
       </section>
 
       {store && (

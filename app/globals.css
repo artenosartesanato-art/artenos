@@ -2008,3 +2008,32 @@ p, li, dd, dt, h1, h2, h3, h4, blockquote, figcaption, label, td, th {
   background: var(--artenos-musgo);
   color: #fff;
 }
+
+/* "Ajustar enquadramento": mesmo botão em todas as fotos (perfil, loja, capa, peças). */
+button.adjust-framing-btn.adjust-framing-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--artenos-marrom);
+  border-radius: var(--an-r-pill);
+  background: var(--an-surface);
+  color: var(--artenos-marrom);
+  font: 700 13px/1 var(--font-body);
+  cursor: pointer;
+  transition: background-color var(--an-dur-fast) ease, color var(--an-dur-fast) ease;
+}
+button.adjust-framing-btn.adjust-framing-btn:hover:not(:disabled) {
+  background: var(--artenos-marrom);
+  color: var(--artenos-perola);
+}
+button.adjust-framing-btn.adjust-framing-btn:focus-visible {
+  outline: 3px solid var(--artenos-musgo);
+  outline-offset: 2px;
+}
+button.adjust-framing-btn.adjust-framing-btn:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}

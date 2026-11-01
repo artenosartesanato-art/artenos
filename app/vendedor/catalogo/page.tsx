@@ -28,7 +28,9 @@ import { plainSummary } from "@/lib/rich-text";
 import { useSellerProfile } from "@/components/seller-shell";
 import "./product-catalog.css";
 import { estimatePackage } from "@/lib/shipping-estimate";
-import { HEIC_HELP, IMAGE_EXT, IMAGE_MIME, PickedFileError, detectImage, readPickedFile } from "@/lib/image-file";
+import { CROP_FORMATS } from "@/components/avatar-cropper";
+import { AdjustFramingButton } from "@/components/adjust-framing-button";
+import { useImageCropFlow } from "@/components/image-crop-flow";
 
 type CatalogStatus = "all" | "published" | "draft" | "out_of_stock" | "ready";
 
@@ -86,7 +88,6 @@ type ProductForm = {
 };
 
 const STORE_BUCKET = "artenos-store-assets";
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const IMAGE_EXTENSIONS: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
@@ -169,6 +170,8 @@ export default function ProductCatalogPage() {
   const [form, setForm] = useState<ProductForm>(EMPTY_FORM);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState("");
+  // Foto original (antes do recorte) da nova imagem, para reenquadrar.
+  const [imageSource, setImageSource] = useState<Blob | null>(null);
   const [saving, setSaving] = useState(false);
   const [changingStatusId, setChangingStatusId] = useState<string | null>(null);
 
@@ -286,6 +289,7 @@ export default function ProductCatalogPage() {
     if (imagePreview.startsWith("blob:")) URL.revokeObjectURL(imagePreview);
     setImageFile(null);
     setImagePreview("");
+    setImageSource(null);
   }
 
   function closeForm() {
@@ -324,24 +328,15 @@ export default function ProductCatalogPage() {
     setFormOpen(true);
   }
 
-  async function selectImage(event: React.ChangeEvent<HTMLInputElement>) {
-    // Lê a foto antes de limpar o campo (Android: a permissão da galeria é temporária).
-    const picked = await readPickedFile(event.currentTarget).catch((error: unknown) => {
-      toast.error(error instanceof PickedFileError ? `O celular não liberou a leitura desta foto. Tente escolher de novo (${error.reason}).` : "Não foi possível abrir a foto.");
-      return null;
-    });
-    if (!picked) return;
-    // Formato pelo conteúdo: alguns celulares mandam a foto sem o tipo.
-    const kind = await detectImage(picked);
-    if (kind === "heic") return toast.error(HEIC_HELP);
-    if (!kind) return toast.error("Escolha uma imagem JPG, PNG ou WebP.");
-    const file = picked.type === IMAGE_MIME[kind] ? picked : new File([picked], picked.name || `foto.${IMAGE_EXT[kind]}`, { type: IMAGE_MIME[kind] });
-    if (file.size > MAX_IMAGE_BYTES)
-      return toast.error("A imagem deve ter no máximo 5 MB.");
+  // Foto da peça: escolher → enquadrar no formato da vitrine (4:5) → fica pronta
+  // para enviar ao salvar o produto. O original fica guardado para reenquadrar.
+  const productCrop = useImageCropFlow(CROP_FORMATS.product, async ({ avatar, original }) => {
+    const extension = avatar.type === "image/webp" ? "webp" : "jpg";
     clearImageSelection();
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
-  }
+    setImageFile(new File([avatar], `foto.${extension}`, { type: avatar.type }));
+    setImagePreview(URL.createObjectURL(avatar));
+    setImageSource(original);
+  });
 
   const packageEstimate = estimatePackage({
     weightGrams: Number(form.weightGrams),
@@ -1046,24 +1041,31 @@ export default function ProductCatalogPage() {
                     )}
                   </div>
                   <label>
-                    <Upload size={16} />{" "}
-                    {imageShown ? "Trocar imagem" : "Adicionar imagem"}
+                    {productCrop.preparing ? <LoaderCircle className="seller-spin" size={16} /> : <Upload size={16} />}{" "}
+                    {productCrop.preparing ? "Abrindo..." : imageShown ? "Trocar imagem" : "Adicionar imagem"}
                     <input
                       type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={(event) => void selectImage(event)}
-                      disabled={saving}
+                      accept="image/*"
+                      onChange={(event) => void productCrop.pick(event)}
+                      disabled={saving || productCrop.preparing}
                     />
                   </label>
+                  {imageShown && (
+                    <AdjustFramingButton
+                      disabled={saving || productCrop.preparing}
+                      onClick={() => imageSource ? productCrop.reopen(imageSource) : void productCrop.adjust([imageShown])}
+                    />
+                  )}
                   {imageFile && (
                     <button type="button" onClick={clearImageSelection}>
                       Cancelar nova imagem
                     </button>
                   )}
                   <small>
-                    JPG, PNG ou WebP · até 5 MB.
+                    JPG, PNG, WebP ou foto do celular · você enquadra antes de salvar.
                     <br />A imagem é obrigatória para publicar.
                   </small>
+                  {productCrop.element}
                 </aside>
               </div>
               <footer>

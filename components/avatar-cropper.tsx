@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { LoaderCircle, RefreshCw } from "@/components/icons";
 import { Dialog } from "@/components/ui/dialog";
+import "./image-cropper.css";
 import {
   clampCrop, drawParams, fitWithin, initialCrop, rotateCrop, rotatedSize, displayScale, zoomAround,
   MAX_ZOOM, MIN_ZOOM, OUTPUT_SIZE, type Crop,
@@ -10,11 +11,33 @@ import {
 
 export type CroppedAvatar = { avatar: Blob; original: Blob };
 
+/** Formato do enquadramento (perfil, foto da loja, capa, peça...). */
+export type CropFormat = {
+  /** "circle": foto redonda (perfil/loja); "rect": retângulo. */
+  shape: "circle" | "rect";
+  /** Largura ÷ altura (1 = quadrado, 3 = capa larga, 0.8 = retrato 4:5). */
+  aspect: number;
+  /** Largura da imagem final, em px (a altura sai do formato). */
+  outputWidth: number;
+  title: string;
+  /** Larguras das prévias em px. */
+  previews: number[];
+  saveLabel?: string;
+};
+
+export const CROP_FORMATS = {
+  avatar: { shape: "circle", aspect: 1, outputWidth: OUTPUT_SIZE, title: "Ajustar foto de perfil", previews: [80, 40] },
+  storeLogo: { shape: "circle", aspect: 1, outputWidth: OUTPUT_SIZE, title: "Ajustar foto da loja", previews: [80, 40] },
+  storeCover: { shape: "rect", aspect: 3, outputWidth: 1800, title: "Ajustar capa da loja", previews: [240] },
+  product: { shape: "rect", aspect: 0.8, outputWidth: 1200, title: "Ajustar foto da peça", previews: [96, 64] },
+} satisfies Record<string, CropFormat>;
+
 type Props = {
   /** URL da imagem a enquadrar (arquivo escolhido ou original já salvo). */
   src: string | null;
   onCancel: () => void;
   onSave: (result: CroppedAvatar) => Promise<void>;
+  format?: CropFormat;
 };
 
 /** Gera um blob WebP (ou JPEG, em navegadores sem WebP no canvas). */
@@ -27,13 +50,13 @@ function canvasBlob(canvas: HTMLCanvasElement, quality = 0.9) {
   });
 }
 
-function renderCrop(image: HTMLImageElement, crop: Crop, stage: number) {
+function renderCrop(image: HTMLImageElement, crop: Crop, stage: number, format: CropFormat) {
   const canvas = document.createElement("canvas");
-  canvas.width = OUTPUT_SIZE;
-  canvas.height = OUTPUT_SIZE;
+  canvas.width = format.outputWidth;
+  canvas.height = Math.round(format.outputWidth / format.aspect);
   const ctx = canvas.getContext("2d")!;
   ctx.imageSmoothingQuality = "high";
-  const params = drawParams(crop, image.naturalWidth, image.naturalHeight, stage);
+  const params = drawParams(crop, image.naturalWidth, image.naturalHeight, stage, format.outputWidth, format.aspect);
   ctx.translate(params.centerX, params.centerY);
   ctx.rotate(params.radians);
   ctx.scale(params.scale, params.scale);
@@ -56,7 +79,8 @@ function renderOriginal(image: HTMLImageElement, rotation: Crop["rotation"]) {
   return canvasBlob(canvas, 0.88);
 }
 
-export function AvatarCropper({ src, onCancel, onSave }: Props) {
+export function AvatarCropper({ src, onCancel, onSave, format = CROP_FORMATS.avatar }: Props) {
+  const aspect = format.aspect;
   const stageRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
@@ -98,13 +122,13 @@ export function AvatarCropper({ src, onCancel, onSave }: Props) {
 
   const update = useCallback((next: (current: Crop) => Crop) => {
     if (!natural) return;
-    setCrop((current) => clampCrop(next(current), natural.width, natural.height, stage));
-  }, [natural, stage]);
+    setCrop((current) => clampCrop(next(current), natural.width, natural.height, stage, aspect));
+  }, [natural, stage, aspect]);
 
   const zoomTo = useCallback((zoom: number, px = 0, py = 0) => {
     if (!natural) return;
-    setCrop((current) => zoomAround(current, zoom, px, py, natural.width, natural.height, stage));
-  }, [natural, stage]);
+    setCrop((current) => zoomAround(current, zoom, px, py, natural.width, natural.height, stage, aspect));
+  }, [natural, stage, aspect]);
 
   // Roda do mouse: zoom no ponto do cursor (listener não passivo para impedir a rolagem da página).
   useEffect(() => {
@@ -116,12 +140,12 @@ export function AvatarCropper({ src, onCancel, onSave }: Props) {
       setCrop((current) => natural
         ? zoomAround(current, current.zoom * Math.exp(-event.deltaY * 0.0015),
           event.clientX - rect.left - rect.width / 2, event.clientY - rect.top - rect.height / 2,
-          natural.width, natural.height, stage)
+          natural.width, natural.height, stage, aspect)
         : current);
     }
     element.addEventListener("wheel", onWheel, { passive: false });
     return () => element.removeEventListener("wheel", onWheel);
-  }, [natural, stage]);
+  }, [natural, stage, aspect]);
 
   function onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -182,14 +206,14 @@ export function AvatarCropper({ src, onCancel, onSave }: Props) {
     if (!image || !natural || saving) return;
     setSaving(true);
     try {
-      const [avatar, original] = await Promise.all([renderCrop(image, crop, stage), renderOriginal(image, crop.rotation)]);
+      const [avatar, original] = await Promise.all([renderCrop(image, crop, stage, format), renderOriginal(image, crop.rotation)]);
       await onSave({ avatar, original });
     } finally {
       setSaving(false);
     }
   }
 
-  const scale = natural ? displayScale(natural.width, natural.height, stage, crop) : 1;
+  const scale = natural ? displayScale(natural.width, natural.height, stage, crop, aspect) : 1;
   const imageStyle = (size: number): React.CSSProperties => ({
     width: natural?.width,
     height: natural?.height,
@@ -198,14 +222,15 @@ export function AvatarCropper({ src, onCancel, onSave }: Props) {
 
   return (
     <Dialog open={Boolean(src)} onClose={() => { if (!saving) onCancel(); }} labelledBy="crop-titulo"
-      describedBy="crop-ajuda" className="crop-dialog" closeLabel="Cancelar">
-      <h2 id="crop-titulo" className="crop-title">Ajustar foto de perfil</h2>
+      describedBy="crop-ajuda" className={`crop-dialog is-${format.shape}${aspect > 1.5 ? " is-wide" : ""}`} closeLabel="Cancelar">
+      <h2 id="crop-titulo" className="crop-title">{format.title}</h2>
       <p id="crop-ajuda" className="crop-help">
-        Arraste para posicionar e use o zoom para enquadrar. No teclado: setas movem, + e − aproximam, 0 recomeça.
+        Arraste para posicionar e use o zoom (ou dois dedos) para enquadrar.<span className="crop-help-keys"> No teclado: setas movem, + e − aproximam, 0 recomeça.</span>
       </p>
 
       <div className="crop-layout">
         <div ref={stageRef} className={`crop-stage${dragging ? " is-dragging" : ""}`} tabIndex={0}
+          style={{ aspectRatio: String(aspect) }}
           role="group" aria-label="Área de enquadramento da foto"
           onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp} onKeyDown={onKeyDown}>
@@ -222,8 +247,8 @@ export function AvatarCropper({ src, onCancel, onSave }: Props) {
         <div className="crop-side">
           <p className="crop-preview-label">Como vai aparecer</p>
           <div className="crop-previews" aria-hidden="true">
-            {[80, 40].map((size) => (
-              <span key={size} className="crop-preview" style={{ width: size, height: size }}>
+            {format.previews.map((size) => (
+              <span key={size} className="crop-preview" style={{ width: size, height: Math.round(size / aspect) }}>
                 {natural && src && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img className="crop-image" src={src} alt="" style={imageStyle(size)} />
@@ -240,7 +265,7 @@ export function AvatarCropper({ src, onCancel, onSave }: Props) {
           </label>
           <div className="crop-tools">
             <button type="button" className="an-btn an-btn--secondary an-btn--sm" disabled={!natural}
-              onClick={() => natural && setCrop((current) => rotateCrop(current, natural.width, natural.height, stage))}>
+              onClick={() => natural && setCrop((current) => rotateCrop(current, natural.width, natural.height, stage, aspect))}>
               <RefreshCw size={15} /> Girar
             </button>
             <button type="button" className="an-btn an-btn--secondary an-btn--sm" disabled={!natural}
@@ -254,7 +279,7 @@ export function AvatarCropper({ src, onCancel, onSave }: Props) {
       <div className="crop-actions">
         <button type="button" className="an-btn an-btn--secondary" onClick={onCancel} disabled={saving}>Cancelar</button>
         <button type="button" className="an-btn" onClick={save} disabled={!natural || saving} aria-busy={saving}>
-          {saving ? "Salvando…" : "Salvar foto"}
+          {saving ? "Salvando…" : format.saveLabel ?? "Salvar foto"}
         </button>
       </div>
     </Dialog>
