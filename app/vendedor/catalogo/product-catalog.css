@@ -856,3 +856,29 @@
 .seller-category-label svg {
   color: var(--an-argila-texto, #8a5a44);
 }
+
+/* Peso que a transportadora vai cobrar (aparece enquanto a loja preenche). */
+.catalog-freight-estimate {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--artenos-pessego);
+  border-radius: 10px;
+  background: var(--artenos-perola);
+  color: var(--an-argila-texto);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.catalog-freight-estimate strong {
+  color: var(--artenos-marrom);
+  font-size: 13px;
+}
+.catalog-freight-estimate.is-warning {
+  border-color: #d9a441;
+  background: #fff6e2;
+}
+.catalog-freight-estimate.is-warning span:last-child {
+  color: #7a4d00;
+  font-weight: 650;
+}

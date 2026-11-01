@@ -27,6 +27,8 @@ import { DescriptionEditor } from "@/components/description-editor";
 import { plainSummary } from "@/lib/rich-text";
 import { useSellerProfile } from "@/components/seller-shell";
 import "./product-catalog.css";
+import { estimatePackage } from "@/lib/shipping-estimate";
+import { HEIC_HELP, IMAGE_EXT, IMAGE_MIME, detectImage } from "@/lib/image-file";
 
 type CatalogStatus = "all" | "published" | "draft" | "out_of_stock" | "ready";
 
@@ -322,18 +324,29 @@ export default function ProductCatalogPage() {
     setFormOpen(true);
   }
 
-  function selectImage(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
+  async function selectImage(event: React.ChangeEvent<HTMLInputElement>) {
+    const picked = event.target.files?.[0];
     event.target.value = "";
-    if (!file) return;
-    if (!IMAGE_EXTENSIONS[file.type])
-      return toast.error("Escolha uma imagem JPG, PNG ou WebP.");
+    if (!picked) return;
+    // Formato pelo conteúdo: alguns celulares mandam a foto sem o tipo.
+    const kind = await detectImage(picked);
+    if (kind === "heic") return toast.error(HEIC_HELP);
+    if (!kind) return toast.error("Escolha uma imagem JPG, PNG ou WebP.");
+    const file = picked.type === IMAGE_MIME[kind] ? picked : new File([picked], picked.name || `foto.${IMAGE_EXT[kind]}`, { type: IMAGE_MIME[kind] });
     if (file.size > MAX_IMAGE_BYTES)
       return toast.error("A imagem deve ter no máximo 5 MB.");
     clearImageSelection();
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
   }
+
+  const packageEstimate = estimatePackage({
+    weightGrams: Number(form.weightGrams),
+    lengthCm: Number(form.lengthCm),
+    widthCm: Number(form.widthCm),
+    heightCm: Number(form.heightCm),
+    boxes: Number(form.packageCount),
+  });
 
   async function saveProduct(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -371,7 +384,17 @@ export default function ProductCatalogPage() {
     )
       return toast.error("As dimensões devem estar entre 1 e 200 cm.");
     if (!Number.isInteger(packageCount) || packageCount < 1 || packageCount > 20)
-      return toast.error("Informe uma quantidade entre 1 e 20 volumes.");
+      return toast.error("Informe de 1 a 20 caixas por peça.");
+    // Dados que encarecem muito o frete: confirma antes de salvar.
+    const estimate = estimatePackage({ weightGrams, lengthCm, widthCm, heightCm, boxes: packageCount });
+    if (estimate && (estimate.multipleBoxes || estimate.oversized)) {
+      const reasons = [
+        estimate.multipleBoxes ? `• A peça será enviada em ${packageCount} caixas separadas (o normal é 1).` : "",
+        estimate.oversized ? `• A caixa de ${lengthCm} × ${widthCm} × ${heightCm} cm é grande para ${weightGrams} g.` : "",
+      ].filter(Boolean).join("\n");
+      if (!window.confirm(`Confira os dados de envio:\n\n${reasons}\n\nO frete será calculado como ${estimate.billedKg.toLocaleString("pt-BR")} kg, o que deixa a entrega cara para o cliente. Salvar mesmo assim?`))
+        return;
+    }
     if (
       form.productionTimeDays.trim() === "" ||
       !Number.isInteger(productionTimeDays) ||
@@ -915,7 +938,7 @@ export default function ProductCatalogPage() {
                         </span>
                       </label>
                       <label>
-                        <span>Volumes</span>
+                        <span>Caixas por peça</span>
                         <input
                           type="number"
                           min="1"
@@ -949,10 +972,38 @@ export default function ProductCatalogPage() {
                       </label>
                     </div>
                     <small>
-                      Em produtos com mais de um volume, o peso total é
-                      dividido igualmente e as mesmas dimensões são aplicadas
-                      a cada volume na cotação.
+                      Medidas e peso da peça <strong>já embalada</strong>. Caixas por
+                      peça é quase sempre 1: use mais só se uma única peça for
+                      enviada em várias caixas (ex.: móvel desmontado). Nesse caso o
+                      peso é dividido entre elas e cada caixa usa as medidas acima.
                     </small>
+                    {packageEstimate && (
+                      <div
+                        className={`catalog-freight-estimate${packageEstimate.oversized || packageEstimate.multipleBoxes ? " is-warning" : ""}`}
+                        role="status"
+                      >
+                        <strong>
+                          Peso cobrado pelo frete: {packageEstimate.billedKg.toLocaleString("pt-BR")} kg
+                        </strong>
+                        <span>
+                          As transportadoras cobram o maior valor entre o peso real
+                          ({packageEstimate.realKg.toLocaleString("pt-BR")} kg) e o tamanho da caixa
+                          ({packageEstimate.cubicKgPerBox.toLocaleString("pt-BR")} kg por caixa).
+                        </span>
+                        {packageEstimate.multipleBoxes && (
+                          <span>
+                            Esta peça vai em {form.packageCount} caixas separadas: o frete é
+                            calculado para cada uma.
+                          </span>
+                        )}
+                        {packageEstimate.oversized && (
+                          <span>
+                            A caixa parece grande para o peso e vai encarecer o frete.
+                            Confira as medidas com a peça embalada.
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </section>
                   <p className="catalog-availability-note" role="note">
                     <PackageCheck size={15} />
@@ -997,7 +1048,7 @@ export default function ProductCatalogPage() {
                     <input
                       type="file"
                       accept="image/jpeg,image/png,image/webp"
-                      onChange={selectImage}
+                      onChange={(event) => void selectImage(event)}
                       disabled={saving}
                     />
                   </label>
