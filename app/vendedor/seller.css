@@ -656,3 +656,21 @@
     padding: 14px;
   }
 }
+
+/* Menu da loja: rola sem mostrar a barra de rolagem (computador e celular) e,
+   na gaveta do celular, os itens ocupam toda a largura do menu. */
+.seller-sidebar,
+.seller-menu-drawer {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.seller-sidebar::-webkit-scrollbar,
+.seller-menu-drawer::-webkit-scrollbar {
+  display: none;
+}
+.seller-sidebar.is-drawer {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
+  padding-inline: 18px;
+}
