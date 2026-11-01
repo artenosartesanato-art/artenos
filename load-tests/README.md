@@ -16,6 +16,20 @@ Instale o k6: https://grafana.com/docs/k6/latest/set-up/install-k6/
   `list_storefront_shops`), com os mesmos parâmetros do app. **Este mede o banco**
   (pool de conexões, RLS, consultas do catálogo).
 
+## Teste do limite de tentativas (rate limit)
+**`k6-rate-limit.js`** confere, no site no ar, que a tela de login recusa a
+pessoa depois de 10 tentativas em 10 minutos (resposta 429) e que não dá para
+burlar o limite fingindo outro endereço de internet. Usa um e-mail que não
+existe, não cria nada e faz só ~16 requisições. Não precisa de chave: só o
+endereço do site.
+
+```bash
+k6 run -e BASE_URL="https://SEU-SITE" load-tests/k6-rate-limit.js
+```
+
+Depois de rodar, o seu endereço fica bloqueado nessa rota por 10 minutos (o
+login continua funcionando). Para repetir o teste completo, espere 10 minutos.
+
 ## Quais chaves usar
 Só duas coisas, em **Settings → API** do projeto Supabase de staging:
 - **Project URL** (`https://xxxxx.supabase.co`)
