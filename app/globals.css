@@ -1783,129 +1783,167 @@ img {
   border-radius: 4px;
 }
 .dev-credit-dialog {
-  --dev-bg: #0d1117;
-  --dev-surface: #161b22;
-  --dev-text: #f0f3f6;
-  --dev-muted: #a7b1bc;
-  --dev-accent: #5b8cff;
-  --dev-accent-2: #22d3ee;
-  --dev-on-accent: #0d1117;
-  width: min(480px, 100%);
-  background:
-    radial-gradient(120% 70% at 100% 0%, color-mix(in srgb, var(--dev-accent) 28%, transparent), transparent 60%),
-    radial-gradient(90% 60% at 0% 100%, color-mix(in srgb, var(--dev-accent-2) 18%, transparent), transparent 60%),
-    var(--dev-bg);
+  /* Paleta: superfície grafite lisa, texto quente e UM acento (troque aqui). */
+  --dev-bg: #141414;
+  --dev-text: #f3f1ec;
+  --dev-muted: #9a978f;
+  --dev-line: rgb(243 241 236 / 0.12);
+  --dev-accent: #f3f1ec;
+  --dev-on-accent: #141414;
+  --dev-mono: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, monospace;
+  width: min(520px, 100%);
+  border-radius: 14px;
+  background: var(--dev-bg);
   color: var(--dev-text);
-  box-shadow: 0 24px 60px rgb(0 0 0 / 0.45), 0 0 0 1px rgb(255 255 255 / 0.08);
+  box-shadow: 0 30px 80px rgb(0 0 0 / 0.5);
+}
+.dev-credit-dialog:focus {
+  outline: none;
 }
 .dev-credit-dialog .an-dialog-close {
-  border: 1px solid rgb(255 255 255 / 0.16);
-  background: rgb(255 255 255 / 0.08);
-  color: var(--dev-text);
+  box-shadow: none;
+  top: 18px;
+  right: 18px;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dev-muted);
 }
 .dev-credit-dialog .an-dialog-close:hover {
-  background: rgb(255 255 255 / 0.16);
+  background: rgb(243 241 236 / 0.08);
+  color: var(--dev-text);
 }
 .dev-credit {
   display: grid;
-  gap: 14px;
-  padding: clamp(24px, 6vw, 36px);
+  padding: clamp(24px, 6vw, 40px);
 }
-.dev-credit-badge {
-  justify-self: start;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border: 1px solid rgb(255 255 255 / 0.14);
-  border-radius: 999px;
-  background: rgb(255 255 255 / 0.06);
+.dev-credit-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  padding-right: 40px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--dev-line);
+}
+.dev-credit-brand {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.dev-credit-tag {
   color: var(--dev-muted);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  font: 500 12px/1 var(--dev-mono);
 }
 .dev-credit h2 {
-  margin: 0;
-  padding-right: 32px;
+  margin: clamp(22px, 5vw, 32px) 0 0;
   color: var(--dev-text);
-  font: 750 clamp(24px, 6vw, 30px) / 1.15 var(--font-body);
-  letter-spacing: -0.01em;
+  font: 700 clamp(30px, 8vw, 40px) / 1.02 var(--font-body);
+  letter-spacing: -0.035em;
+  text-wrap: balance;
 }
-.dev-credit p {
-  margin: 0;
+.dev-credit-lead {
+  max-width: 40ch;
+  margin: 14px 0 0;
   color: var(--dev-muted);
   font-size: 15px;
   line-height: 1.6;
 }
-.dev-credit p strong {
-  color: var(--dev-text);
-}
-.dev-credit-points {
-  display: grid;
-  gap: 8px;
-  margin: 2px 0 4px;
+.dev-credit-list {
+  margin: 26px 0 0;
   padding: 0;
   list-style: none;
+  border-top: 1px solid var(--dev-line);
 }
-.dev-credit-points li {
-  position: relative;
-  padding-left: 22px;
+.dev-credit-list li {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  align-items: baseline;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--dev-line);
   color: var(--dev-text);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.45;
 }
-.dev-credit-points li::before {
-  content: "";
-  position: absolute;
-  top: 0.45em;
-  left: 2px;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--dev-accent), var(--dev-accent-2));
+.dev-credit-list li span {
+  color: var(--dev-muted);
+  font: 500 12px/1 var(--dev-mono);
 }
 .dev-credit-actions {
-  display: grid;
-  gap: 10px;
-  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  margin-top: 28px;
 }
-.dev-credit-cta,
-.dev-credit-later {
+.dev-credit-cta {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 48px;
-  padding: 0 18px;
-  border-radius: 12px;
-  font: inherit;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 52px;
+  padding: 0 18px 0 22px;
+  border-radius: 8px;
+  background: var(--dev-accent);
+  color: var(--dev-on-accent);
   font-size: 15px;
   font-weight: 750;
   text-decoration: none;
-  cursor: pointer;
+  transition: transform var(--an-dur-fast, 160ms) ease, background-color var(--an-dur-fast, 160ms) ease;
 }
-.dev-credit-cta {
-  border: 0;
-  background: linear-gradient(135deg, var(--dev-accent), var(--dev-accent-2));
-  color: var(--dev-on-accent);
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--dev-accent) 35%, transparent);
+.dev-credit-cta svg {
+  transition: transform var(--an-dur-fast, 160ms) ease;
 }
 .dev-credit-cta:hover {
-  filter: brightness(1.06);
+  background: #fff;
+}
+.dev-credit-cta:hover svg {
+  transform: translate(2px, -2px);
 }
 .dev-credit-later {
-  border: 1px solid rgb(255 255 255 / 0.16);
-  background: transparent;
-  color: var(--dev-text);
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--dev-muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 4px;
+  cursor: pointer;
+  transition: color var(--an-dur-fast, 160ms) ease, text-decoration-color var(--an-dur-fast, 160ms) ease;
 }
 .dev-credit-later:hover {
-  background: rgb(255 255 255 / 0.06);
+  color: var(--dev-text);
+  text-decoration-color: currentColor;
 }
 .dev-credit-cta:focus-visible,
-.dev-credit-later:focus-visible {
+.dev-credit-later:focus-visible,
+.dev-credit-dialog .an-dialog-close:focus-visible {
   outline: 2px solid var(--dev-text);
   outline-offset: 3px;
+}
+@media (max-width: 480px) {
+  .dev-credit-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .dev-credit-cta {
+    width: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dev-credit-cta,
+  .dev-credit-cta svg,
+  .dev-credit-later {
+    transition: none;
+  }
 }
 
 /* Celular: campos com texto de 16px. Abaixo disso o iPhone dá zoom sozinho ao
