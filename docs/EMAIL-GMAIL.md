@@ -116,3 +116,12 @@ Com `SMTP_*` preenchido, `lib/email.ts` envia pelo Gmail; sem ele, cai no Resend
   primeiras semanas. Peça aos testadores para marcar "Não é spam".
 - Não envie e-mail de marketing por essa conta: denúncias de spam bloqueiam também os e-mails de senha.
 - Quando tiver domínio próprio (ex.: `artenos.com.br`), migre para um remetente do domínio com SPF, DKIM e DMARC.
+
+## Modelo visual dos e-mails de conta
+
+O e-mail de confirmação de cadastro com a identidade da Artenós está em
+`supabase/email-templates/confirmar-cadastro.html`. Para usar: Supabase →
+Authentication → Emails → **Confirm signup** → cole o arquivo inteiro em
+**Body** e use o assunto "Confirme seu e-mail na Artenós". As variáveis
+`{{ .ConfirmationURL }}`, `{{ .Email }}` e `{{ .SiteURL }}` são preenchidas
+pelo Supabase.
