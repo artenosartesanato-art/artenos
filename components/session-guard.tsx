@@ -21,7 +21,7 @@ const ACTIVITY_EVENTS = ["pointerdown", "keydown", "scroll", "touchstart"] as co
  * e retorno ao login explicando o motivo.
  */
 export function SessionGuard() {
-  const { userId, isAdmin } = useMarketplace();
+  const { userId, isAdmin, accountType } = useMarketplace();
   const router = useRouter();
   const pathname = usePathname();
   const pathRef = useRef(pathname);
@@ -34,10 +34,12 @@ export function SessionGuard() {
   useEffect(() => { pathRef.current = pathname; }, [pathname]);
 
   // A equipe não tem perfil de comprador nem loja: essas páginas abririam vazias.
+  // Super admin (admin com perfil próprio, ver supabase/criar_super_admin.sql)
+  // navega por todas as telas, então não é redirecionado.
   useEffect(() => {
-    const target = isAdmin ? adminRedirectFor(pathname) : null;
+    const target = isAdmin && !accountType ? adminRedirectFor(pathname) : null;
     if (target) router.replace(target);
-  }, [isAdmin, pathname, router]);
+  }, [isAdmin, accountType, pathname, router]);
 
   const goToLogin = useCallback((reason: string) => {
     const back = pathRef.current + window.location.search;
