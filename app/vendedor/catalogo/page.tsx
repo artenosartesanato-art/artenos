@@ -31,6 +31,7 @@ import { estimatePackage } from "@/lib/shipping-estimate";
 import { CROP_FORMATS } from "@/components/avatar-cropper";
 import { AdjustFramingButton } from "@/components/adjust-framing-button";
 import { useImageCropFlow } from "@/components/image-crop-flow";
+import { extensionFor, imageUploadOptions } from "@/lib/image-optimizer";
 
 type CatalogStatus = "all" | "published" | "draft" | "out_of_stock" | "ready";
 
@@ -88,11 +89,6 @@ type ProductForm = {
 };
 
 const STORE_BUCKET = "artenos-store-assets";
-const IMAGE_EXTENSIONS: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-};
 const EMPTY_FORM: ProductForm = {
   name: "",
   description: "",
@@ -328,12 +324,12 @@ export default function ProductCatalogPage() {
     setFormOpen(true);
   }
 
-  // Foto da peça: escolher → enquadrar no formato da vitrine (4:5) → fica pronta
-  // para enviar ao salvar o produto. O original fica guardado para reenquadrar.
+  // Foto da peça: escolher → enquadrar no formato da vitrine (4:5) → otimizar
+  // (preset "content") → fica pronta para enviar ao salvar o produto. O
+  // original fica só na memória, para reenquadrar.
   const productCrop = useImageCropFlow(CROP_FORMATS.product, async ({ avatar, original }) => {
-    const extension = avatar.type === "image/webp" ? "webp" : "jpg";
     clearImageSelection();
-    setImageFile(new File([avatar], `foto.${extension}`, { type: avatar.type }));
+    setImageFile(new File([avatar], `foto.${extensionFor(avatar.type)}`, { type: avatar.type }));
     setImagePreview(URL.createObjectURL(avatar));
     setImageSource(original);
   });
@@ -415,15 +411,11 @@ export default function ProductCatalogPage() {
 
     try {
       if (imageFile) {
-        const extension = IMAGE_EXTENSIONS[imageFile.type];
-        uploadedPath = `${seller.id}/products/${productId}/image-${crypto.randomUUID()}.${extension}`;
+        // A imagem já vem otimizada do editor; nome único com a extensão do tipo final.
+        uploadedPath = `${seller.id}/products/${productId}/image-${crypto.randomUUID()}.${extensionFor(imageFile.type)}`;
         const { error: uploadError } = await supabase.storage
           .from(STORE_BUCKET)
-          .upload(uploadedPath, imageFile, {
-            contentType: imageFile.type,
-            cacheControl: "3600",
-            upsert: false,
-          });
+          .upload(uploadedPath, imageFile, imageUploadOptions({ mimeType: imageFile.type }));
         if (uploadError) throw uploadError;
         finalImageUrl = supabase.storage
           .from(STORE_BUCKET)

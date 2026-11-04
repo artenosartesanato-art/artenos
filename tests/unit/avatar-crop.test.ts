@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  clampCrop, displayScale, drawParams, fitWithin, initialCrop, originalPathFor, rotateCrop, zoomAround,
+  clampCrop, displayScale, drawParams, fitWithin, initialCrop, originalPathFor, originalPathsFor, rotateCrop, zoomAround,
 } from "../../lib/avatar-crop.ts";
 
 // Foto paisagem 1200×800 numa área de 300 px.
@@ -52,6 +52,10 @@ test("original reduzido e caminho derivado", () => {
   assert.deepEqual(fitWithin(800, 600), { width: 800, height: 600 });
   assert.equal(originalPathFor("u/abc.webp"), "u/abc-original.webp");
   assert.equal(originalPathFor("u/abc.jpg"), "u/abc-original.webp");
+  assert.equal(originalPathFor("u/abc.jpg", "image/jpeg"), "u/abc-original.jpg");
+  assert.equal(originalPathFor("u/abc.webp", "image/webp"), "u/abc-original.webp");
+  assert.deepEqual(originalPathsFor("u/abc.webp"), ["u/abc-original.webp", "u/abc-original.jpg"]);
+  assert.deepEqual(originalPathsFor("u/abc.jpg"), ["u/abc-original.jpg", "u/abc-original.webp"]);
 });
 
 test("formato largo (capa 3:1) e retrato (peça 4:5) cobrem a área sem sobrar fundo", async () => {

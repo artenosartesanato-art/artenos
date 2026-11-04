@@ -1,10 +1,11 @@
 import { kindFromName, sniffImage, type ImageKind } from "@/lib/image-sniff";
+import { convertHeicToJpeg } from "@/lib/image-optimizer";
 
 export const IMAGE_MIME: Record<ImageKind, string> = { jpeg: "image/jpeg", png: "image/png", webp: "image/webp", heic: "image/heic" };
 export const IMAGE_EXT: Record<ImageKind, string> = { jpeg: "jpg", png: "png", webp: "webp", heic: "heic" };
 
 export const HEIC_HELP =
-  "Esta foto está no formato HEIC (do iPhone), que este navegador não consegue abrir. " +
+  "Não conseguimos abrir esta foto HEIC (do iPhone) neste navegador. " +
   "Envie uma captura de tela da foto, ou no iPhone ative Ajustes › Câmera › Formatos › Mais compatível.";
 
 /** Formato real do arquivo (pelos primeiros bytes; se não der, pelo tipo/nome). */
@@ -31,17 +32,38 @@ export type PreparedImage = { blob: Blob; width: number; height: number; source:
 
 const EDIT_MAX_SIDE = 2048;
 
-function drawToBlob(source: CanvasImageSource, width: number, height: number) {
+/** Algum pixel transparente? (Lê em faixas para não pesar na memória.) */
+function hasTransparency(ctx: CanvasRenderingContext2D, width: number, height: number) {
+  const rows = Math.max(1, Math.floor(262144 / width));
+  for (let y = 0; y < height; y += rows) {
+    const data = ctx.getImageData(0, y, width, Math.min(rows, height - y)).data;
+    for (let i = 3; i < data.length; i += 4) if (data[i] < 255) return true;
+  }
+  return false;
+}
+
+/**
+ * Cópia local para o editor (nunca é enviada). JPEG 0.92; PNG só quando a
+ * imagem tem transparência (logos), para não virar fundo preto.
+ */
+function drawToBlob(source: CanvasImageSource, width: number, height: number, mayHaveAlpha: boolean) {
   const scale = Math.min(1, EDIT_MAX_SIDE / Math.max(width, height));
   const canvas = document.createElement("canvas");
   canvas.width = Math.max(1, Math.round(width * scale));
   canvas.height = Math.max(1, Math.round(height * scale));
-  const ctx = canvas.getContext("2d");
+  const ctx = canvas.getContext("2d", { willReadFrequently: mayHaveAlpha });
   if (!ctx) return Promise.resolve(null);
+  ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
   ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
+  let transparent = false;
+  try { transparent = mayHaveAlpha && hasTransparency(ctx, canvas.width, canvas.height); } catch { /* segue em JPEG */ }
   return new Promise<{ blob: Blob; width: number; height: number } | null>((resolve) => {
-    canvas.toBlob((blob) => resolve(blob ? { blob, width: canvas.width, height: canvas.height } : null), "image/jpeg", 0.92);
+    canvas.toBlob((blob) => {
+      const result = blob ? { blob, width: canvas.width, height: canvas.height } : null;
+      canvas.width = canvas.height = 0;
+      resolve(result);
+    }, transparent ? "image/png" : "image/jpeg", 0.92);
   });
 }
 
@@ -62,7 +84,9 @@ function loadImage(url: string, timeoutMs = 15000) {
  * ordem, abrir já reduzida, abrir inteira e, por último, pela tag <img>.
  * Devolve null se nenhum jeito funcionar.
  */
-export async function prepareForEditing(file: File, reasons: string[] = []): Promise<PreparedImage | null> {
+export async function prepareForEditing(file: File, reasons: string[] = [], convertedFromHeic = false): Promise<PreparedImage | null> {
+  const kind = await detectImage(file);
+  const alpha = kind === "png" || kind === "webp";
   const attempts: [string, () => Promise<{ blob: Blob; width: number; height: number } | null>][] = [];
   if (typeof createImageBitmap === "function") {
     attempts.push(["bitmap-reduzido", async () => {
@@ -72,22 +96,22 @@ export async function prepareForEditing(file: File, reasons: string[] = []): Pro
         // Foto pequena foi ampliada: refaz sem ampliar.
         if (bitmap.width === EDIT_MAX_SIDE) {
           const full = await createImageBitmap(file, { imageOrientation: "from-image" }).catch(() => null);
-          if (full && full.width < EDIT_MAX_SIDE) { try { return await drawToBlob(full, full.width, full.height); } finally { full.close(); } }
+          if (full && full.width < EDIT_MAX_SIDE) { try { return await drawToBlob(full, full.width, full.height, alpha); } finally { full.close(); } }
           full?.close();
         }
-        return await drawToBlob(bitmap, bitmap.width, bitmap.height);
+        return await drawToBlob(bitmap, bitmap.width, bitmap.height, alpha);
       } finally { bitmap.close(); }
     }]);
     attempts.push(["bitmap", async () => {
       const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
-      try { return await drawToBlob(bitmap, bitmap.width, bitmap.height); } finally { bitmap.close(); }
+      try { return await drawToBlob(bitmap, bitmap.width, bitmap.height, alpha); } finally { bitmap.close(); }
     }]);
   }
   attempts.push(["img", async () => {
     const url = URL.createObjectURL(file);
     try {
       const image = await loadImage(url);
-      return image ? await drawToBlob(image, image.naturalWidth, image.naturalHeight) : null;
+      return image ? await drawToBlob(image, image.naturalWidth, image.naturalHeight, alpha) : null;
     } finally { URL.revokeObjectURL(url); }
   }]);
   // Duas rodadas: no Android a primeira decodificação às vezes falha logo após a escolha.
@@ -99,6 +123,12 @@ export async function prepareForEditing(file: File, reasons: string[] = []): Pro
     } catch (error) {
       reasons.push(`${source}: ${error instanceof Error ? error.name || error.message : "erro"}`);
     }
+  }
+  // HEIC fora do Safari: converte para JPEG (heic2any, baixado só agora) e tenta de novo.
+  if (kind === "heic" && !convertedFromHeic) {
+    const jpeg = await convertHeicToJpeg(file);
+    if (jpeg) return prepareForEditing(new File([jpeg], "foto.jpg", { type: "image/jpeg" }), reasons, true);
+    reasons.push("heic2any: falhou");
   }
   return null;
 }

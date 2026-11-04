@@ -18,7 +18,8 @@ import { getSupabase } from "@/lib/supabase";
 import { notifyProfileChanged } from "@/components/marketplace-state";
 import dynamic from "next/dynamic";
 import type { CroppedAvatar } from "@/components/avatar-cropper";
-import { originalPathFor } from "@/lib/avatar-crop";
+import { originalPathFor, originalPathsFor } from "@/lib/avatar-crop";
+import { IMAGE_CACHE_CONTROL, extensionFor } from "@/lib/image-optimizer";
 import "../storefront.css";
 import "./profile.css";
 import { endSession, rememberDevice } from "@/lib/session";
@@ -52,14 +53,10 @@ type Profile = {
 const AvatarCropper = dynamic(() => import("@/components/avatar-cropper").then((module) => module.AvatarCropper), { ssr: false });
 
 const AVATAR_BUCKET = "artenos-profile-avatars";
-// A foto é recortada e reduzida no navegador antes do envio (512 px + original
-// até 1600 px), então aceitamos arquivos maiores, como os de celular.
+// A foto é recortada e otimizada no navegador antes do envio (512 px ≤ 80 KB +
+// original até 1600 px; lib/image-optimizer.ts), então aceitamos arquivos
+// maiores, como os de celular. O arquivo bruto nunca é enviado.
 const MAX_AVATAR_BYTES = 40 * 1024 * 1024;
-const IMAGE_EXTENSIONS: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-};
 const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
   day: "2-digit",
   month: "long",
@@ -323,7 +320,12 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
     if (!profile?.avatar_path || loadingOriginal) return;
     setLoadingOriginal(true);
     try {
-      const { data } = await getSupabase().storage.from(AVATAR_BUCKET).download(originalPathFor(profile.avatar_path));
+      const bucket = getSupabase().storage.from(AVATAR_BUCKET);
+      let data: Blob | null = null;
+      for (const originalPath of originalPathsFor(profile.avatar_path)) {
+        data = (await bucket.download(originalPath)).data;
+        if (data) break;
+      }
       if (data) openCropper(URL.createObjectURL(data), true);
       else if (avatarUrl) openCropper(avatarUrl, false);
     } finally {
@@ -335,16 +337,17 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
     if (!user || !profile) return;
     const oldPath = profile.avatar_path;
     const id = crypto.randomUUID();
-    const path = `${user.id}/${id}.${IMAGE_EXTENSIONS[avatar.type] ?? "jpg"}`;
-    const originalPath = originalPathFor(path);
+    // Nome único + extensão do tipo final (a foto já vem otimizada do editor).
+    const path = `${user.id}/${id}.${extensionFor(avatar.type)}`;
+    const originalPath = originalPathFor(path, original.type);
     setUploading(true);
     setAvatarError("");
     try {
       const supabase = getSupabase();
       const bucket = supabase.storage.from(AVATAR_BUCKET);
       const [avatarUpload, originalUpload] = await Promise.all([
-        bucket.upload(path, avatar, { contentType: avatar.type, upsert: false, cacheControl: "3600" }),
-        bucket.upload(originalPath, original, { contentType: original.type, upsert: false, cacheControl: "3600" }),
+        bucket.upload(path, avatar, { contentType: avatar.type, upsert: false, cacheControl: IMAGE_CACHE_CONTROL }),
+        bucket.upload(originalPath, original, { contentType: original.type, upsert: false, cacheControl: IMAGE_CACHE_CONTROL }),
       ]);
       if (avatarUpload.error) throw avatarUpload.error;
       const { error: updateError } = await supabase
@@ -367,7 +370,7 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
       // O original é opcional: sem ele, reenquadrar usa a própria foto.
       if (originalUpload.error) console.error("avatar original:", originalUpload.error.message);
       if (oldPath && oldPath !== path)
-        await bucket.remove([oldPath, originalPathFor(oldPath)]);
+        await bucket.remove([oldPath, ...originalPathsFor(oldPath)]);
       toast.success("Foto de perfil atualizada.");
     } catch {
       setAvatarError(

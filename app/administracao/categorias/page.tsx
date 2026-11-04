@@ -9,6 +9,7 @@ import { AdminPageHead, Badge, LoadState, friendlyError } from "@/components/adm
 import { OptimizedImage } from "@/components/optimized-image";
 import { getSupabase } from "@/lib/supabase";
 import { slugify } from "@/lib/admin";
+import { imageUploadOptions, optimizationErrorMessage, optimizeImage, uniqueImageName, type OptimizedImage as OptimizedUpload } from "@/lib/image-optimizer";
 
 type Category = {
   category_id: string; name: string; slug: string; image_url: string | null; sort_order: number; active: boolean; products_active: number;
@@ -16,51 +17,83 @@ type Category = {
 type Draft = { id: string | null; name: string; slug: string; imageUrl: string; sortOrder: string; active: boolean; slugTouched: boolean };
 
 const BUCKET = "artenos-store-assets";
-const TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
-const MAX_BYTES = 5 * 1024 * 1024;
+const STORAGE_MARKER = `/storage/v1/object/public/${BUCKET}/`;
+
+/** Caminho no Storage de uma foto de categoria enviada por este painel (null para outras URLs). */
+function categoryImagePath(url: string | null) {
+  const index = url?.indexOf(STORAGE_MARKER) ?? -1;
+  if (!url || index < 0) return null;
+  try {
+    const path = decodeURIComponent(url.slice(index + STORAGE_MARKER.length).split("?")[0]);
+    return path.includes("/categorias/") ? path : null;
+  } catch {
+    return null;
+  }
+}
 
 function CategoryEditor({ draft, onClose, onSaved }: { draft: Draft; onClose: () => void; onSaved: () => void }) {
   const { account } = useAdmin();
   const [form, setForm] = useState(draft);
-  const [file, setFile] = useState<File | null>(null);
+  // Só a versão otimizada é guardada e enviada (o arquivo escolhido nunca sobe).
+  const [file, setFile] = useState<OptimizedUpload | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [optimizing, setOptimizing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
 
-  function pick(next: File | undefined) {
-    if (!next) return;
-    if (!TYPES[next.type]) { setError("Use uma foto JPG, PNG ou WebP."); return; }
-    if (next.size > MAX_BYTES) { setError("A foto pode ter no máximo 5 MB."); return; }
+  async function pick(input: HTMLInputElement) {
+    const next = input.files?.[0];
+    if (!next || optimizing) return;
     setError("");
-    setFile(next);
-    setPreview(URL.createObjectURL(next));
+    setOptimizing(true);
+    try {
+      // Lê antes de limpar o campo (no Android a permissão de leitura é temporária).
+      const data = new File([await next.arrayBuffer()], next.name, { type: next.type, lastModified: next.lastModified });
+      const optimized = await optimizeImage(data, { preset: "content", allowPassthrough: false });
+      setFile(optimized);
+      setPreview(URL.createObjectURL(optimized.blob));
+    } catch (pickError) {
+      setError(optimizationErrorMessage(pickError));
+    } finally {
+      input.value = "";
+      setOptimizing(false);
+    }
   }
 
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (saving) return;
+    if (saving || optimizing) return;
     setSaving(true);
     setError("");
     const supabase = getSupabase();
     let imageUrl = form.imageUrl.trim() || null;
+    let uploadedPath: string | null = null;
     try {
       if (file) {
         // Mesma pasta por conta usada pelas lojas (regra do Storage: 1ª pasta = id de quem envia).
-        const path = `${account.userId}/categorias/${form.slug || slugify(form.name)}-${crypto.randomUUID()}.${TYPES[file.type]}`;
-        const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, file, { contentType: file.type, upsert: false });
-        if (uploadError) throw new Error("Não foi possível enviar a foto.");
-        imageUrl = supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+        uploadedPath = uniqueImageName(`${account.userId}/categorias/${form.slug || slugify(form.name)}-`, file.mimeType);
+        const { error: uploadError } = await supabase.storage.from(BUCKET).upload(uploadedPath, file.blob, imageUploadOptions(file));
+        if (uploadError) { uploadedPath = null; throw new Error("Não foi possível enviar a foto."); }
+        imageUrl = supabase.storage.from(BUCKET).getPublicUrl(uploadedPath).data.publicUrl;
       }
       const { error: saveError } = await supabase.rpc("admin_save_category", {
         p_id: form.id, p_name: form.name, p_slug: form.slug, p_image_url: imageUrl,
         p_sort_order: Number(form.sortOrder) || 0, p_active: form.active,
       });
       if (saveError) throw saveError;
+      // Foto trocada: apaga a antiga (só depois de a nova estar salva no banco,
+      // e só se foi enviada por este painel). Falha aqui não desfaz nada.
+      const oldPath = categoryImagePath(draft.imageUrl || null);
+      if (uploadedPath && oldPath && oldPath !== uploadedPath) {
+        await supabase.storage.from(BUCKET).remove([oldPath]).catch(() => null);
+      }
       toast.success(form.id ? "Categoria atualizada." : "Categoria criada.");
       onSaved();
     } catch (saveError) {
+      // A categoria não foi salva: o arquivo novo não fica órfão no Storage.
+      if (uploadedPath) await supabase.storage.from(BUCKET).remove([uploadedPath]).catch(() => null);
       setError(saveError instanceof Error && saveError.message.startsWith("Não foi possível enviar")
         ? saveError.message : friendlyError(saveError, "Não foi possível salvar a categoria."));
     } finally {
@@ -79,11 +112,12 @@ function CategoryEditor({ draft, onClose, onSaved }: { draft: Draft; onClose: ()
             ? <img src={shownImage} alt="" />
             : <span aria-hidden="true"><Sparkles size={26} /></span>}
           <label className="adm-btn adm-btn--ghost">
-            <ImagePlus size={15} /> {shownImage ? "Trocar foto" : "Enviar foto"}
-            <input type="file" accept="image/jpeg,image/png,image/webp" className="an-visually-hidden"
-              onChange={(event) => pick(event.target.files?.[0])} />
+            {optimizing ? <Loader2 size={15} className="admin-spin" /> : <ImagePlus size={15} />}{" "}
+            {optimizing ? "Otimizando imagem..." : shownImage ? "Trocar foto" : "Enviar foto"}
+            <input type="file" accept="image/*,.heic,.heif" className="an-visually-hidden" disabled={optimizing || saving}
+              onChange={(event) => void pick(event.currentTarget)} />
           </label>
-          <small>Foto real da técnica (ex.: peças de crochê). JPG, PNG ou WebP até 5 MB. Na página inicial aparece num bloco largo (cerca de 2,3 × 1), cortada pelo centro; sem foto, a categoria usa um padrão e o ícone da técnica.</small>
+          <small>Foto real da técnica (ex.: peças de crochê). JPG, PNG, WebP ou foto do iPhone; ela é otimizada antes do envio. Na página inicial aparece num bloco largo (cerca de 2,3 × 1), cortada pelo centro; sem foto, a categoria usa um padrão e o ícone da técnica.</small>
           {shownImage && (
             <button type="button" className="adm-link-btn" onClick={() => { setFile(null); setPreview(null); setForm({ ...form, imageUrl: "" }); }}>
               Remover foto
@@ -115,8 +149,8 @@ function CategoryEditor({ draft, onClose, onSaved }: { draft: Draft; onClose: ()
         {error && <p className="adm-inline-error" role="alert">{error}</p>}
         <div className="adm-form-actions">
           <button type="button" className="adm-btn adm-btn--ghost" onClick={onClose}>Cancelar</button>
-          <button type="submit" className="adm-btn" disabled={saving}>
-            {saving && <Loader2 size={15} className="admin-spin" />} Salvar
+          <button type="submit" className="adm-btn" disabled={saving || optimizing}>
+            {saving && <Loader2 size={15} className="admin-spin" />} {saving && file ? "Enviando..." : "Salvar"}
           </button>
         </div>
       </form>

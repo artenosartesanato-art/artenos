@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabase-admin';
-import { originalPathFor } from '../../../../lib/avatar-crop';
+import { originalPathsFor } from '../../../../lib/avatar-crop';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,7 +28,7 @@ async function handle(request: Request) {
     });
     if (authError) console.error('[exclusoes] auth', account.id, authError.message);
     if (account.avatar_path) {
-      await admin.storage.from('artenos-profile-avatars').remove([account.avatar_path, originalPathFor(account.avatar_path)]).catch(() => null);
+      await admin.storage.from('artenos-profile-avatars').remove([account.avatar_path, ...originalPathsFor(account.avatar_path)]).catch(() => null);
     }
   }
   if (result.failed?.length) console.error('[exclusoes] falhas:', JSON.stringify(result.failed));

@@ -35,7 +35,8 @@ import { StoryChecklist } from "@/components/story-checklist";
 import { CROP_FORMATS } from "@/components/avatar-cropper";
 import { AdjustFramingButton } from "@/components/adjust-framing-button";
 import { useImageCropFlow } from "@/components/image-crop-flow";
-import { originalPathFor } from "@/lib/avatar-crop";
+import { originalPathFor, originalPathsFor } from "@/lib/avatar-crop";
+import { IMAGE_CACHE_CONTROL, extensionFor } from "@/lib/image-optimizer";
 import {
   useSellerProfile,
   useSellerProfileActions,
@@ -285,19 +286,18 @@ export default function StorePanelPage() {
     }
   }
 
-  // Capa: escolher → enquadrar no formato largo da página da loja → enviar.
+  // Capa: escolher → enquadrar no formato largo da página da loja → otimizar → enviar.
   const coverCrop = useImageCropFlow(CROP_FORMATS.storeCover, async ({ avatar, original }) => {
     if (!store) return;
     const oldPath = store.cover_path;
-    const extension = avatar.type === "image/webp" ? "webp" : "jpg";
-    const newPath = `${store.artisan_id}/cover-${crypto.randomUUID()}.${extension}`;
+    const newPath = `${store.artisan_id}/cover-${crypto.randomUUID()}.${extensionFor(avatar.type)}`;
     setUploading(true);
     try {
       const supabase = getSupabase();
       const bucket = supabase.storage.from(STORE_BUCKET);
       const { error: uploadError } = await bucket.upload(newPath, avatar, {
         contentType: avatar.type,
-        cacheControl: "3600",
+        cacheControl: IMAGE_CACHE_CONTROL,
         upsert: false,
       });
       if (uploadError) throw uploadError;
@@ -309,11 +309,11 @@ export default function StorePanelPage() {
         throw saveError;
       }
       // Original guardado para reenquadrar depois (opcional).
-      await bucket.upload(originalPathFor(newPath), original, { contentType: original.type, cacheControl: "3600", upsert: true }).catch(() => null);
+      await bucket.upload(originalPathFor(newPath, original.type), original, { contentType: original.type, cacheControl: IMAGE_CACHE_CONTROL, upsert: true }).catch(() => null);
       setStore((previous) =>
         previous ? { ...previous, cover_path: newPath } : previous,
       );
-      if (oldPath) await bucket.remove([oldPath, originalPathFor(oldPath)]);
+      if (oldPath) await bucket.remove([oldPath, ...originalPathsFor(oldPath)]);
       toast.success("Capa da loja atualizada.");
     } catch {
       toast.error("Não foi possível enviar a capa. Tente novamente.");
@@ -342,7 +342,7 @@ export default function StorePanelPage() {
       );
       const { error: deleteError } = await supabase.storage
         .from(STORE_BUCKET)
-        .remove([oldPath, originalPathFor(oldPath)]);
+        .remove([oldPath, ...originalPathsFor(oldPath)]);
       if (deleteError)
         toast.info(
           "A capa foi removida da loja, mas o arquivo antigo ainda precisa ser limpo no Storage.",
@@ -476,7 +476,7 @@ export default function StorePanelPage() {
             {coverUrl && store?.cover_path && (
               <AdjustFramingButton
                 disabled={uploading || coverCrop.preparing}
-                onClick={() => void coverCrop.adjust([publicCoverUrl(originalPathFor(store.cover_path!)), coverUrl])}
+                onClick={() => void coverCrop.adjust([...originalPathsFor(store.cover_path!).map(publicCoverUrl), coverUrl])}
               />
             )}
             {coverUrl && (

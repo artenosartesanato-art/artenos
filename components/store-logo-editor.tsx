@@ -8,7 +8,8 @@ import { STORE_ASSETS_BUCKET, rememberStoreLogo, storeAssetUrl } from "@/lib/sto
 import { CROP_FORMATS } from "@/components/avatar-cropper";
 import { AdjustFramingButton } from "@/components/adjust-framing-button";
 import { useImageCropFlow } from "@/components/image-crop-flow";
-import { originalPathFor } from "@/lib/avatar-crop";
+import { originalPathFor, originalPathsFor } from "@/lib/avatar-crop";
+import { IMAGE_CACHE_CONTROL, extensionFor } from "@/lib/image-optimizer";
 
 /** Foto de perfil da loja (Minha loja): aparece no lugar das iniciais em todo o site. */
 export function StoreLogoEditor({ artisanId, initials }: { artisanId: string; initials: string }) {
@@ -26,16 +27,15 @@ export function StoreLogoEditor({ artisanId, initials }: { artisanId: string; in
     return () => { active = false; };
   }, []);
 
-  // Escolher → enquadrar em círculo → enviar a foto recortada (e o original, para reenquadrar).
+  // Escolher → enquadrar em círculo → otimizar → enviar a foto recortada (e o original, para reenquadrar).
   const crop = useImageCropFlow(CROP_FORMATS.storeLogo, async ({ avatar, original }) => {
-    const extension = avatar.type === "image/webp" ? "webp" : "jpg";
-    const newPath = `${artisanId}/logo-${crypto.randomUUID()}.${extension}`;
+    const newPath = `${artisanId}/logo-${crypto.randomUUID()}.${extensionFor(avatar.type)}`;
     const oldPath = path;
     setBusy(true);
     try {
       const supabase = getSupabase();
       const bucket = supabase.storage.from(STORE_ASSETS_BUCKET);
-      const { error: uploadError } = await bucket.upload(newPath, avatar, { contentType: avatar.type, cacheControl: "3600", upsert: false });
+      const { error: uploadError } = await bucket.upload(newPath, avatar, { contentType: avatar.type, cacheControl: IMAGE_CACHE_CONTROL, upsert: false });
       if (uploadError) throw uploadError;
       const { error: saveError } = await supabase.rpc("set_my_store_logo", { p_logo_path: newPath });
       if (saveError) {
@@ -43,10 +43,10 @@ export function StoreLogoEditor({ artisanId, initials }: { artisanId: string; in
         throw saveError;
       }
       // O original é opcional: sem ele, reenquadrar usa a própria foto.
-      await bucket.upload(originalPathFor(newPath), original, { contentType: original.type, cacheControl: "3600", upsert: true }).catch(() => null);
+      await bucket.upload(originalPathFor(newPath, original.type), original, { contentType: original.type, cacheControl: IMAGE_CACHE_CONTROL, upsert: true }).catch(() => null);
       setPath(newPath);
       rememberStoreLogo(artisanId, newPath);
-      if (oldPath) await bucket.remove([oldPath, originalPathFor(oldPath)]);
+      if (oldPath) await bucket.remove([oldPath, ...originalPathsFor(oldPath)]);
       toast.success("Foto da loja atualizada.");
     } catch {
       toast.error("Não foi possível enviar a foto. Tente novamente.");
@@ -65,7 +65,7 @@ export function StoreLogoEditor({ artisanId, initials }: { artisanId: string; in
       if (error) throw error;
       setPath(null);
       rememberStoreLogo(artisanId, null);
-      await supabase.storage.from(STORE_ASSETS_BUCKET).remove([oldPath, originalPathFor(oldPath)]);
+      await supabase.storage.from(STORE_ASSETS_BUCKET).remove([oldPath, ...originalPathsFor(oldPath)]);
       toast.success("Foto removida. A loja volta a mostrar as iniciais.");
     } catch {
       toast.error("Não foi possível remover a foto.");
@@ -96,7 +96,7 @@ export function StoreLogoEditor({ artisanId, initials }: { artisanId: string; in
           </label>
           {url && path && (
             <AdjustFramingButton disabled={busy || crop.preparing}
-              onClick={() => void crop.adjust([storeAssetUrl(originalPathFor(path))!, url])} />
+              onClick={() => void crop.adjust([...originalPathsFor(path).map((item) => storeAssetUrl(item)!), url])} />
           )}
           {url && (
             <button type="button" onClick={remove} disabled={busy}>

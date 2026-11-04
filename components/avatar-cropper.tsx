@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { LoaderCircle, RefreshCw } from "@/components/icons";
 import { Dialog } from "@/components/ui/dialog";
 import "./image-cropper.css";
@@ -8,7 +9,9 @@ import {
   clampCrop, drawParams, fitWithin, initialCrop, rotateCrop, rotatedSize, displayScale, zoomAround,
   MAX_ZOOM, MIN_ZOOM, OUTPUT_SIZE, type Crop,
 } from "@/lib/avatar-crop";
+import { optimizeImage, optimizationErrorMessage, type ImagePreset } from "@/lib/image-optimizer";
 
+/** Foto enquadrada e o original (para reenquadrar), já otimizados para envio. */
 export type CroppedAvatar = { avatar: Blob; original: Blob };
 
 /** Formato do enquadramento (perfil, foto da loja, capa, peça...). */
@@ -23,13 +26,15 @@ export type CropFormat = {
   /** Larguras das prévias em px. */
   previews: number[];
   saveLabel?: string;
+  /** Preset do otimizador para a foto enquadrada (lib/image-optimizer-core.ts). */
+  preset: ImagePreset;
 };
 
 export const CROP_FORMATS = {
-  avatar: { shape: "circle", aspect: 1, outputWidth: OUTPUT_SIZE, title: "Ajustar foto de perfil", previews: [80, 40] },
-  storeLogo: { shape: "circle", aspect: 1, outputWidth: OUTPUT_SIZE, title: "Ajustar foto da loja", previews: [80, 40] },
-  storeCover: { shape: "rect", aspect: 3, outputWidth: 1800, title: "Ajustar capa da loja", previews: [240] },
-  product: { shape: "rect", aspect: 0.8, outputWidth: 1200, title: "Ajustar foto da peça", previews: [96, 64] },
+  avatar: { shape: "circle", aspect: 1, outputWidth: OUTPUT_SIZE, title: "Ajustar foto de perfil", previews: [80, 40], preset: "avatar" },
+  storeLogo: { shape: "circle", aspect: 1, outputWidth: OUTPUT_SIZE, title: "Ajustar foto da loja", previews: [80, 40], preset: "avatar" },
+  storeCover: { shape: "rect", aspect: 3, outputWidth: 1800, title: "Ajustar capa da loja", previews: [240], preset: "cover" },
+  product: { shape: "rect", aspect: 0.8, outputWidth: 1200, title: "Ajustar foto da peça", previews: [96, 64], preset: "content" },
 } satisfies Record<string, CropFormat>;
 
 type Props = {
@@ -40,28 +45,26 @@ type Props = {
   format?: CropFormat;
 };
 
-/** Gera um blob WebP (ou JPEG, em navegadores sem WebP no canvas). */
-function canvasBlob(canvas: HTMLCanvasElement, quality = 0.9) {
-  return new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((webp) => {
-      if (webp && webp.type === "image/webp") return resolve(webp);
-      canvas.toBlob((jpeg) => (jpeg ? resolve(jpeg) : reject(new Error("canvas"))), "image/jpeg", quality);
-    }, "image/webp", quality);
-  });
-}
-
+/**
+ * Desenha o recorte num canvas sem compressão (o otimizador codifica uma vez
+ * só). Nunca amplia: se o trecho escolhido tem menos pixels que a largura
+ * final, a saída fica do tamanho real do trecho.
+ */
 function renderCrop(image: HTMLImageElement, crop: Crop, stage: number, format: CropFormat) {
+  const full = drawParams(crop, image.naturalWidth, image.naturalHeight, stage, format.outputWidth, format.aspect);
+  const width = Math.max(1, Math.round(format.outputWidth / Math.max(1, full.scale)));
   const canvas = document.createElement("canvas");
-  canvas.width = format.outputWidth;
-  canvas.height = Math.round(format.outputWidth / format.aspect);
+  canvas.width = width;
+  canvas.height = Math.max(1, Math.round(width / format.aspect));
   const ctx = canvas.getContext("2d")!;
+  ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
-  const params = drawParams(crop, image.naturalWidth, image.naturalHeight, stage, format.outputWidth, format.aspect);
+  const params = drawParams(crop, image.naturalWidth, image.naturalHeight, stage, width, format.aspect);
   ctx.translate(params.centerX, params.centerY);
   ctx.rotate(params.radians);
   ctx.scale(params.scale, params.scale);
   ctx.drawImage(image, -image.naturalWidth / 2, -image.naturalHeight / 2);
-  return canvasBlob(canvas);
+  return canvas;
 }
 
 /** Original reduzido, já com a rotação aplicada, para reenquadrar depois. */
@@ -72,11 +75,30 @@ function renderOriginal(image: HTMLImageElement, rotation: Crop["rotation"]) {
   canvas.width = size.width;
   canvas.height = size.height;
   const ctx = canvas.getContext("2d")!;
+  ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
   ctx.translate(size.width / 2, size.height / 2);
   ctx.rotate((rotation * Math.PI) / 180);
   ctx.drawImage(image, -fit.width / 2, -fit.height / 2, fit.width, fit.height);
-  return canvasBlob(canvas, 0.88);
+  return canvas;
+}
+
+/** Recorte + original, otimizados (um de cada vez: menos memória no celular). */
+async function exportCrop(image: HTMLImageElement, crop: Crop, stage: number, format: CropFormat): Promise<CroppedAvatar> {
+  const cropCanvas = renderCrop(image, crop, stage, format);
+  let avatar: Blob;
+  try {
+    avatar = (await optimizeImage(cropCanvas, { preset: format.preset })).blob;
+  } finally {
+    cropCanvas.width = cropCanvas.height = 0;
+  }
+  const originalCanvas = renderOriginal(image, crop.rotation);
+  try {
+    const original = (await optimizeImage(originalCanvas, { preset: "content" })).blob;
+    return { avatar, original };
+  } finally {
+    originalCanvas.width = originalCanvas.height = 0;
+  }
 }
 
 export function AvatarCropper({ src, onCancel, onSave, format = CROP_FORMATS.avatar }: Props) {
@@ -90,6 +112,7 @@ export function AvatarCropper({ src, onCancel, onSave, format = CROP_FORMATS.ava
   const [crop, setCrop] = useState<Crop>(initialCrop);
   const [dragging, setDragging] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [optimizing, setOptimizing] = useState(false);
   const [failed, setFailed] = useState(false);
 
   // Carrega a imagem e recomeça o enquadramento a cada nova foto.
@@ -205,9 +228,19 @@ export function AvatarCropper({ src, onCancel, onSave, format = CROP_FORMATS.ava
     const image = imageRef.current;
     if (!image || !natural || saving) return;
     setSaving(true);
+    setOptimizing(true);
     try {
-      const [avatar, original] = await Promise.all([renderCrop(image, crop, stage, format), renderOriginal(image, crop.rotation)]);
-      await onSave({ avatar, original });
+      let result: CroppedAvatar;
+      try {
+        result = await exportCrop(image, crop, stage, format);
+      } catch (error) {
+        // Sem a versão otimizada, nada é enviado (nunca o arquivo bruto).
+        toast.error(optimizationErrorMessage(error));
+        return;
+      } finally {
+        setOptimizing(false);
+      }
+      await onSave(result);
     } finally {
       setSaving(false);
     }
@@ -279,7 +312,7 @@ export function AvatarCropper({ src, onCancel, onSave, format = CROP_FORMATS.ava
       <div className="crop-actions">
         <button type="button" className="an-btn an-btn--secondary" onClick={onCancel} disabled={saving}>Cancelar</button>
         <button type="button" className="an-btn" onClick={save} disabled={!natural || saving} aria-busy={saving}>
-          {saving ? "Salvando…" : format.saveLabel ?? "Salvar foto"}
+          {optimizing ? "Otimizando imagem…" : saving ? "Enviando…" : format.saveLabel ?? "Salvar foto"}
         </button>
       </div>
     </Dialog>

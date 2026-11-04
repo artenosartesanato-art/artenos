@@ -73,7 +73,24 @@ export function fitWithin(width: number, height: number, max = ORIGINAL_MAX_SIDE
   return { width: Math.round(width * factor), height: Math.round(height * factor) };
 }
 
-/** Caminho do original guardado ao lado da foto recortada. */
-export function originalPathFor(avatarPath: string) {
-  return avatarPath.replace(/\.(webp|jpg|jpeg|png)$/i, "") + "-original.webp";
+const ORIGINAL_EXTENSIONS: Record<string, string> = { "image/webp": "webp", "image/jpeg": "jpg", "image/png": "png" };
+
+/**
+ * Caminho do original guardado ao lado da foto recortada, com a extensão do
+ * tipo real. Sem tipo, "-original.webp" (como os arquivos antigos, que sempre
+ * usaram .webp mesmo quando o conteúdo era JPEG).
+ */
+export function originalPathFor(avatarPath: string, mimeType = "image/webp") {
+  return avatarPath.replace(/\.(webp|jpg|jpeg|png)$/i, "") + `-original.${ORIGINAL_EXTENSIONS[mimeType] ?? "webp"}`;
+}
+
+/**
+ * Todos os caminhos possíveis do original (para abrir ou apagar), o mais
+ * provável primeiro: fotos .jpg (Safari, sem WebP) têm o original em .jpg
+ * nos envios novos e em .webp nos antigos.
+ */
+export function originalPathsFor(avatarPath: string) {
+  const jpeg = /\.jpe?g$/i.test(avatarPath);
+  const order = jpeg ? ["image/jpeg", "image/webp"] : ["image/webp", "image/jpeg"];
+  return order.map((type) => originalPathFor(avatarPath, type));
 }
