@@ -2,6 +2,7 @@
 // pelo ícone do card, envia; a artesã recebe em tempo real e responde; o
 // cliente recebe a resposta sem recarregar. Uso: BASE_URL=... node mensagens.cjs
 const { chromium } = require('playwright');
+const { acceptCookies } = require('./_cookies.cjs');
 const base = process.argv[2] || process.env.BASE_URL || 'http://localhost:3000';
 const out = (n) => `${process.env.OUT_DIR || '.'}/m_${n}.png`;
 const PRODUCT = process.env.PRODUCT_NAME || 'Vaso de terracota torneado à mão';
@@ -24,7 +25,7 @@ function check(label, ok) {
 }
 
 (async () => {
-  const browser = await chromium.launch();
+  const browser = acceptCookies(await chromium.launch());
   const stamp = new Date().toISOString().slice(11, 19);
   const question = `Teste ${stamp}: esta peça vai bem ao forno?`;
   const answer = `Resposta ${stamp}: não, apenas decorativa.`;

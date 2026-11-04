@@ -1,6 +1,7 @@
 // Casos de borda: erro de estoque, clique duplo, teclado, movimento reduzido e som.
 // Uso: BASE_URL=http://localhost:3002 node tests/e2e/interacoes.cjs  (carrinho do cliente vazio)
 const { chromium } = require('playwright');
+const { acceptCookies } = require('./_cookies.cjs');
 const base = process.env.BASE_URL || 'http://localhost:3000';
 async function login(page) {
   await page.goto(base + '/acesso', { waitUntil: 'networkidle' });
@@ -10,7 +11,7 @@ async function login(page) {
   await page.waitForURL((u) => !u.pathname.startsWith('/acesso'));
 }
 (async () => {
-  const browser = await chromium.launch();
+  const browser = acceptCookies(await chromium.launch());
   const log = [];
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
   const page = await ctx.newPage();

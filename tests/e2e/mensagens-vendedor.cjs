@@ -1,6 +1,7 @@
 // Mensagens de quem tem loja: uma só tela (painel) e avisos que chegam mesmo
 // sem o tempo real. Uso: BASE_URL=http://localhost:3002 node tests/e2e/mensagens-vendedor.cjs
 const { chromium } = require('playwright');
+const { acceptCookies } = require('./_cookies.cjs');
 const { execFileSync } = require('child_process');
 
 const base = process.env.BASE_URL || 'http://localhost:3002';
@@ -36,7 +37,7 @@ async function login(browser, email, options = {}) {
 }
 
 (async () => {
-  const browser = await chromium.launch();
+  const browser = acceptCookies(await chromium.launch());
 
   // 1. Artesã: /mensagens leva ao painel, com os mesmos parâmetros.
   const seller = await login(browser, 'barro@sandbox.artenos.test');

@@ -8,6 +8,7 @@ import { HeaderSearchProvider } from "@/components/header-search";
 import { NotificationsProvider } from "@/components/notifications";
 import { SessionGuard } from "@/components/session-guard";
 import { UrlNotice } from "@/components/url-notice";
+import { ProfileCompletionGuard } from "@/components/profile-completion-guard";
 
 /** Cabeçalho e rodapé únicos para todas as páginas (vitrine, conta, painel da loja e administração). */
 export function SiteChrome({ children }: { children: React.ReactNode }) {
@@ -23,6 +24,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         </div>
         <SessionGuard />
         <UrlNotice />
+        <ProfileCompletionGuard />
       </NotificationsProvider>
     </HeaderSearchProvider>
   );

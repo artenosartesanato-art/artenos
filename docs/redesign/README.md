@@ -105,6 +105,12 @@ Branch: `FEAT/REDESIGN-UX-UI-ARTE-NOSSA` (base `main`).
 
 ## Ações necessárias no Supabase
 
+- Login com Google e conclusão do cadastro: executar
+  `supabase/login_google.sql` e seguir `docs/redesign/LOGIN-GOOGLE.md`
+  (Google Cloud Console, provedor Google e URLs de redirecionamento do
+  Supabase). Sem o provedor ativo, o botão avisa que o acesso com Google
+  ainda não foi ativado e o login por e-mail continua normal.
+
 - Para conferir o que já foi executado: `supabase/verificar_instalacao.sql`
   (só lê o banco). Mostra uma linha por item com "OK" ou "FALTA" e o script
   que resolve.

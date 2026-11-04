@@ -27,6 +27,8 @@ export async function signOutTo(router: ReturnType<typeof useRouter>, href = "/"
  */
 export function AccountMenu({ label }: { label: string }) {
   const { avatarUrl, displayName } = useMarketplace();
+  // Foto que não carrega (ex.: link da foto do Google expirado) volta para o ícone.
+  const [brokenAvatar, setBrokenAvatar] = useState<string | null>(null);
   const role = useAccountRole();
   const router = useRouter();
   const pathname = usePathname();
@@ -62,9 +64,10 @@ export function AccountMenu({ label }: { label: string }) {
     <div ref={rootRef} className="store-account-menu">
       <button ref={buttonRef} type="button" className="store-header-link store-account" onClick={() => setOpen((value) => !value)}
         aria-expanded={open} aria-controls={menuId} aria-label={`Minha conta, ${displayName || (role === "admin" ? "administração" : "perfil")}`}>
-        {avatarUrl
+        {avatarUrl && brokenAvatar !== avatarUrl
           // eslint-disable-next-line @next/next/no-img-element
-          ? <img className="store-account-avatar" src={avatarUrl} alt="" width={30} height={30} />
+          ? <img className="store-account-avatar" src={avatarUrl} alt="" width={30} height={30}
+            referrerPolicy="no-referrer" onError={() => setBrokenAvatar(avatarUrl)} />
           : <UserRound size={21} />}
         <span className="store-account-name">{label}</span>
         <ChevronDown size={13} className={open ? "is-open" : undefined} />

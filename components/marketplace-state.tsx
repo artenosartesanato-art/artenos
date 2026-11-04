@@ -18,6 +18,8 @@ type MarketplaceState = {
   isAdmin: boolean;
   /** Fim da suspensão da conta (decisão da administração); null = conta liberada. */
   suspendedUntil: string | null;
+  /** Conectado, mas sem profile (cadastro com Google não concluído). */
+  profileMissing: boolean;
   cartCount: number;
   /** Soma dos produtos no carrinho, em centavos (sem frete). */
   cartSubtotalCents: number;
@@ -106,6 +108,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
   const [suspendedUntil, setSuspendedUntil] = useState<string | null>(null);
   const suspendedRef = useRef<string | null>(null);
   const accountTypeRef = useRef<"client" | "artisan" | null>(null);
+  const [profileMissing, setProfileMissing] = useState(false);
   const [cartCount, setCartCount] = useState(0);
   const [cartSubtotalCents, setCartSubtotalCents] = useState(0);
   const [cartPulse, setCartPulse] = useState(0);
@@ -164,6 +167,9 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
       setCepError("");
     }
     if (error) return;
+    // Sem profile: administração não tem (e não precisa); as demais contas
+    // precisam concluir o cadastro (cadastro com Google não concluído).
+    setProfileMissing(!data && adminCheck.data !== true);
     const nextType = data?.account_type === "artisan" ? "artisan" : data?.account_type === "client" ? "client" : null;
     accountTypeRef.current = nextType;
     setAccountType(nextType);
@@ -174,13 +180,15 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
       const result = await supabase.storage.from("artenos-profile-avatars").download(data.avatar_path);
       if (result.data) nextUrl = URL.createObjectURL(result.data);
     }
+    // Sem foto enviada: usa a foto da conta Google, se houver.
+    const googlePhoto = nextUrl ? null : (await supabase.auth.getSession()).data.session?.user.user_metadata?.avatar_url;
     if (request !== generation.current || identity !== identityRequest.current || account !== accountRef.current) {
       if (nextUrl) URL.revokeObjectURL(nextUrl);
       return;
     }
     if (avatarUrlRef.current) URL.revokeObjectURL(avatarUrlRef.current);
     avatarUrlRef.current = nextUrl;
-    setAvatarUrl(nextUrl);
+    setAvatarUrl(nextUrl ?? (typeof googlePhoto === "string" && /^https:\/\//.test(googlePhoto) ? googlePhoto : null));
   }, []);
 
   const refreshCart = useCallback(async () => {
@@ -287,6 +295,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
       suspendedRef.current = null;
       accountTypeRef.current = null;
       setSuspendedUntil(null);
+      setProfileMissing(false);
       setCartCount(0);
       setCartSubtotalCents(0);
       if (nextId) {
@@ -380,7 +389,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
   const guestFavoriteIds = useMemo(() => new Set(guestFavorites.map((item) => item.id)), [guestFavorites]);
   const guest = authReady && !userId;
   const value = useMemo(() => ({ authReady, userId, displayName, avatarUrl,
-    sellerPanelAvailable, accountType, isAdmin, suspendedUntil,
+    sellerPanelAvailable, accountType, isAdmin, suspendedUntil, profileMissing,
     cartCount: guest ? guestTotals.count : cartCount,
     cartSubtotalCents: guest ? guestTotals.subtotalCents : cartSubtotalCents,
     cartPulse, cep, cepStatus, cepError, setGuestCep,
@@ -388,7 +397,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
     favoritesReady: guest ? true : favoritesReady,
     pendingFavoriteIds, refreshCart, pulseCart, refreshFavorites, toggleFavorite,
     guestCart, guestFavorites, addGuestToCart, setGuestQuantity }),
-  [authReady, userId, displayName, avatarUrl, sellerPanelAvailable, accountType, isAdmin, suspendedUntil, cartCount, cartSubtotalCents, cartPulse,
+  [authReady, userId, displayName, avatarUrl, sellerPanelAvailable, accountType, isAdmin, suspendedUntil, profileMissing, cartCount, cartSubtotalCents, cartPulse,
     cep, cepStatus, cepError, setGuestCep, favoriteIds, favoritesReady, pendingFavoriteIds, refreshCart, pulseCart,
     refreshFavorites, toggleFavorite, guest, guestTotals, guestFavoriteIds, guestCart, guestFavorites, addGuestToCart,
     setGuestQuantity]);

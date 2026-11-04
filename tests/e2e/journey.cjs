@@ -1,10 +1,11 @@
 // Jornada: login cliente -> home mobile -> menu -> produto -> adicionar -> gaveta -> Escape -> foco
 const { chromium } = require('playwright');
+const { acceptCookies } = require('./_cookies.cjs');
 const out = (n) => `${process.env.OUT_DIR || '.'}/j_${n}.png`;
 (async () => {
   const base = process.argv[2] || process.env.BASE_URL || 'http://localhost:3000';
   const width = +(process.argv[3] || 390);
-  const b = await chromium.launch();
+  const b = acceptCookies(await chromium.launch());
   const ctx = await b.newContext({ viewport: { width, height: 844 }, hasTouch: width < 800 });
   const p = await ctx.newPage();
   const log = [];
