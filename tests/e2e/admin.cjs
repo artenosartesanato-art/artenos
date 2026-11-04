@@ -2,6 +2,7 @@
 // Uso: BASE_URL=http://localhost:3002 node tests/e2e/admin.cjs
 // Precisa de supabase/painel_admin_completo.sql no banco local (conta admin de teste do sandbox).
 const { chromium } = require('playwright');
+const { acceptCookies } = require('./_cookies.cjs');
 const { execFileSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
@@ -29,7 +30,7 @@ async function login(browser, email, password) {
 }
 
 (async () => {
-  const browser = await chromium.launch();
+  const browser = acceptCookies(await chromium.launch());
 
   // 1. Cliente não entra.
   const client = await login(browser, 'cliente@sandbox.artenos.test', 'Artenos@2026');

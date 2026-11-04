@@ -18,7 +18,12 @@ test("respeita o estoque com a mesma mensagem do servidor", () => {
   const cart = guestCartAdd([], vaso, 4);
   assert.throws(() => guestCartAdd(cart, vaso, 1), /Estoque insuficiente/);
   assert.throws(() => guestCartAdd([], vaso, 5), /Estoque insuficiente/);
-  assert.throws(() => guestCartAdd([], { ...vaso, stock: 0 }, 1), /não está mais disponível/);
+  assert.throws(() => guestCartAdd([], { ...vaso, stock: 0, availability: "sold_out" }, 1), /esgotada/);
+});
+
+test("sob encomenda não fica preso ao estoque", () => {
+  const cart = guestCartAdd([], { ...vaso, stock: 0, availability: "made_to_order" }, 10);
+  assert.equal(cart[0].quantity, 10);
 });
 
 test("quantidade inválida é recusada", () => {

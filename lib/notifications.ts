@@ -1,6 +1,6 @@
 // Regras das notificações sem dependências de React (testáveis no Node).
 
-export type NotificationKind = "mensagem" | "pedido" | "venda" | "encomenda" | "produto";
+export type NotificationKind = "mensagem" | "pedido" | "venda" | "encomenda" | "produto" | "avaliacao" | "conta";
 
 export type AppNotification = {
   id: string;
@@ -20,6 +20,8 @@ export const KIND_LABEL: Record<NotificationKind, string> = {
   venda: "Venda",
   encomenda: "Encomenda",
   produto: "Peça salva",
+  avaliacao: "Avaliação",
+  conta: "Sua conta",
 };
 
 export const MAX_ITEMS = 40;
@@ -27,6 +29,11 @@ export const MAX_ITEMS = 40;
 /** Total exibido no sininho: soma os agrupamentos não lidos. */
 export function unreadTotal(items: AppNotification[]) {
   return items.reduce((total, item) => total + (item.read_at ? 0 : Math.max(item.unread_count, 1)), 0);
+}
+
+/** Mensagens novas (contador do link "Mensagens"): só os avisos de mensagem. */
+export function unreadMessages(items: AppNotification[]) {
+  return unreadTotal(items.filter((item) => item.kind === "mensagem"));
 }
 
 export function badgeText(total: number) {
@@ -55,6 +62,11 @@ export function readOnVisit(items: AppNotification[], pathname: string) {
   return items
     .filter((item) => !item.read_at && item.kind !== "mensagem" && item.link.split("?")[0] === pathname)
     .map((item) => item.id);
+}
+
+/** Avisos não lidos de uma conversa (ou pedido) específica. */
+export function unreadForRef(items: AppNotification[], ref: string) {
+  return items.filter((item) => !item.read_at && item.ref_id === ref).map((item) => item.id);
 }
 
 /** Não lidas por conversa, para o contador na lista do chat. */

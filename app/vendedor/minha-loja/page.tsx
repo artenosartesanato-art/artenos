@@ -26,6 +26,16 @@ import {
 import Link from "next/link";
 import { toast } from "sonner";
 import { getSupabase } from "@/lib/supabase";
+import { meaningfulTextError } from "@/lib/text-quality";
+import { findBlockedTerm, moderationError } from "@/lib/moderation";
+import { specialtyValueError } from "@/lib/store-specialties";
+import { SpecialtyField } from "@/components/specialty-field";
+import { StoreLogoEditor } from "@/components/store-logo-editor";
+import { StoryChecklist } from "@/components/story-checklist";
+import { CROP_FORMATS } from "@/components/avatar-cropper";
+import { AdjustFramingButton } from "@/components/adjust-framing-button";
+import { useImageCropFlow } from "@/components/image-crop-flow";
+import { originalPathFor } from "@/lib/avatar-crop";
 import {
   useSellerProfile,
   useSellerProfileActions,
@@ -81,12 +91,6 @@ type StoreProduct = {
 };
 
 const STORE_BUCKET = "artenos-store-assets";
-const MAX_COVER_BYTES = 5 * 1024 * 1024;
-const IMAGE_EXTENSIONS: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-};
 const emptyForm: StoreForm = {
   storeName: "",
   specialty: "",
@@ -101,6 +105,10 @@ const money = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
 });
+
+function storeInitials(name: string) {
+  return name.split(/\s+/).filter((word) => word.length > 2).slice(0, 2).map((word) => word[0]?.toUpperCase()).join("") || "A";
+}
 
 function publicCoverUrl(path: string | null) {
   if (!path) return "";
@@ -213,12 +221,12 @@ export default function StorePanelPage() {
     const shippingOriginCep = form.shippingOriginCep.replace(/\D/g, "");
     if (form.storeName.trim().length < 3)
       return toast.error("O nome da loja precisa ter pelo menos 3 caracteres.");
-    if (form.specialty.trim().length < 2)
-      return toast.error("Informe a especialidade da loja.");
-    if (form.story.trim().length < 40)
-      return toast.error(
-        "A história da loja precisa ter pelo menos 40 caracteres.",
-      );
+    const specialtyProblem = specialtyValueError(form.specialty);
+    if (specialtyProblem) return toast.error(specialtyProblem);
+    const storyError = meaningfulTextError(form.story, "A história da loja");
+    if (storyError) return toast.error(storyError);
+    if (findBlockedTerm(`${form.storeName} ${form.specialty} ${form.story} ${form.announcement}`))
+      return toast.error("O nome, a especialidade, a história ou o aviso da loja contém termos que não são permitidos na Artenós.");
     if (
       !Number.isInteger(productionDays) ||
       productionDays < 1 ||
@@ -267,57 +275,52 @@ export default function StorePanelPage() {
       });
       setField("shippingOriginCep", shippingOriginCep);
       toast.success("Informações da loja salvas.");
-    } catch {
+    } catch (error) {
       toast.error(
-        "Não foi possível salvar as alterações da loja. Tente novamente; seus textos continuam no formulário.",
+        moderationError(error) ??
+          "Não foi possível salvar as alterações da loja. Tente novamente; seus textos continuam no formulário.",
       );
     } finally {
       setSaving(false);
     }
   }
 
-  async function uploadCover(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file || !store || uploading) return;
-    const extension = IMAGE_EXTENSIONS[file.type];
-    if (!extension) return toast.error("Escolha uma imagem JPG, PNG ou WebP.");
-    if (file.size > MAX_COVER_BYTES)
-      return toast.error("A imagem deve ter no máximo 5 MB.");
-
+  // Capa: escolher → enquadrar no formato largo da página da loja → enviar.
+  const coverCrop = useImageCropFlow(CROP_FORMATS.storeCover, async ({ avatar, original }) => {
+    if (!store) return;
     const oldPath = store.cover_path;
+    const extension = avatar.type === "image/webp" ? "webp" : "jpg";
     const newPath = `${store.artisan_id}/cover-${crypto.randomUUID()}.${extension}`;
     setUploading(true);
     try {
       const supabase = getSupabase();
-      const { error: uploadError } = await supabase.storage
-        .from(STORE_BUCKET)
-        .upload(newPath, file, {
-          contentType: file.type,
-          cacheControl: "3600",
-          upsert: false,
-        });
+      const bucket = supabase.storage.from(STORE_BUCKET);
+      const { error: uploadError } = await bucket.upload(newPath, avatar, {
+        contentType: avatar.type,
+        cacheControl: "3600",
+        upsert: false,
+      });
       if (uploadError) throw uploadError;
       const { error: saveError } = await supabase.rpc("set_my_store_cover", {
         p_cover_path: newPath,
       });
       if (saveError) {
-        await supabase.storage.from(STORE_BUCKET).remove([newPath]);
+        await bucket.remove([newPath]);
         throw saveError;
       }
+      // Original guardado para reenquadrar depois (opcional).
+      await bucket.upload(originalPathFor(newPath), original, { contentType: original.type, cacheControl: "3600", upsert: true }).catch(() => null);
       setStore((previous) =>
         previous ? { ...previous, cover_path: newPath } : previous,
       );
-      if (oldPath) await supabase.storage.from(STORE_BUCKET).remove([oldPath]);
+      if (oldPath) await bucket.remove([oldPath, originalPathFor(oldPath)]);
       toast.success("Capa da loja atualizada.");
     } catch {
-      toast.error(
-        "Não foi possível enviar a capa. Use JPG, PNG ou WebP e tente novamente.",
-      );
+      toast.error("Não foi possível enviar a capa. Tente novamente.");
     } finally {
       setUploading(false);
     }
-  }
+  });
 
   async function removeCover() {
     if (
@@ -339,7 +342,7 @@ export default function StorePanelPage() {
       );
       const { error: deleteError } = await supabase.storage
         .from(STORE_BUCKET)
-        .remove([oldPath]);
+        .remove([oldPath, originalPathFor(oldPath)]);
       if (deleteError)
         toast.info(
           "A capa foi removida da loja, mas o arquivo antigo ainda precisa ser limpo no Storage.",
@@ -451,32 +454,48 @@ export default function StorePanelPage() {
           <p>Use uma foto horizontal que represente o trabalho da sua loja.</p>
           <div className="store-cover-actions">
             <label>
-              {uploading ? (
+              {uploading || coverCrop.preparing ? (
                 <LoaderCircle className="seller-spin" size={16} />
               ) : (
                 <Camera size={16} />
               )}
               {uploading
                 ? "Enviando..."
-                : coverUrl
-                  ? "Trocar capa"
-                  : "Adicionar capa"}
+                : coverCrop.preparing
+                  ? "Abrindo..."
+                  : coverUrl
+                    ? "Trocar capa"
+                    : "Adicionar capa"}
               <input
                 type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={uploadCover}
-                disabled={uploading}
+                accept="image/*"
+                onChange={(event) => void coverCrop.pick(event)}
+                disabled={uploading || coverCrop.preparing}
               />
             </label>
+            {coverUrl && store?.cover_path && (
+              <AdjustFramingButton
+                disabled={uploading || coverCrop.preparing}
+                onClick={() => void coverCrop.adjust([publicCoverUrl(originalPathFor(store.cover_path!)), coverUrl])}
+              />
+            )}
             {coverUrl && (
               <button type="button" onClick={removeCover} disabled={uploading}>
                 <Trash2 size={15} /> Remover
               </button>
             )}
           </div>
-          <small>JPG, PNG ou WebP · até 5 MB</small>
+          <small>JPG, PNG, WebP ou foto do celular · você enquadra antes de salvar</small>
         </div>
+        {coverCrop.element}
       </section>
+
+      {store && (
+        <StoreLogoEditor
+          artisanId={store.artisan_id}
+          initials={storeInitials(form.storeName || store.store_name || "")}
+        />
+      )}
 
       <div className="store-panel-grid">
         <form className="store-settings-form" onSubmit={saveStore}>
@@ -501,18 +520,10 @@ export default function StorePanelPage() {
                   required
                 />
               </label>
-              <label>
-                <span>Especialidade principal</span>
-                <input
-                  value={form.specialty}
-                  onChange={(event) =>
-                    setField("specialty", event.target.value)
-                  }
-                  minLength={2}
-                  maxLength={80}
-                  required
-                />
-              </label>
+              <SpecialtyField
+                value={form.specialty}
+                onChange={(value) => setField("specialty", value)}
+              />
               <label className="is-wide">
                 <span>História da loja</span>
                 <textarea
@@ -523,6 +534,7 @@ export default function StorePanelPage() {
                   rows={7}
                   required
                 />
+                <StoryChecklist value={form.story} />
                 <small>{form.story.length}/1200 caracteres</small>
               </label>
             </div>

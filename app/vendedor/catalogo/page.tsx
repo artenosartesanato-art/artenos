@@ -16,11 +16,21 @@ import {
   Tags,
   Upload,
   X,
+  SpriteIcon,
 } from "@/components/icons";
 import { toast } from "sonner";
+import { playUiSound } from "@/lib/ui-sound";
+import { categoryLook } from "@/lib/category-looks";
 import { getSupabase } from "@/lib/supabase";
+import { findBlockedTerm, moderationError } from "@/lib/moderation";
+import { DescriptionEditor } from "@/components/description-editor";
+import { plainSummary } from "@/lib/rich-text";
 import { useSellerProfile } from "@/components/seller-shell";
 import "./product-catalog.css";
+import { estimatePackage } from "@/lib/shipping-estimate";
+import { CROP_FORMATS } from "@/components/avatar-cropper";
+import { AdjustFramingButton } from "@/components/adjust-framing-button";
+import { useImageCropFlow } from "@/components/image-crop-flow";
 
 type CatalogStatus = "all" | "published" | "draft" | "out_of_stock" | "ready";
 
@@ -73,13 +83,11 @@ type ProductForm = {
   lengthCm: string;
   packageCount: string;
   productionTimeDays: string;
-  readyToShip: boolean;
   active: boolean;
   imageUrl: string;
 };
 
 const STORE_BUCKET = "artenos-store-assets";
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const IMAGE_EXTENSIONS: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
@@ -97,8 +105,8 @@ const EMPTY_FORM: ProductForm = {
   lengthCm: "",
   packageCount: "1",
   productionTimeDays: "",
-  readyToShip: false,
-  active: false,
+  // Peça nova já vem para publicar; desmarque para guardar como rascunho.
+  active: true,
   imageUrl: "",
 };
 const money = new Intl.NumberFormat("pt-BR", {
@@ -139,6 +147,10 @@ function errorMessage(error: unknown) {
     "volumes",
     "prazo de produção",
   ];
+  const blocked = moderationError(error);
+  if (blocked) return blocked;
+  const fiscal = message.match(/FISCAL:\s*(.+)/);
+  if (fiscal) return fiscal[1];
   return expected.find((text) => message.includes(text))
     ? message
     : "Não foi possível salvar o produto. Confira os dados e tente novamente.";
@@ -158,6 +170,8 @@ export default function ProductCatalogPage() {
   const [form, setForm] = useState<ProductForm>(EMPTY_FORM);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState("");
+  // Foto original (antes do recorte) da nova imagem, para reenquadrar.
+  const [imageSource, setImageSource] = useState<Blob | null>(null);
   const [saving, setSaving] = useState(false);
   const [changingStatusId, setChangingStatusId] = useState<string | null>(null);
 
@@ -275,6 +289,7 @@ export default function ProductCatalogPage() {
     if (imagePreview.startsWith("blob:")) URL.revokeObjectURL(imagePreview);
     setImageFile(null);
     setImagePreview("");
+    setImageSource(null);
   }
 
   function closeForm() {
@@ -307,25 +322,29 @@ export default function ProductCatalogPage() {
       lengthCm: String(product.shipping_length_cm ?? ""),
       packageCount: String(product.shipping_package_count ?? 1),
       productionTimeDays: String(product.production_time_days ?? ""),
-      readyToShip: product.ready_to_ship,
       active: product.active,
       imageUrl: product.image_url || "",
     });
     setFormOpen(true);
   }
 
-  function selectImage(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-    if (!IMAGE_EXTENSIONS[file.type])
-      return toast.error("Escolha uma imagem JPG, PNG ou WebP.");
-    if (file.size > MAX_IMAGE_BYTES)
-      return toast.error("A imagem deve ter no máximo 5 MB.");
+  // Foto da peça: escolher → enquadrar no formato da vitrine (4:5) → fica pronta
+  // para enviar ao salvar o produto. O original fica guardado para reenquadrar.
+  const productCrop = useImageCropFlow(CROP_FORMATS.product, async ({ avatar, original }) => {
+    const extension = avatar.type === "image/webp" ? "webp" : "jpg";
     clearImageSelection();
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
-  }
+    setImageFile(new File([avatar], `foto.${extension}`, { type: avatar.type }));
+    setImagePreview(URL.createObjectURL(avatar));
+    setImageSource(original);
+  });
+
+  const packageEstimate = estimatePackage({
+    weightGrams: Number(form.weightGrams),
+    lengthCm: Number(form.lengthCm),
+    widthCm: Number(form.widthCm),
+    heightCm: Number(form.heightCm),
+    boxes: Number(form.packageCount),
+  });
 
   async function saveProduct(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -343,6 +362,8 @@ export default function ProductCatalogPage() {
       return toast.error("O nome precisa ter pelo menos 3 caracteres.");
     if (form.description.trim().length < 20)
       return toast.error("A descrição precisa ter pelo menos 20 caracteres.");
+    if (findBlockedTerm(`${form.name} ${form.description}`))
+      return toast.error("O nome ou a descrição contém termos que não são permitidos na Artenós.");
     if (!Number.isFinite(price) || price < 0.01)
       return toast.error("Informe um preço válido.");
     if (!Number.isInteger(stock) || stock < 0)
@@ -361,7 +382,17 @@ export default function ProductCatalogPage() {
     )
       return toast.error("As dimensões devem estar entre 1 e 200 cm.");
     if (!Number.isInteger(packageCount) || packageCount < 1 || packageCount > 20)
-      return toast.error("Informe uma quantidade entre 1 e 20 volumes.");
+      return toast.error("Informe de 1 a 20 caixas por peça.");
+    // Dados que encarecem muito o frete: confirma antes de salvar.
+    const estimate = estimatePackage({ weightGrams, lengthCm, widthCm, heightCm, boxes: packageCount });
+    if (estimate && (estimate.multipleBoxes || estimate.oversized)) {
+      const reasons = [
+        estimate.multipleBoxes ? `• A peça será enviada em ${packageCount} caixas separadas (o normal é 1).` : "",
+        estimate.oversized ? `• A caixa de ${lengthCm} × ${widthCm} × ${heightCm} cm é grande para ${weightGrams} g.` : "",
+      ].filter(Boolean).join("\n");
+      if (!window.confirm(`Confira os dados de envio:\n\n${reasons}\n\nO frete será calculado como ${estimate.billedKg.toLocaleString("pt-BR")} kg, o que deixa a entrega cara para o cliente. Salvar mesmo assim?`))
+        return;
+    }
     if (
       form.productionTimeDays.trim() === "" ||
       !Number.isInteger(productionTimeDays) ||
@@ -406,7 +437,8 @@ export default function ProductCatalogPage() {
         p_price: price,
         p_category_id: form.categoryId || null,
         p_stock: stock,
-        p_ready_to_ship: form.readyToShip,
+        // Calculado no banco pelo estoque; enviado só por compatibilidade.
+        p_ready_to_ship: stock > 0,
         p_image_url: finalImageUrl,
         // Um produto novo nasce como rascunho para que os dados logísticos
         // sejam persistidos antes de qualquer publicação na vitrine.
@@ -448,13 +480,16 @@ export default function ProductCatalogPage() {
         await supabase.storage.from(STORE_BUCKET).remove([oldImagePath]);
       }
 
-      toast.success(
-        editingId
-          ? "Produto atualizado."
-          : form.active
-            ? "Produto criado e publicado."
-            : "Produto salvo como rascunho.",
-      );
+      playUiSound("success");
+      if (!form.active) {
+        // Rascunho não aparece para os clientes: deixa isso claro.
+        toast.info("Produto salvo como rascunho.", {
+          description: "Ele ainda não aparece na vitrine. Use “Publicar” no catálogo quando quiser mostrar aos clientes.",
+          duration: 9000,
+        });
+      } else {
+        toast.success(editingId ? "Produto atualizado." : "Produto criado e publicado na vitrine.");
+      }
       closeFormAfterSave();
       await loadCatalog(query, status);
     } catch (error) {
@@ -489,6 +524,7 @@ export default function ProductCatalogPage() {
         p_active: !product.active,
       });
       if (error) throw error;
+      playUiSound(product.active ? "removed" : "success");
       toast.success(
         product.active ? "Produto pausado." : "Produto publicado na vitrine.",
       );
@@ -517,6 +553,10 @@ export default function ProductCatalogPage() {
         <strong>Preparando seu catálogo...</strong>
       </section>
     );
+
+  // Mesmo ícone da categoria usado na vitrine, ao lado do campo.
+  const selectedCategory = categories.find((category) => category.id === form.categoryId);
+  const selectedCategoryIcon = selectedCategory ? categoryLook(selectedCategory).icon : null;
 
   return (
     <div className="catalog-page">
@@ -656,7 +696,7 @@ export default function ProductCatalogPage() {
                 <div className="catalog-product-body">
                   <small>{product.category_name || "Sem categoria"}</small>
                   <h2>{product.name}</h2>
-                  <p>{product.description}</p>
+                  <p>{plainSummary(product.description, 140)}</p>
                   <div className="catalog-product-data">
                     <strong>{money.format(Number(product.price))}</strong>
                     <span>
@@ -665,11 +705,10 @@ export default function ProductCatalogPage() {
                         : "Sem estoque"}
                     </span>
                   </div>
-                  {product.ready_to_ship && (
-                    <div className="catalog-ready">
-                      <PackageCheck size={14} /> Pronto para envio
-                    </div>
-                  )}
+                  <div className={product.stock > 0 ? "catalog-ready" : "catalog-made-to-order"}>
+                    <PackageCheck size={14} />{" "}
+                    {product.stock > 0 ? "Pronta entrega" : "Sob encomenda / esgotado"}
+                  </div>
                   {!product.shipping_data_complete && (
                     <div className="catalog-shipping-missing">
                       Dados de frete pendentes
@@ -746,21 +785,11 @@ export default function ProductCatalogPage() {
                     />
                     <small>{form.name.length}/120</small>
                   </label>
-                  <label>
-                    <span>Descrição</span>
-                    <textarea
-                      value={form.description}
-                      onChange={(event) =>
-                        setField("description", event.target.value)
-                      }
-                      minLength={20}
-                      maxLength={2000}
-                      rows={7}
-                      placeholder="Conte os materiais, medidas, técnica e detalhes da peça"
-                      required
-                    />
-                    <small>{form.description.length}/2000</small>
-                  </label>
+                  <DescriptionEditor
+                    value={form.description}
+                    onChange={(value) => setField("description", value)}
+                    placeholder="Conte os materiais, medidas, técnica e detalhes da peça"
+                  />
                   <div className="catalog-fields-row">
                     <label>
                       <span>Preço</span>
@@ -798,7 +827,10 @@ export default function ProductCatalogPage() {
                     </label>
                   </div>
                   <label>
-                    <span>Categoria</span>
+                    <span className="seller-category-label">
+                      Categoria
+                      {selectedCategoryIcon && <SpriteIcon name={selectedCategoryIcon} size={16} aria-hidden="true" />}
+                    </span>
                     <select
                       value={form.categoryId}
                       onChange={(event) =>
@@ -904,7 +936,7 @@ export default function ProductCatalogPage() {
                         </span>
                       </label>
                       <label>
-                        <span>Volumes</span>
+                        <span>Caixas por peça</span>
                         <input
                           type="number"
                           min="1"
@@ -938,36 +970,46 @@ export default function ProductCatalogPage() {
                       </label>
                     </div>
                     <small>
-                      Em produtos com mais de um volume, o peso total é
-                      dividido igualmente e as mesmas dimensões são aplicadas
-                      a cada volume na cotação.
+                      Medidas e peso da peça <strong>já embalada</strong>. Caixas por
+                      peça é quase sempre 1: use mais só se uma única peça for
+                      enviada em várias caixas (ex.: móvel desmontado). Nesse caso o
+                      peso é dividido entre elas e cada caixa usa as medidas acima.
                     </small>
+                    {packageEstimate && (
+                      <div
+                        className={`catalog-freight-estimate${packageEstimate.oversized || packageEstimate.multipleBoxes ? " is-warning" : ""}`}
+                        role="status"
+                      >
+                        <strong>
+                          Peso cobrado pelo frete: {packageEstimate.billedKg.toLocaleString("pt-BR")} kg
+                        </strong>
+                        <span>
+                          As transportadoras cobram o maior valor entre o peso real
+                          ({packageEstimate.realKg.toLocaleString("pt-BR")} kg) e o tamanho da caixa
+                          ({packageEstimate.cubicKgPerBox.toLocaleString("pt-BR")} kg por caixa).
+                        </span>
+                        {packageEstimate.multipleBoxes && (
+                          <span>
+                            Esta peça vai em {form.packageCount} caixas separadas: o frete é
+                            calculado para cada uma.
+                          </span>
+                        )}
+                        {packageEstimate.oversized && (
+                          <span>
+                            A caixa parece grande para o peso e vai encarecer o frete.
+                            Confira as medidas com a peça embalada.
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </section>
+                  <p className="catalog-availability-note" role="note">
+                    <PackageCheck size={15} />
+                    {Number(form.stock) > 0
+                      ? "Com estoque, a peça aparece como Pronta entrega. Quando as unidades acabarem, ela passa sozinha para Sob encomenda (ou Esgotado, se a loja não aceitar encomendas)."
+                      : "Sem estoque, a peça aparece como Sob encomenda se a loja aceitar encomendas; se não aceitar, como Esgotado. Informe o estoque para vender a pronta entrega."}
+                  </p>
                   <div className="catalog-form-toggles">
-                    <label>
-                      <span>
-                        <strong>Pronto para envio</strong>
-                        <small>
-                          A peça já está produzida e pode ser enviada.
-                        </small>
-                      </span>
-                      <input
-                        type="checkbox"
-                        checked={form.readyToShip}
-                        onChange={(event) => {
-                          const checked = event.target.checked;
-                          setForm((previous) => ({
-                            ...previous,
-                            readyToShip: checked,
-                            productionTimeDays: checked
-                              ? "0"
-                              : previous.productionTimeDays === "0"
-                                ? ""
-                                : previous.productionTimeDays,
-                          }));
-                        }}
-                      />
-                    </label>
                     <label>
                       <span>
                         <strong>Publicar na vitrine</strong>
@@ -999,24 +1041,31 @@ export default function ProductCatalogPage() {
                     )}
                   </div>
                   <label>
-                    <Upload size={16} />{" "}
-                    {imageShown ? "Trocar imagem" : "Adicionar imagem"}
+                    {productCrop.preparing ? <LoaderCircle className="seller-spin" size={16} /> : <Upload size={16} />}{" "}
+                    {productCrop.preparing ? "Abrindo..." : imageShown ? "Trocar imagem" : "Adicionar imagem"}
                     <input
                       type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={selectImage}
-                      disabled={saving}
+                      accept="image/*"
+                      onChange={(event) => void productCrop.pick(event)}
+                      disabled={saving || productCrop.preparing}
                     />
                   </label>
+                  {imageShown && (
+                    <AdjustFramingButton
+                      disabled={saving || productCrop.preparing}
+                      onClick={() => imageSource ? productCrop.reopen(imageSource) : void productCrop.adjust([imageShown])}
+                    />
+                  )}
                   {imageFile && (
                     <button type="button" onClick={clearImageSelection}>
                       Cancelar nova imagem
                     </button>
                   )}
                   <small>
-                    JPG, PNG ou WebP · até 5 MB.
+                    JPG, PNG, WebP ou foto do celular · você enquadra antes de salvar.
                     <br />A imagem é obrigatória para publicar.
                   </small>
+                  {productCrop.element}
                 </aside>
               </div>
               <footer>

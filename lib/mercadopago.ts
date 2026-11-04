@@ -42,12 +42,14 @@ function accessToken() {
 
 export async function mpRequest<T>(
   path: string,
-  init: { method?: string; body?: unknown; headers?: Record<string, string> } = {}
+  // accessToken: só para o split (caminho A, ainda não ligado): cobrar em nome
+  // da loja com o token que ela autorizou. Sem ele, usa a conta da Artenós (hoje).
+  init: { method?: string; body?: unknown; headers?: Record<string, string>; accessToken?: string } = {}
 ): Promise<T> {
   const response = await fetch(API + path, {
     method: init.method ?? 'GET',
     headers: {
-      Authorization: `Bearer ${accessToken()}`,
+      Authorization: `Bearer ${init.accessToken ?? accessToken()}`,
       'Content-Type': 'application/json',
       ...init.headers,
     },

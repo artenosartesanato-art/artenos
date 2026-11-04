@@ -26,3 +26,21 @@ export async function getUserFromRequest(request: Request) {
   if (error || !data.user) return null;
   return data.user;
 }
+
+// Client com a sessão de quem chamou (respeita RLS e auth.uid()): usado para
+// conferir permissões no banco, como is_active_admin(), em nome da pessoa.
+export function getSupabaseAsUser(request: Request): SupabaseClient | null {
+  const header = request.headers.get('authorization') ?? '';
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!header.startsWith('Bearer ') || !url || !key) return null;
+  return createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: header } },
+  });
+}
+
+/** IP para os registros de auditoria (só quando é um endereço válido). */
+export function auditIp(ip: string): string | null {
+  return /^[0-9a-f:.]+$/i.test(ip) && ip.length <= 45 ? ip : null;
+}

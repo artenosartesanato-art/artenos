@@ -1122,3 +1122,106 @@
     width: 100%;
   }
 }
+
+/* Denúncias de conversas. */
+.adm-report-list {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.adm-report {
+  display: grid;
+  gap: 10px;
+}
+.adm-report-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.adm-report-head small {
+  display: block;
+  margin-top: 2px;
+  color: var(--an-text-muted);
+}
+.adm-report-details,
+.adm-report-note,
+.adm-report-attempts {
+  margin: 0;
+}
+.adm-report-attempts {
+  color: var(--an-erro);
+  font-weight: 650;
+}
+.adm-report-suspended {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--an-r-md);
+  background: rgb(176 58 46 / 0.08);
+  font-size: var(--an-fs-sm);
+}
+.adm-report-messages {
+  display: grid;
+  gap: 6px;
+  max-height: 280px;
+  margin: 0;
+  padding: 10px;
+  overflow: auto;
+  border-radius: var(--an-r-md);
+  background: var(--an-surface-soft);
+  list-style: none;
+}
+.adm-report-messages li {
+  display: grid;
+  gap: 2px;
+}
+.adm-report-messages li.is-store {
+  justify-items: start;
+}
+.adm-report-messages li.is-client {
+  justify-items: end;
+  text-align: right;
+}
+.adm-report-messages small {
+  color: var(--an-text-muted);
+}
+.adm-report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.adm-suspension {
+  align-items: flex-start;
+  gap: 4px;
+}
+.adm-payment-fees {
+  margin-top: 18px;
+}
+
+/* Celular: filtros numa linha que desliza para o lado (em vez de várias linhas
+   de botões empilhados). A borda direita esmaece para indicar que há mais. */
+@media (max-width: 640px) {
+  .adm-chips {
+    flex-wrap: nowrap;
+    max-width: 100%;
+    margin-inline: -16px;
+    padding: 2px 16px 6px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 16px;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent);
+    mask-image: linear-gradient(90deg, #000 85%, transparent);
+  }
+  .adm-chips::-webkit-scrollbar {
+    display: none;
+  }
+  .adm-chips button {
+    flex: none;
+    min-height: 40px;
+    scroll-snap-align: start;
+    white-space: nowrap;
+  }
+}

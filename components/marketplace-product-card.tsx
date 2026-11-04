@@ -6,6 +6,11 @@ import { useMarketplace } from "@/components/marketplace-state";
 import { useStorefrontActions } from "@/components/storefront-actions";
 import { ProductInquiryLink } from "@/components/product-inquiry-link";
 import { OptimizedImage } from "@/components/optimized-image";
+import { AVAILABILITY_LABEL, availabilityFor, type Availability } from "@/lib/availability";
+import { plainSummary } from "@/lib/rich-text";
+import { StarRating } from "@/components/stars";
+import { useMyCustomOrderLabel } from "@/components/my-custom-orders";
+import { useBuyNow } from "@/components/use-buy-now";
 
 export type MarketplaceProduct = {
   id: string;
@@ -15,6 +20,10 @@ export type MarketplaceProduct = {
   image_url?: string | null;
   stock?: number | null;
   ready_to_ship?: boolean;
+  /** Calculado no banco pelo estoque (lib/availability.ts). */
+  availability?: Availability | null;
+  rating_avg?: number | string | null;
+  rating_count?: number | null;
   category_name?: string | null;
   shop_name?: string | null;
   /** Presente quando a função do banco devolve a loja (migração opcional). */
@@ -23,11 +32,11 @@ export type MarketplaceProduct = {
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
-export function availabilityOf(product: Pick<MarketplaceProduct, "stock" | "ready_to_ship">, paused = false) {
-  if (paused) return { label: "Loja em pausa", tone: "muted" as const };
-  if (product.stock === 0) return { label: "Esgotado", tone: "muted" as const };
-  if (product.ready_to_ship) return { label: "Pronta entrega", tone: "moss" as const };
-  return { label: "Feito sob encomenda", tone: "warm" as const };
+export function availabilityOf(product: Pick<MarketplaceProduct, "stock" | "ready_to_ship" | "availability">, paused = false) {
+  if (paused) return { label: "Loja em pausa", tone: "muted" as const, unavailable: true };
+  const availability = availabilityFor(product);
+  const tone = availability === "ready" ? "moss" as const : availability === "made_to_order" ? "warm" as const : "muted" as const;
+  return { label: AVAILABILITY_LABEL[availability], tone, unavailable: availability === "sold_out" };
 }
 
 export function MarketplaceProductCard({ product, shopName, cartDisabled = false, priority = false }: {
@@ -50,10 +59,17 @@ export function MarketplaceProductCard({ product, shopName, cartDisabled = false
   const saved = favoriteIds.has(product.id);
   const favoritePending = pendingFavoriteIds.has(product.id);
   const adding = pendingCartIds.has(product.id);
-  const unavailable = product.stock === 0 || cartDisabled;
   const availability = availabilityOf(product, cartDisabled);
+  const unavailable = availability.unavailable;
+  const summary = plainSummary(product.description, 120);
+  // Quem já encomendou a peça vê o andamento no lugar do selo "Sob encomenda".
+  const myOrderLabel = useMyCustomOrderLabel(product.id, userId);
   // Só se pergunta sobre peças de outras lojas.
   const ownProduct = Boolean(userId && product.shop_id && product.shop_id === userId);
+  const { buyNow, pendingId } = useBuyNow();
+  const buying = pendingId === product.id;
+  const kind = availabilityFor(product);
+  const buyLabel = cartDisabled ? "Indisponível" : kind === "sold_out" ? "Esgotado" : kind === "made_to_order" ? "Encomendar" : "Comprar";
 
   return (
     <ProductDetailsButton product={fullProduct} cartDisabled={cartDisabled}>
@@ -64,7 +80,7 @@ export function MarketplaceProductCard({ product, shopName, cartDisabled = false
               aria-label={`Ver detalhes de ${product.name}`}>
               {product.image_url ? (
                 <OptimizedImage src={product.image_url} alt="" priority={priority} width={480} height={600}
-                  sizes="(max-width: 640px) 50vw, (max-width: 1100px) 33vw, 300px" />
+                  sizes="(max-width: 600px) 50vw, (max-width: 1024px) 50vw, 460px" />
               ) : (
                 <span className="store-no-image">
                   <Sparkles size={26} />
@@ -72,9 +88,13 @@ export function MarketplaceProductCard({ product, shopName, cartDisabled = false
                 </span>
               )}
             </button>
-            <span className={`an-badge store-product-badge${availability.tone === "warm" ? " an-badge--warm" : availability.tone === "muted" ? " an-badge--muted" : ""}`}>
-              {availability.label}
-            </span>
+            {myOrderLabel ? (
+              <span className="an-badge store-product-badge store-product-badge--order">{myOrderLabel}</span>
+            ) : (
+              <span className={`an-badge store-product-badge${availability.tone === "warm" ? " an-badge--warm" : availability.tone === "muted" ? " an-badge--muted" : ""}`}>
+                {availability.label}
+              </span>
+            )}
             <button type="button" className={saved ? "store-heart is-saved" : "store-heart"}
               disabled={favoritePending} onClick={() => void toggleFavorite(fullProduct)}
               aria-pressed={saved}
@@ -83,19 +103,31 @@ export function MarketplaceProductCard({ product, shopName, cartDisabled = false
             </button>
           </div>
           <div className="store-product-body">
-            {displayShop && <p className="store-product-shop">{displayShop}</p>}
+            {/* Loja e nota na mesma linha; título e resumo têm altura reservada para preço e botões alinharem. */}
+            <div className="store-product-meta">
+              {displayShop && <p className="store-product-shop">{displayShop}</p>}
+              {Number(product.rating_count) > 0 && (
+                <StarRating className="store-product-rating" avg={product.rating_avg} count={product.rating_count} size={12} />
+              )}
+            </div>
             <h3>
               <button type="button" className="store-product-title" onClick={openDetails}>
                 {product.name}
               </button>
             </h3>
+            <p className="store-product-summary">{summary}</p>
             <p className="store-product-price">{money.format(Number(product.price))}</p>
             <div className="store-product-actions">
-              <button type="button" className="store-product-add" disabled={unavailable || adding}
+              <button type="button" className="store-product-buy" disabled={unavailable || buying || ownProduct}
+                aria-busy={buying} onClick={() => void buyNow(product.id, 1)}
+                aria-label={unavailable ? `${product.name}: ${buyLabel.toLowerCase()}` : `${buyLabel} ${product.name}`}>
+                {buying && <LoaderCircle size={16} className="spin" />}
+                <span>{buying ? "Abrindo…" : buyLabel}</span>
+              </button>
+              <button type="button" className="store-product-cart" disabled={unavailable || adding || ownProduct}
                 aria-busy={adding} onClick={() => void addToCart(fullProduct)}
-                aria-label={unavailable ? `${product.name} indisponível` : `Adicionar ${product.name} ao carrinho`}>
-                {adding ? <LoaderCircle size={17} className="spin" /> : <ShoppingBag size={17} />}
-                <span>{unavailable ? "Indisponível" : adding ? "Adicionando…" : "Adicionar"}</span>
+                aria-label={`Adicionar ${product.name} ao carrinho`} title="Adicionar ao carrinho">
+                {adding ? <LoaderCircle size={17} className="spin" /> : <ShoppingBag size={18} />}
               </button>
               {!ownProduct && <ProductInquiryLink productId={product.id} productName={product.name} compact />}
             </div>

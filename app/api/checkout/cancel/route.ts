@@ -2,9 +2,12 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin, getUserFromRequest } from "@/lib/supabase-admin";
 import { findPaymentByReference, getPayment, mpRequest, type MpPayment } from "@/lib/mercadopago";
 import { reconcilePayment } from "@/lib/payments";
+import { sameOrigin } from "@/lib/request-guard";
 
 export const runtime = "nodejs";
 export async function POST(request: Request) {
+  // Só aceita chamadas da própria página (proteção contra CSRF).
+  if (!sameOrigin(request)) return NextResponse.json({ error: "Origem não permitida." }, { status: 403 });
   try {
     const user = await getUserFromRequest(request);
     if (!user) return NextResponse.json({ error: "Faça login." }, { status: 401 });

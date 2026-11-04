@@ -5,6 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright');
+const { acceptCookies } = require('./_cookies.cjs');
 const { createClient } = require('@supabase/supabase-js');
 
 const base = process.argv[2] || process.env.BASE_URL || 'http://localhost:3000';
@@ -119,7 +120,7 @@ async function run(b, email, profilePath, width) {
 }
 
 (async () => {
-  const b = await chromium.launch();
+  const b = acceptCookies(await chromium.launch());
   await run(b, 'cliente@sandbox.artenos.test', '/perfil', 1280);
   await run(b, 'barro@sandbox.artenos.test', '/vendedor/perfil', 390);
   await b.close();

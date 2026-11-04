@@ -1,7 +1,8 @@
 const { chromium } = require('playwright');
+const { acceptCookies } = require('./_cookies.cjs');
 (async () => {
   const base = process.env.BASE_URL || 'http://localhost:3000';
-  const b = await chromium.launch(); const log = [];
+  const b = acceptCookies(await chromium.launch()); const log = [];
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 } }); const p = await ctx.newPage();
   // ViaCEP é externo e pode estar bloqueado no ambiente de teste: respondemos só a consulta de CEP.
   // O cadastro em si vai para o Supabase local de verdade.

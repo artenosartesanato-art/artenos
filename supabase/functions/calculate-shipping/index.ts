@@ -63,7 +63,9 @@ Deno.serve(async (request) => {
       return json({ error: "Faça login para calcular o frete." }, 401);
     }
 
-    const { destinationCep: rawDestinationCep } = await request.json();
+    const { destinationCep: rawDestinationCep, mode: rawMode } = await request.json();
+    // "buy_now": cota só a peça do "Comprar agora" (buy_now_intents), sem o carrinho.
+    const buyNow = rawMode === "buy_now";
     const destinationCep = digits(rawDestinationCep);
     if (!/^\d{8}$/.test(destinationCep)) {
       return json({ error: "Informe um CEP de destino válido." }, 400);
@@ -87,13 +89,13 @@ Deno.serve(async (request) => {
       return json({ error: "Sua sessão expirou. Entre novamente." }, 401);
     }
 
-    const { data, error } = await userClient.rpc("get_cart_shipping_packages", {
-      p_destination_cep: destinationCep,
-    });
+    const { data, error } = await userClient.rpc("get_cart_shipping_packages", buyNow
+      ? { p_destination_cep: destinationCep, p_mode: "buy_now" }
+      : { p_destination_cep: destinationCep });
     if (error) throw new Error(error.message);
     const packages = (data ?? []) as ShippingPackage[];
     if (packages.length === 0) {
-      return json({ error: "O carrinho está vazio ou possui produtos indisponíveis." }, 400);
+      return json({ error: buyNow ? "Esta peça não está mais disponível." : "O carrinho está vazio ou possui produtos indisponíveis." }, 400);
     }
 
     const grouped = new Map<string, ShippingPackage[]>();
@@ -212,8 +214,11 @@ Deno.serve(async (request) => {
         continue;
       }
 
-      await admin.from("cart_shipping_selections").delete()
-        .eq("client_id", userData.user.id).eq("artisan_id", artisanId);
+      // A escolha de frete do carrinho só é zerada quando o próprio carrinho é recotado.
+      if (!buyNow) {
+        await admin.from("cart_shipping_selections").delete()
+          .eq("client_id", userData.user.id).eq("artisan_id", artisanId);
+      }
       const { data: savedQuotes, error: saveError } = await admin
         .from("shipping_quotes")
         .insert(validServices)

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin, getUserFromRequest } from '../../../../lib/supabase-admin';
 import { createPayment, MpError } from '../../../../lib/mercadopago';
 import { reconcilePayment } from '../../../../lib/payments';
+import { clientIp, sameOrigin } from '../../../../lib/request-guard';
+import { paymentAttemptAllowed } from '../../../../lib/payment-rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,6 +16,8 @@ type PayBody = { checkoutId?: unknown; formData?: unknown; deviceId?: unknown };
 // Recebe os dados do Payment Brick (token do cartão ou Pix) e cria o pagamento no Mercado Pago.
 // O VALOR vem do banco (checkouts.total_amount), nunca do navegador.
 export async function POST(request: Request) {
+  // Só aceita chamadas da própria página (proteção contra CSRF).
+  if (!sameOrigin(request)) return NextResponse.json({ error: 'Origem não permitida.' }, { status: 403 });
   const user = await getUserFromRequest(request);
   if (!user) return NextResponse.json({ error: 'Faça login para pagar.' }, { status: 401 });
 
@@ -106,6 +110,14 @@ export async function POST(request: Request) {
   // O Mercado Pago só avisa URLs públicas em HTTPS. Em localhost a tela consulta o status sozinha (/api/checkout/sync).
   if (siteUrl.startsWith('https://')) {
     payload.notification_url = `${siteUrl.replace(/\/$/, '')}/api/webhooks/mercadopago`;
+  }
+
+  // Limite de tentativas de cobrança por conta e por IP (ver lib/payment-rate-limit.ts).
+  if (!(await paymentAttemptAllowed((fn, args) => admin.rpc(fn, args), user.id, clientIp(request)))) {
+    return NextResponse.json(
+      { error: 'Muitas tentativas de pagamento seguidas. Aguarde alguns minutos e tente de novo.' },
+      { status: 429 },
+    );
   }
 
   try {

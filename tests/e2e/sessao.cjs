@@ -1,6 +1,7 @@
 // Controle de sessão ponta a ponta (sandbox local).
 // Uso: BASE_URL=http://localhost:3000 node tests/e2e/sessao.cjs
 const { chromium } = require('playwright');
+const { acceptCookies } = require('./_cookies.cjs');
 
 const base = process.argv[2] || process.env.BASE_URL || 'http://localhost:3000';
 const EMAIL = 'cliente@sandbox.artenos.test';
@@ -29,7 +30,7 @@ const tokenPlaces = (page) => page.evaluate(() => ({
 }));
 
 (async () => {
-  const b = await chromium.launch();
+  const b = acceptCookies(await chromium.launch());
 
   // 1) Sem "manter conectado": sessão em cookies de sessão (somem ao fechar o navegador).
   let ctx = await b.newContext();

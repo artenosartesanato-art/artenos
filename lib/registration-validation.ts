@@ -2,6 +2,9 @@
 // registerWithSupabase aplica antes do envio. Serve para mostrar o erro ao
 // lado do campo; a validação do servidor continua valendo.
 import { validBrazilianPhone, validCnpj, validCpf, validEmail } from "@/lib/supabase";
+import { meaningfulTextError } from "@/lib/text-quality";
+import { findBlockedTerm } from "@/lib/moderation";
+import { OTHER_SPECIALTY, resolveSpecialty, specialtyError } from "@/lib/store-specialties";
 
 export type FieldErrors = Record<string, string>;
 const text = (value: unknown) => String(value ?? "").trim();
@@ -37,12 +40,16 @@ export function validateNewPassword(values: Record<string, unknown>): FieldError
  * O banco valida as mesmas regras em complete_oauth_signup.
  */
 function validateProfileFields(values: Record<string, unknown>, type: "client" | "artisan", errors: FieldErrors) {
-  const name = text(values.fullName).replace(/\s+/g, " ");
-  if (name.length < 3) errors.fullName = "Informe seu nome completo.";
-  else if (!/\S+\s+\S+/.test(name)) errors.fullName = "Informe nome e sobrenome.";
+  if (text(values.fullName).length < 3) errors.fullName = "Informe seu nome completo.";
   if (type === "artisan") {
     if (!text(values.storeName)) errors.storeName = "Informe o nome da sua loja.";
-    if (!text(values.specialty)) errors.specialty = "Escolha a especialidade principal.";
+    const choice = text(values.specialty);
+    const other = text(values.specialtyOther);
+    const problem = specialtyError(choice, other);
+    const field = choice === OTHER_SPECIALTY ? "specialtyOther" : "specialty";
+    if (problem) errors[field] = problem;
+    else if (findBlockedTerm(resolveSpecialty(choice, other)))
+      errors[field] = "A especialidade contém termos que não são permitidos na Artenós.";
   }
   const document = digits(values.document);
   if (!document) errors.document = type === "client" ? "Informe seu CPF." : "Informe seu CPF ou CNPJ.";
@@ -57,8 +64,10 @@ function validateProfileFields(values: Record<string, unknown>, type: "client" |
   if (!text(values.city)) errors.city = "Informe a cidade.";
   if (!/^[A-Za-z]{2}$/.test(text(values.state))) errors.state = "Use a sigla do estado, como SP.";
   if (type === "artisan") {
-    const story = text(values.story);
-    if (story.length < 40) errors.story = `Conte um pouco mais: faltam ${40 - story.length} caracteres (mínimo de 40).`;
+    const storyError = meaningfulTextError(text(values.story), "A história da loja");
+    if (storyError) errors.story = storyError;
+    else if (findBlockedTerm(text(values.story))) errors.story = "A história contém termos que não são permitidos na Artenós.";
+    if (findBlockedTerm(text(values.storeName))) errors.storeName = "O nome da loja contém termos que não são permitidos na Artenós.";
   }
   if (values.terms !== "accepted") errors.terms = "Para criar a conta, aceite os Termos de Uso e a Política de Privacidade.";
 }

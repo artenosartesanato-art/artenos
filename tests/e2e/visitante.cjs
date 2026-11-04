@@ -4,6 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright');
+const { acceptCookies } = require('./_cookies.cjs');
 const { createClient } = require('@supabase/supabase-js');
 
 const base = process.argv[2] || process.env.BASE_URL || 'http://localhost:3000';
@@ -34,7 +35,7 @@ const badge = (page) => page.locator('.store-cart-link').getAttribute('aria-labe
   const favProduct = (found || []).find((product) => product.name === FAVORITE_PRODUCT);
   if (favProduct) await api.from('storefront_favorites').delete().eq('user_id', userId).eq('product_id', favProduct.id);
 
-  const b = await chromium.launch();
+  const b = acceptCookies(await chromium.launch());
   const page = await (await b.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
   page.on('pageerror', (e) => console.log('PAGEERROR', e.message));
 

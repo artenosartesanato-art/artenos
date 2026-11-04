@@ -4,7 +4,9 @@ import { Toaster } from "sonner";
 import { ScrollReveal } from "@/components/scroll-reveal";
 import { MarketplaceProvider } from "@/components/marketplace-state";
 import { StorefrontActionsProvider } from "@/components/storefront-actions";
+import { SuspensionNotice } from "@/components/suspension-notice";
 import { SiteChrome } from "@/components/site-chrome";
+import { CookieConsentBanner } from "@/components/cookie-consent";
 
 export const metadata: Metadata = {
   title: "Artenós | Artesanato com história",
@@ -40,15 +42,17 @@ export default function RootLayout({
           <link rel="preconnect" href={new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).origin} crossOrigin="anonymous" />
         )}
         <link rel="preload" href="/fonts/Figtree-Variable.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
-        <link rel="preload" href="/fonts/CormorantGaramond-Variable.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preload" href="/fonts/CormorantGaramond-Variable-lf.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
       </head>
       <body className="antialiased">
         <MarketplaceProvider>
           <StorefrontActionsProvider>
+            <SuspensionNotice />
             <SiteChrome>{children}</SiteChrome>
           </StorefrontActionsProvider>
         </MarketplaceProvider>
         <ScrollReveal />
+        <CookieConsentBanner />
         <Toaster position="bottom-center" visibleToasts={1} closeButton toastOptions={{ duration: 5000 }} />
       </body>
     </html>

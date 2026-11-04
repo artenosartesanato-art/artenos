@@ -7,6 +7,7 @@ import { Clock3 } from "@/components/icons";
 import { useMarketplace } from "@/components/marketplace-state";
 import { Dialog } from "@/components/ui/dialog";
 import { getSupabase } from "@/lib/supabase";
+import { adminRedirectFor } from "@/lib/navigation";
 import {
   clearExpectedSignOut, endSession, expectedSignOut, idleLimitMs, isProtectedPath, lastActivity, markActivity,
   rememberDevice, ACTIVITY_KEY, IDLE_WARNING_MS,
@@ -20,7 +21,7 @@ const ACTIVITY_EVENTS = ["pointerdown", "keydown", "scroll", "touchstart"] as co
  * e retorno ao login explicando o motivo.
  */
 export function SessionGuard() {
-  const { userId } = useMarketplace();
+  const { userId, isAdmin } = useMarketplace();
   const router = useRouter();
   const pathname = usePathname();
   const pathRef = useRef(pathname);
@@ -32,6 +33,12 @@ export function SessionGuard() {
 
   useEffect(() => { pathRef.current = pathname; }, [pathname]);
 
+  // A equipe não tem perfil de comprador nem loja: essas páginas abririam vazias.
+  useEffect(() => {
+    const target = isAdmin ? adminRedirectFor(pathname) : null;
+    if (target) router.replace(target);
+  }, [isAdmin, pathname, router]);
+
   const goToLogin = useCallback((reason: string) => {
     const back = pathRef.current + window.location.search;
     router.replace(`/acesso?motivo=${reason}&voltar=${encodeURIComponent(back)}`);
@@ -39,10 +46,18 @@ export function SessionGuard() {
 
   // Sessão encerrada sem a pessoa pedir (token expirado, saída em outra aba
   // ou "sair de todos os aparelhos"): explica e leva ao login.
+  // Conta com sessão nesta aba (para distinguir um login novo de uma volta à aba).
+  const sessionUserRef = useRef<string | null>(null);
   useEffect(() => {
-    const { data } = getSupabase().auth.onAuthStateChange((event) => {
-      // Não registrar atividade em SIGNED_IN: o Supabase também o emite ao
-      // voltar para a aba, o que zeraria a contagem de inatividade.
+    const { data } = getSupabase().auth.onAuthStateChange((event, session) => {
+      const previous = sessionUserRef.current;
+      sessionUserRef.current = session?.user?.id ?? null;
+      // Login novo (não havia conta nesta aba) ou link de redefinir senha: conta
+      // como atividade. Sem isso, a última atividade guardada da sessão anterior
+      // (horas atrás) fazia o controle abaixo encerrar a sessão recém-aberta
+      // "por inatividade" — o loop de login. Ao voltar para a aba o Supabase
+      // também emite SIGNED_IN, mas aí a conta já era conhecida e nada muda.
+      if ((event === "SIGNED_IN" && !previous && session) || event === "PASSWORD_RECOVERY") markActivity(true);
       if (event !== "SIGNED_OUT") return;
       setSecondsLeft(null);
       if (expectedSignOut()) {

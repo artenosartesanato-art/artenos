@@ -9,13 +9,20 @@ import {
   CircleDollarSign,
   ShieldCheck,
   Sparkles,
+  SpriteIcon,
   Truck,
 } from "@/components/icons";
 import { getSupabase } from "@/lib/supabase";
+import { categoryHref } from "@/lib/category-utils";
+import { categoryLook } from "@/lib/category-looks";
 import { MarketplaceProductCard, ProductGridSkeleton, type MarketplaceProduct } from "@/components/marketplace-product-card";
 import { budgetHref, loadBudgets, type Budget } from "@/lib/budgets";
+import { loadBestSellers, type BestSeller } from "@/lib/best-seller";
+import { HeroCarousel } from "@/components/hero-carousel";
+import { PublicCustomServices } from "@/components/custom-quotes";
 import "@/app/storefront.css";
 import { OptimizedImage } from "@/components/optimized-image";
+import { StoreAvatar } from "@/components/store-avatar";
 
 export type Category = { id: string; name: string; slug: string; image_url: string | null };
 export type Collection = { id: string; title: string; description: string | null; image_url: string | null };
@@ -78,6 +85,7 @@ export type HomeData = {
   ready: Product[];
   latest: Product[];
   budgets?: Budget[] | null;
+  bestSellers?: BestSeller[];
 };
 
 export function StorefrontHome({ initial }: { initial: HomeData | null }) {
@@ -89,6 +97,7 @@ export function StorefrontHome({ initial }: { initial: HomeData | null }) {
   const [ready, setReady] = useState<Product[]>(initial?.ready ?? []);
   const [latest, setLatest] = useState<Product[]>(initial?.latest ?? []);
   const [budgets, setBudgets] = useState<Budget[]>(initial?.budgets ?? []);
+  const [bestSellers, setBestSellers] = useState<BestSeller[]>(initial?.bestSellers ?? []);
   const [collection, setCollection] = useState<CollectionFilter | null>(null);
   const [collectionProducts, setCollectionProducts] = useState<Product[]>([]);
   const [collectionLoading, setCollectionLoading] = useState(false);
@@ -127,6 +136,7 @@ export function StorefrontHome({ initial }: { initial: HomeData | null }) {
           setError("");
           // Atalhos de orçamento são um extra: se falharem, a seção some.
           void loadBudgets(supabase).then((rows) => { if (active) setBudgets(rows ?? []); }).catch(() => undefined);
+          void loadBestSellers(supabase).then((rows) => { if (active) setBestSellers(rows); });
         })
         .catch(() => {
           if (active) setError("Não conseguimos carregar a vitrine agora. Confira sua conexão e tente novamente.");
@@ -180,6 +190,8 @@ export function StorefrontHome({ initial }: { initial: HomeData | null }) {
 
   const banner = banners[0];
   const firstProducts = featured.length ? featured : latest.length ? latest : ready;
+  // Sem vendas ainda: o carrossel passa pelas peças em destaque (uma por vez).
+  const heroProducts = firstProducts.filter((product) => product.image_url).slice(0, 6);
   const heroImages = [banner?.image_url, ...firstProducts.map((product) => product.image_url)]
     .filter((url): url is string => Boolean(url)).slice(0, 3);
 
@@ -203,15 +215,19 @@ export function StorefrontHome({ initial }: { initial: HomeData | null }) {
                     Ver a coleção
                   </button>
                 ) : (
-                  <Link className="an-btn an-btn--lg store-hero-secondary" href="/sob-encomenda">
+                  <Link className="an-btn an-btn--lg store-hero-secondary" href="/categorias?encomenda=1">
                     Encomendar uma peça
                   </Link>
                 )}
               </div>
             </div>
-            <div className={`store-hero-art${heroImages.length ? ` has-${heroImages.length}` : ""}`} aria-hidden="true">
+            <div className="store-hero-art">
               {loading ? (
                 <span className="an-skeleton store-hero-art-skeleton" />
+              ) : bestSellers.length ? (
+                <HeroCarousel products={bestSellers} />
+              ) : heroProducts.length ? (
+                <HeroCarousel products={heroProducts} mode="featured" />
               ) : heroImages.length ? (
                 heroImages.map((url, index) => (
                   <OptimizedImage key={url + index} src={url} alt="" className={`store-hero-photo photo-${index + 1}`}
@@ -219,7 +235,7 @@ export function StorefrontHome({ initial }: { initial: HomeData | null }) {
                     sizes={index === 0 ? "(max-width: 900px) 100vw, 620px" : "200px"} />
                 ))
               ) : (
-                <div className="store-hero-art-fallback">
+                <div className="store-hero-art-fallback" aria-hidden="true">
                   <Sparkles size={36} />
                   <strong>Feito à mão tem história.</strong>
                 </div>
@@ -282,18 +298,23 @@ export function StorefrontHome({ initial }: { initial: HomeData | null }) {
           ) : categories.length ? (
             <>
             <div id="lista-categorias" className={`store-categories${showAllCategories ? " is-expanded" : ""}`}>
-              {categories.map((category) => (
-                <Link key={category.id} prefetch={false} href={`/categorias?categoria=${encodeURIComponent(category.id)}`}>
-                  {category.image_url ? (
-                    <OptimizedImage src={category.image_url} alt="" width={240} height={240}
-                      sizes="(max-width: 640px) 33vw, 200px" />
-                  ) : (
-                    <span className="store-category-placeholder"><Sparkles size={25} /></span>
-                  )}
-                  <span>{category.name}</span>
-                  <ArrowRight size={16} />
-                </Link>
-              ))}
+              {categories.map((category, index) => {
+                // Sem foto (enviada pela administração): padrão e ícone da técnica.
+                const look = categoryLook(category, index);
+                return (
+                  <Link key={category.id} prefetch={false} href={categoryHref(category)} className="store-category-tile">
+                    <span className={`store-category-art${category.image_url ? " has-photo" : ` cat-pattern-${look.pattern}`}`}>
+                      {category.image_url ? (
+                        <OptimizedImage src={category.image_url} alt="" width={480} height={210}
+                          sizes="(max-width: 640px) 33vw, (max-width: 1280px) 25vw, 360px" />
+                      ) : (
+                        <span className="store-category-icon" aria-hidden="true"><SpriteIcon name={look.icon} size={18} /></span>
+                      )}
+                    </span>
+                    <span className="store-category-name">{category.name}</span>
+                  </Link>
+                );
+              })}
             </div>
             {/* Celular: grade de 3 colunas com 9 categorias; o resto abre aqui (sem arrastar). */}
             {categories.length > MOBILE_CATEGORIES && (
@@ -314,6 +335,9 @@ export function StorefrontHome({ initial }: { initial: HomeData | null }) {
             loading={loading} href="/categorias?pronta=1" hrefLabel="Ver pronta entrega"
             empty="Nenhuma peça pronta para envio no momento." />
         </div>
+
+        {/* Opções sob encomenda das lojas (orçamento): antes só na página de cada loja. */}
+        <PublicCustomServices className="store-section store-container" />
 
         {budgets.some((budget) => budget.count > 0) && (
           <section className="store-section store-container" aria-labelledby="orcamento-titulo">
@@ -388,7 +412,7 @@ export function StorefrontHome({ initial }: { initial: HomeData | null }) {
             <div className="store-shops">
               {shops.map((shop) => (
                 <Link prefetch={false} href={`/loja?id=${encodeURIComponent(shop.id)}`} key={shop.id}>
-                  <span className="store-shop-symbol" aria-hidden="true">{initials(shop.store_name)}</span>
+                  <StoreAvatar className="store-shop-symbol" artisanId={shop.id} initials={initials(shop.store_name)} />
                   <small>{shop.specialty || "Artesanato autoral"}</small>
                   <h3>{shop.store_name}</h3>
                   {shop.story && <p>{shop.story}</p>}

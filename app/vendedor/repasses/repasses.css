@@ -1,4 +1,4 @@
-.seller-payouts { max-width: 1050px; padding-bottom: 60px; }
+.seller-payouts { padding-bottom: 60px; }
 .seller-payouts h1 { font: 600 clamp(2.4rem, 5vw, 4rem)/1.1 var(--font-display); margin: 0 0 12px; }
 .seller-payouts > p { color: #715a4f; margin-bottom: 28px; }
 .seller-payouts section { background: #fffdfa; border: 1px solid #e4d6c9; border-radius: 20px; padding: clamp(20px, 3vw, 32px); margin: 20px 0; }

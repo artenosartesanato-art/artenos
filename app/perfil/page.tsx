@@ -23,6 +23,10 @@ import "../storefront.css";
 import "./profile.css";
 import { endSession, rememberDevice } from "@/lib/session";
 import { Dialog } from "@/components/ui/dialog";
+import { AccountPrivacy } from "@/components/account-privacy";
+import { SellerUpgrade } from "@/components/seller-upgrade";
+import { HEIC_HELP, PickedFileError, describeFile, detectImage, prepareForEditing, readPickedFile } from "@/lib/image-file";
+import { AdjustFramingButton } from "@/components/adjust-framing-button";
 
 type Profile = {
   id: string;
@@ -50,7 +54,7 @@ const AvatarCropper = dynamic(() => import("@/components/avatar-cropper").then((
 const AVATAR_BUCKET = "artenos-profile-avatars";
 // A foto é recortada e reduzida no navegador antes do envio (512 px + original
 // até 1600 px), então aceitamos arquivos maiores, como os de celular.
-const MAX_AVATAR_BYTES = 15 * 1024 * 1024;
+const MAX_AVATAR_BYTES = 40 * 1024 * 1024;
 const IMAGE_EXTENSIONS: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
@@ -138,6 +142,7 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
   const [profileError, setProfileError] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [avatarError, setAvatarError] = useState("");
+  const [preparingPhoto, setPreparingPhoto] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [editingContact, setEditingContact] = useState(false);
   const [contactBusy, setContactBusy] = useState(false);
@@ -256,20 +261,51 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
     }
   }, [router, sellerMode]);
 
-  /** Escolheu um arquivo: valida e abre o editor de enquadramento. */
-  function chooseAvatar(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file || !user || !profile || uploading) return;
-    if (!IMAGE_EXTENSIONS[file.type]) {
-      toast.error("Escolha uma imagem JPG, PNG ou WebP.");
+  /**
+   * Escolheu um arquivo: confere o formato pelo conteúdo (alguns celulares não
+   * informam o tipo) e abre o editor de enquadramento. Problemas aparecem
+   * junto da foto, não só num aviso passageiro.
+   */
+  async function chooseAvatar(event: React.ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const fail = (message: string) => {
+      setAvatarError(message);
+      toast.error(message);
+    };
+    if (!user || !profile || uploading || preparingPhoto) {
+      input.value = "";
       return;
     }
-    if (file.size > MAX_AVATAR_BYTES) {
-      toast.error("A foto deve ter no máximo 15 MB.");
-      return;
+    setAvatarError("");
+    const size = input.files?.[0]?.size ?? 0;
+    if (size > MAX_AVATAR_BYTES) {
+      input.value = "";
+      return fail("A foto deve ter no máximo 40 MB.");
     }
-    openCropper(URL.createObjectURL(file), true);
+    setPreparingPhoto(true);
+    try {
+      // Lê a foto antes de limpar o campo (Android: a permissão da galeria é temporária).
+      const file = await readPickedFile(input);
+      if (!file) return;
+      const kind = await detectImage(file);
+      if (!kind) return fail(`Este arquivo não é uma foto. Escolha uma imagem JPG, PNG, WebP ou do iPhone (HEIC). (${describeFile(file, kind)})`);
+      // Abre a foto já reduzida para enquadrar (fotos de 50–200 MP pesam na memória do celular).
+      const reasons: string[] = [];
+      const prepared = await prepareForEditing(file, reasons);
+      if (!prepared) {
+        return fail(kind === "heic"
+          ? HEIC_HELP
+          : `Não conseguimos abrir esta foto neste aparelho. Tente outra foto, ou uma captura de tela dela. (${describeFile(file, kind)} · ${reasons.join("; ")})`);
+      }
+      openCropper(URL.createObjectURL(prepared.blob), true);
+    } catch (error) {
+      if (error instanceof PickedFileError) {
+        return fail(`O celular não liberou a leitura desta foto. Tente escolher de novo pela Galeria (ou Arquivos). (${describeFile(error.file, null)} · ${error.reason})`);
+      }
+      fail("Não foi possível abrir a foto. Tente novamente.");
+    } finally {
+      setPreparingPhoto(false);
+    }
   }
 
   function openCropper(url: string, revoke: boolean) {
@@ -568,6 +604,8 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
                   <label className="profile-photo-button">
                     {uploading ? (
                       "Enviando foto..."
+                    ) : preparingPhoto ? (
+                      "Abrindo foto..."
                     ) : (
                       <>
                         <Camera size={16} />{" "}
@@ -576,19 +614,17 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
                     )}
                     <input
                       type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={chooseAvatar}
+                      accept="image/*"
+                      onChange={(event) => void chooseAvatar(event)}
                       disabled={uploading}
                       aria-label="Selecionar foto de perfil"
                     />
                   </label>
                   {profile.avatar_path && avatarUrl && (
-                    <button type="button" className="profile-photo-adjust" onClick={adjustAvatar}
-                      disabled={uploading || loadingOriginal} aria-busy={loadingOriginal}>
-                      {loadingOriginal ? "Abrindo…" : "Ajustar enquadramento"}
-                    </button>
+                    <AdjustFramingButton className="profile-photo-adjust" onClick={() => void adjustAvatar()}
+                      disabled={uploading} busy={loadingOriginal} />
                   )}
-                  <small>JPG, PNG ou WebP · até 15 MB</small>
+                  <small>JPG, PNG, WebP ou foto do iPhone · até 40 MB</small>
                   {avatarError && (
                     <p className="profile-photo-error" role="alert">
                       {avatarError}
@@ -812,6 +848,9 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
                   <LogOut size={16} /> Sair de todos os aparelhos
                 </button>
               </section>
+              {/* Cliente pode abrir a loja na mesma conta (sem novo cadastro). */}
+              {!sellerMode && profile?.account_type === "client" && <SellerUpgrade />}
+              <AccountPrivacy />
               <Dialog open={confirmEverywhere} onClose={() => { if (!endingAll) setConfirmEverywhere(false); }}
                 labelledBy="sair-todos-titulo" describedBy="sair-todos-texto" className="profile-confirm-dialog">
                 <h2 id="sair-todos-titulo">Sair de todos os aparelhos?</h2>

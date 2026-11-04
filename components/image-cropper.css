@@ -1,0 +1,193 @@
+/* Editor de enquadramento (foto de perfil, foto e capa da loja, peças). */
+.an-dialog.crop-dialog {
+  width: min(720px, 100%);
+  padding: clamp(18px, 4vw, 28px);
+}
+.crop-title {
+  margin: 0 40px 4px 0;
+  font: 500 var(--an-fs-2xl) / 1.15 var(--font-display);
+  color: var(--artenos-marrom);
+}
+.crop-help {
+  margin: 0 0 18px;
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-sm);
+  line-height: 1.5;
+}
+.crop-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 210px;
+  gap: 22px;
+  align-items: start;
+}
+.crop-stage {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 18px;
+  background:
+    repeating-conic-gradient(rgb(75 48 38 / 0.06) 0 25%, transparent 0 50%) 0 0 / 20px 20px,
+    var(--an-surface-soft);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.crop-stage.is-dragging { cursor: grabbing; }
+.crop-stage:focus-visible {
+  outline: 3px solid var(--artenos-musgo);
+  outline-offset: 3px;
+}
+.crop-image {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  max-width: none;
+  transform-origin: center;
+  pointer-events: none;
+}
+/* Fora do círculo fica escurecido; o círculo mostra exatamente o recorte. */
+.crop-mask {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 999px rgb(43 29 23 / 0.55);
+  outline: 2px solid rgb(255 255 255 / 0.9);
+  outline-offset: -2px;
+  pointer-events: none;
+}
+.crop-grid {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    linear-gradient(to right, transparent calc(33.33% - 0.5px), rgb(255 255 255 / 0.55) 0 calc(33.33% + 0.5px), transparent 0 calc(66.66% - 0.5px), rgb(255 255 255 / 0.55) 0 calc(66.66% + 0.5px), transparent 0),
+    linear-gradient(to bottom, transparent calc(33.33% - 0.5px), rgb(255 255 255 / 0.55) 0 calc(33.33% + 0.5px), transparent 0 calc(66.66% - 0.5px), rgb(255 255 255 / 0.55) 0 calc(66.66% + 0.5px), transparent 0);
+  opacity: 0;
+  transition: opacity var(--an-dur-fast) ease;
+  pointer-events: none;
+}
+.crop-stage.is-dragging .crop-grid,
+.crop-stage:focus-visible .crop-grid { opacity: 1; }
+.crop-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  padding: 24px;
+  color: var(--artenos-perola);
+  font-size: var(--an-fs-sm);
+  text-align: center;
+}
+.crop-side {
+  display: grid;
+  gap: 16px;
+}
+.crop-preview-label {
+  margin: 0;
+  color: var(--an-argila-texto);
+  font-size: var(--an-fs-2xs);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.crop-previews {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.crop-preview {
+  position: relative;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--an-surface-soft);
+  box-shadow: 0 0 0 3px var(--an-surface), 0 0 0 4px var(--an-line);
+}
+.crop-zoom {
+  display: grid;
+  gap: 8px;
+  color: var(--artenos-marrom);
+  font-size: var(--an-fs-sm);
+  font-weight: 700;
+}
+.crop-zoom input {
+  width: 100%;
+  min-height: 32px;
+  accent-color: var(--an-musgo-escuro);
+}
+.crop-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.crop-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--an-line);
+}
+@media (max-width: 640px) {
+  .crop-layout { grid-template-columns: 1fr; gap: 14px; }
+  .crop-stage { max-width: min(100%, 40dvh); margin-inline: auto; }
+  .crop-help { margin-bottom: 12px; font-size: var(--an-fs-xs); }
+  .crop-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    margin: 16px calc(-1 * clamp(18px, 4vw, 28px)) calc(-1 * clamp(18px, 4vw, 28px));
+    padding: 12px clamp(18px, 4vw, 28px) calc(12px + env(safe-area-inset-bottom));
+    background: var(--an-surface);
+  }
+  .crop-side { grid-template-columns: auto 1fr; align-items: center; }
+  .crop-preview-label { grid-column: 1 / -1; }
+  .crop-tools { grid-column: 1 / -1; }
+  .crop-actions .an-btn { flex: 1; }
+}
+
+/* Erro ao abrir a foto: texto legível sobre o fundo claro do enquadramento. */
+.crop-loading.is-error {
+  margin: auto;
+  max-width: 80%;
+  height: fit-content;
+  border-radius: 12px;
+  background: rgb(255 255 255 / 0.94);
+  color: var(--an-erro);
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+/* Formatos: círculo (perfil/loja) ou retângulo (capa/peça). */
+.crop-dialog.is-rect .crop-mask,
+.crop-dialog.is-rect .crop-grid {
+  border-radius: 10px;
+}
+.crop-dialog.is-rect .crop-preview {
+  border-radius: 8px;
+}
+/* Capa larga: a área ocupa toda a largura e os controles vão para baixo. */
+.crop-dialog.is-wide .crop-layout {
+  grid-template-columns: 1fr;
+}
+.crop-dialog.is-wide .crop-stage {
+  max-width: none;
+}
+.crop-dialog.is-wide .crop-side {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 12px 20px;
+}
+.crop-dialog.is-wide .crop-preview-label {
+  grid-column: 1 / -1;
+}
+/* No celular (toque) a dica de teclado não faz sentido. */
+@media (pointer: coarse) {
+  .crop-help-keys {
+    display: none;
+  }
+}

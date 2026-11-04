@@ -8,10 +8,12 @@ import { Dialog } from "@/components/ui/dialog";
 import { SoundToggle } from "@/components/sound-toggle";
 import { addProductToCart } from "@/lib/cart";
 import { playUiSound } from "@/lib/ui-sound";
+import { isSuspended, suspensionMessage } from "@/lib/suspension";
 import { accessHref, currentPath } from "@/lib/navigation";
 import { useMarketplace } from "@/components/marketplace-state";
 import { confirmFavoriteRemoved, confirmFavoriteSaved } from "@/components/marketplace-feedback";
 import { OptimizedImage } from "@/components/optimized-image";
+import { AVAILABILITY_LABEL, availabilityFor, type Availability } from "@/lib/availability";
 
 export type ActionProduct = {
   id: string;
@@ -21,6 +23,7 @@ export type ActionProduct = {
   shop_name?: string | null;
   stock?: number | null;
   ready_to_ship?: boolean;
+  availability?: Availability | null;
 };
 
 type AddedLine = { product: ActionProduct; quantity: number };
@@ -40,7 +43,7 @@ const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL
 export function StorefrontActionsProvider({ children }: { children: ReactNode }) {
   const {
     authReady, userId, cartCount, cartSubtotalCents, refreshCart, pulseCart,
-    toggleFavorite: saveFavorite, addGuestToCart,
+    toggleFavorite: saveFavorite, addGuestToCart, suspendedUntil, accountType,
   } = useMarketplace();
   const pending = useRef(new Set<string>());
   const [pendingCartIds, setPendingCartIds] = useState<ReadonlySet<string>>(new Set());
@@ -70,6 +73,11 @@ export function StorefrontActionsProvider({ children }: { children: ReactNode })
         return false;
       }
     }
+    if (isSuspended(suspendedUntil)) {
+      playUiSound("error");
+      toast.error(suspensionMessage(suspendedUntil, accountType));
+      return false;
+    }
     if (pending.current.has(product.id)) return false;
     pending.current.add(product.id);
     setPendingCartIds(new Set(pending.current));
@@ -89,12 +97,13 @@ export function StorefrontActionsProvider({ children }: { children: ReactNode })
       pending.current.delete(product.id);
       setPendingCartIds(new Set(pending.current));
     }
-  }, [authReady, userId, refreshCart, pulseCart, addGuestToCart]);
+  }, [authReady, userId, suspendedUntil, accountType, refreshCart, pulseCart, addGuestToCart]);
 
   const toggleFavorite = useCallback(async (product: ActionProduct) => {
     try {
       // Visitante: favorito na memória desta aba, levado para a conta ao entrar.
       const saved = await saveFavorite(product.id, product);
+      playUiSound(saved ? "favorite" : "removed");
       if (saved) confirmFavoriteSaved(product.name);
       else confirmFavoriteRemoved(product.name);
     } catch (error) {
@@ -139,7 +148,7 @@ export function StorefrontActionsProvider({ children }: { children: ReactNode })
                 <p>
                   {added.quantity} × {money.format(Number(added.product.price))}
                   {" · "}
-                  {added.product.ready_to_ship ? "Pronta entrega" : "Feita sob encomenda"}
+                  {AVAILABILITY_LABEL[availabilityFor(added.product)]}
                 </p>
                 <strong>{money.format(lineCents / 100)}</strong>
               </div>

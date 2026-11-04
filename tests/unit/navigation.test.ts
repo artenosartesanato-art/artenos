@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { accessHref, safeReturnPath } from "../../lib/navigation.ts";
+import { accessHref, isNavActive, safeReturnPath } from "../../lib/navigation.ts";
 
 test("aceita apenas caminhos internos para o retorno após login", () => {
   assert.equal(safeReturnPath("/favoritos"), "/favoritos");
@@ -23,4 +23,31 @@ test("monta o link de acesso com o destino codificado", () => {
   assert.equal(accessHref("/carrinho"), "/acesso?voltar=%2Fcarrinho");
   assert.equal(accessHref("/"), "/acesso");
   assert.equal(accessHref("//evil.com"), "/acesso");
+});
+
+test("item do menu fica ativo nas sub-rotas, inclusive a página de uma loja", () => {
+  assert.equal(isNavActive("/lojas", "/lojas"), true);
+  assert.equal(isNavActive("/lojas", "/loja"), true);
+  assert.equal(isNavActive("/lojas", "/lojas/kaike-do-grau"), true);
+  assert.equal(isNavActive("/lojas", "/lojasx"), false);
+  assert.equal(isNavActive("/categorias", "/categorias"), true);
+  assert.equal(isNavActive("/pedidos", "/pagamento/abc"), true);
+  assert.equal(isNavActive("/mensagens", "/mensagens"), true);
+  assert.equal(isNavActive("/favoritos", "/pedidos"), false);
+  assert.equal(isNavActive("/mensagens", "/vendedor/mensagens"), false);
+  assert.equal(isNavActive("/vendedor/mensagens", "/vendedor/mensagens"), true);
+});
+
+test("o retorno após o login respeita o tipo da conta", async () => {
+  const { returnPathForAccount } = await import("../../lib/navigation.ts");
+  // Sessão da equipe expirou no painel; quem entra agora é uma loja.
+  assert.equal(returnPathForAccount("/administracao", "seller"), null);
+  assert.equal(returnPathForAccount("/administracao/denuncias", "client"), null);
+  assert.equal(returnPathForAccount("/administracao/denuncias", "admin"), "/administracao/denuncias");
+  assert.equal(returnPathForAccount("/vendedor/minha-loja", "client"), null);
+  assert.equal(returnPathForAccount("/vendedor/minha-loja", "seller"), "/vendedor/minha-loja");
+  assert.equal(returnPathForAccount("/vendedores-parceiros", "client"), "/vendedores-parceiros");
+  assert.equal(returnPathForAccount("/carrinho", "admin"), null);
+  assert.equal(returnPathForAccount("/carrinho", "client"), "/carrinho");
+  assert.equal(returnPathForAccount("//site.com", "client"), null);
 });

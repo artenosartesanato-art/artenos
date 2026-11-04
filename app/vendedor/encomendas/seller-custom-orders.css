@@ -154,7 +154,7 @@
 }
 .custom-request-head small {
   color: var(--an-argila-texto);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 1px;
   text-transform: uppercase;
@@ -167,7 +167,7 @@
 }
 .custom-request-head span {
   color: var(--an-argila-texto);
-  font-size: 10px;
+  font-size: 11px;
 }
 .custom-request-head > strong {
   align-self: flex-start;
@@ -175,7 +175,7 @@
   border-radius: 999px;
   background: var(--artenos-perola);
   color: var(--artenos-marrom);
-  font-size: 9px;
+  font-size: 11px;
 }
 .custom-request-head > strong.is-accepted {
   background: var(--artenos-perola);
@@ -206,7 +206,7 @@
 }
 .custom-request-card dt {
   color: var(--an-argila-texto);
-  font-size: 9px;
+  font-size: 11px;
 }
 .custom-request-card dd {
   margin: 4px 0 0;
@@ -279,7 +279,7 @@
 }
 .custom-service-grid article > div:nth-child(2) > span {
   color: var(--artenos-musgo);
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 850;
   text-transform: uppercase;
 }
@@ -288,7 +288,7 @@
   display: block;
   margin: 3px 0 0;
   color: var(--an-argila-texto);
-  font-size: 10px;
+  font-size: 11px;
 }
 .custom-service-grid article > button {
   display: flex;
@@ -298,7 +298,7 @@
   border: 0;
   background: transparent;
   color: var(--artenos-marrom);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 750;
   cursor: pointer;
 }
@@ -468,3 +468,72 @@
 }
 .custom-flow-note { display: grid; gap: 9px; margin: 16px 0 24px; padding: 18px 22px; border: 1px solid #d9c8b7; border-radius: 14px; background: #faf6ef; color: var(--artenos-marrom); line-height: 1.45; }
 .custom-flow-note a { width: fit-content; color: var(--artenos-musgo); font-weight: 700; text-underline-offset: 3px; }
+
+/* Passos do "Como funciona" */
+.custom-flow-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 2px 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: passo;
+}
+.custom-flow-steps li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 650;
+  counter-increment: passo;
+}
+.custom-flow-steps li::before {
+  content: counter(passo);
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--artenos-marrom);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+.custom-flow-note small {
+  color: var(--an-argila-texto);
+  font-size: 12px;
+}
+@media (max-width: 900px) {
+  .custom-flow-steps {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 700px) {
+  .custom-flow-note {
+    padding: 16px;
+  }
+  .custom-flow-steps {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  /* Resumo em três colunas compactas, sem ocupar a tela toda. */
+  .custom-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .custom-summary article {
+    min-height: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 12px;
+  }
+  .custom-summary span {
+    font-size: 12px;
+    line-height: 1.3;
+  }
+}

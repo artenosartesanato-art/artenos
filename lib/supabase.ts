@@ -1,5 +1,8 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { authStorage } from "@/lib/session";
+import { authStorage, markActivity } from "@/lib/session";
+import { meaningfulTextError } from "@/lib/text-quality";
+import { emailTakenMessage } from "@/lib/account-deletion";
+import { siteConfig } from "@/lib/site-config";
 
 let client: SupabaseClient | null = null;
 
@@ -143,13 +146,27 @@ export function validCnpj(value: string) {
 
 type SupabaseError = { code?: string; message?: string; status?: number };
 
+/** E-mail já usado: inclui como pedir a reativação de uma conta em exclusão. */
+const EMAIL_TAKEN = emailTakenMessage(siteConfig.supportEmail);
+
+/**
+ * Login recusado porque a conta está bloqueada (o Supabase só diz isso quando
+ * a senha está certa). A tela confere no servidor se é exclusão em andamento.
+ */
+export class AccountBlockedError extends Error {
+  constructor() {
+    super("Esta conta está bloqueada.");
+    this.name = "AccountBlockedError";
+  }
+}
+
 function friendlyAuthError(error: SupabaseError, action: "signup" | "login") {
   const code = error.code ?? "";
   const message = error.message ?? "";
   const messages: Record<string, string> = {
-    email_exists: "Este e-mail já está cadastrado. Tente entrar na sua conta.",
+    email_exists: EMAIL_TAKEN,
     user_already_exists:
-      "Este e-mail já está cadastrado. Tente entrar na sua conta.",
+      EMAIL_TAKEN,
     weak_password:
       "A senha é muito fraca. Use pelo menos 8 caracteres e evite sequências fáceis.",
     email_address_invalid: "Informe um endereço de e-mail válido.",
@@ -187,7 +204,7 @@ function friendlyAuthError(error: SupabaseError, action: "signup" | "login") {
   if (/email.*invalid|invalid.*email/i.test(message))
     return "Informe um endereço de e-mail válido.";
   if (/already registered|already exists/i.test(message))
-    return "Este e-mail já está cadastrado. Tente entrar na sua conta.";
+    return EMAIL_TAKEN;
   return action === "login"
     ? "Não foi possível entrar agora. Tente novamente em instantes."
     : "Não foi possível concluir o cadastro. Tente novamente em instantes.";
@@ -224,6 +241,11 @@ async function validateCep(value: string) {
   }
 }
 
+/** Token do Turnstile (anti-robô), quando o formulário tem o widget. */
+export function captchaFrom(values: Record<string, unknown>) {
+  return text(values["cf-turnstile-response"]) || undefined;
+}
+
 export async function registerWithSupabase(values: Record<string, unknown>) {
   const type = text(values.type) as "client" | "artisan";
   const document = digits(values.document);
@@ -258,15 +280,10 @@ export async function registerWithSupabase(values: Record<string, unknown>) {
       "Informe um telefone brasileiro válido, com DDD. Celulares devem começar com 9.",
     );
   if (!(await validateCep(cep))) throw new Error("Informe um CEP válido.");
-  if (
-    type === "artisan" &&
-    (!text(values.storeName) ||
-      !text(values.specialty) ||
-      text(values.story).length < 40)
-  )
-    throw new Error(
-      "Informe a loja, especialidade e uma história com pelo menos 40 caracteres.",
-    );
+  if (type === "artisan" && (!text(values.storeName) || !text(values.specialty)))
+    throw new Error("Informe o nome da loja e a especialidade.");
+  const storyError = type === "artisan" ? meaningfulTextError(text(values.story), "A história da loja") : null;
+  if (storyError) throw new Error(storyError);
   const metadata = {
     account_type: type,
     registration_mode: values.assisted ? "assisted" : "standard",
@@ -287,7 +304,7 @@ export async function registerWithSupabase(values: Record<string, unknown>) {
     const { data, error } = await getSupabase().auth.signUp({
       email,
       password,
-      options: { data: metadata },
+      options: { data: metadata, captchaToken: captchaFrom(values) },
     });
     if (error) throw new Error(friendlyAuthError(error, "signup"));
     if (
@@ -296,7 +313,7 @@ export async function registerWithSupabase(values: Record<string, unknown>) {
       data.user.identities.length === 0
     ) {
       throw new Error(
-        "Este e-mail já está cadastrado. Tente entrar na sua conta.",
+        EMAIL_TAKEN,
       );
     }
   } catch (error) {
@@ -317,11 +334,15 @@ export async function registerWithSupabase(values: Record<string, unknown>) {
 
 export async function loginWithSupabase(values: Record<string, unknown>) {
   let data;
+  // Antes de entrar: a sessão nasce com atividade recente (veja SessionGuard).
+  markActivity(true);
   try {
     const result = await getSupabase().auth.signInWithPassword({
       email: text(values.email).toLowerCase(),
       password: text(values.password),
+      options: { captchaToken: captchaFrom(values) },
     });
+    if (result.error?.code === "user_banned") throw new AccountBlockedError();
     if (result.error) throw new Error(friendlyAuthError(result.error, "login"));
     data = result.data;
   } catch (error) {
@@ -332,7 +353,14 @@ export async function loginWithSupabase(values: Record<string, unknown>) {
       throw error;
     throw new Error(friendlyAuthError(error as SupabaseError, "login"));
   }
-  const { data: isAdmin } = await getSupabase().rpc("is_active_admin");
+  // Papel e perfil em paralelo (antes eram consultas em sequência).
+  const [{ data: isAdmin }, { data: profile, error: profileError }] = await Promise.all([
+    getSupabase().rpc("is_active_admin"),
+    getSupabase().from("profiles")
+      .select("account_type,approval_status,full_name")
+      .eq("id", data.user.id)
+      .maybeSingle(),
+  ]);
   if (isAdmin === true) {
     return {
       firstName: "administrador",
@@ -342,11 +370,6 @@ export async function loginWithSupabase(values: Record<string, unknown>) {
     };
   }
 
-  const { data: profile, error: profileError } = await getSupabase()
-    .from("profiles")
-    .select("account_type,approval_status,full_name")
-    .eq("id", data.user.id)
-    .maybeSingle();
   // Conta sem profile (criada pelo Google e não concluída): termina o cadastro.
   if (!profileError && !profile) {
     return {

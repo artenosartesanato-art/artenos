@@ -5,13 +5,13 @@ import {
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Bell, Heart, MessageCircle, Palette, ShoppingBag, Truck, X } from "@/components/icons";
+import { Bell, Heart, MessageCircle, Palette, ShieldCheck, ShoppingBag, Star, Truck, X } from "@/components/icons";
 import { useMarketplace } from "@/components/marketplace-state";
 import { Dialog } from "@/components/ui/dialog";
 import { getSupabase } from "@/lib/supabase";
 import { formatListTime } from "@/lib/message-format";
 import {
-  badgeText, freshUnread, readOnVisit, titleWithCount, unreadByRef, unreadTotal, upsertNotification,
+  badgeText, freshUnread, readOnVisit, titleWithCount, unreadByRef, unreadForRef, unreadMessages, unreadTotal, upsertNotification,
   MAX_ITEMS, type AppNotification, type NotificationKind,
 } from "@/lib/notifications";
 import {
@@ -24,6 +24,8 @@ type NotificationsValue = {
   available: boolean;
   items: AppNotification[];
   unread: number;
+  /** Mensagens novas, para o contador do link "Mensagens". */
+  unreadMessages: number;
   unreadByRef: Map<string, number>;
   markRead: (ids?: string[]) => void;
   /** A conversa aberta na tela: mensagens dela não tocam o som cheio nem acumulam. */
@@ -34,6 +36,8 @@ type NotificationsValue = {
 
 const NotificationsContext = createContext<NotificationsValue | null>(null);
 const COLUMNS = "id, kind, title, body, link, ref_id, unread_count, created_at, read_at";
+// 42501: sem permissão; 42P01 / PGRST205: tabela não existe (script não rodou).
+const PERMANENT_ERRORS = new Set(["42501", "42P01", "PGRST205"]);
 
 export function useNotifications() {
   return useContext(NotificationsContext);
@@ -59,15 +63,30 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     const now = new Date().toISOString();
     setItems((current) => current.map((item) =>
       !item.read_at && (!ids || ids.includes(item.id)) ? { ...item, read_at: now } : item));
-    void Promise.resolve(getSupabase().rpc("mark_notifications_read", { p_ids: ids ?? null })).catch(() => undefined);
+    // Grava no servidor; se falhar, tenta mais uma vez (senão o contador volta na próxima página).
+    const save = () => Promise.resolve(getSupabase().rpc("mark_notifications_read", { p_ids: ids ?? null }));
+    void save().then(({ error }) => { if (error) window.setTimeout(() => void save(), 1500); }).catch(() => undefined);
+  }, []);
+
+  /** Tudo o que é desta conversa (inclusive avisos que ainda não chegaram à tela). */
+  const markRefRead = useCallback((ref: string) => {
+    const now = new Date().toISOString();
+    setItems((current) => current.map((item) => (!item.read_at && item.ref_id === ref ? { ...item, read_at: now } : item)));
+    void Promise.resolve(getSupabase().rpc("mark_notifications_read_by_ref", { p_ref: ref }))
+      .then(({ error }) => {
+        // Banco sem a função nova: marca pelos avisos carregados.
+        if (error) {
+          const ids = itemsRef.current.filter((item) => item.ref_id === ref).map((item) => item.id);
+          if (ids.length) void getSupabase().rpc("mark_notifications_read", { p_ids: ids });
+        }
+      })
+      .catch(() => undefined);
   }, []);
 
   const setActiveRef = useCallback((ref: string | null) => {
     activeRef.current = ref;
-    if (!ref) return;
-    const ids = itemsRef.current.filter((item) => !item.read_at && item.ref_id === ref).map((item) => item.id);
-    if (ids.length) markRead(ids);
-  }, [markRead]);
+    if (ref) markRefRead(ref);
+  }, [markRefRead]);
 
   // Libera o áudio no primeiro clique/tecla (exigência dos navegadores).
   useEffect(() => {
@@ -110,12 +129,26 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     // Leitura completa. A primeira só preenche a lista; as seguintes (consulta
     // de segurança) avisam o que chegou sem passar pelo tempo real.
     let loaded = false;
+    // Erro permanente (tabela ausente ou sem permissão de leitura): para de
+    // consultar e de reconectar até recarregar a página. Antes, o site repetia
+    // a leitura a cada 30 s, a cada troca de página e a cada volta para a aba.
+    let stopped = false;
     async function load() {
+      if (stopped) return;
       const { data, error } = await supabase.from("notifications").select(COLUMNS)
         .order("created_at", { ascending: false }).limit(MAX_ITEMS);
       if (!active) return;
-      // Tabela ausente: o painel mostra "em breve" até o script ser executado.
-      if (error) { if (!loaded) setAvailable(false); return; }
+      if (error) {
+        if (PERMANENT_ERRORS.has(String(error.code ?? ""))) {
+          stopped = true;
+          setAvailable(false);
+          if (channel) void supabase.removeChannel(channel);
+          console.warn("[avisos] Avisos desligados: rode supabase/notificacoes.sql e migrations/20261104_notificacoes_permissao.sql.", error.code);
+          return;
+        }
+        if (!loaded) setAvailable(false);
+        return;
+      }
       const rows = (data ?? []) as AppNotification[];
       const fresh = loaded ? freshUnread(itemsRef.current, rows) : [];
       loaded = true;
@@ -133,7 +166,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     let retryTimer: number | undefined;
     let channel: ReturnType<typeof supabase.channel> | null = null;
     function connect() {
-      if (!active) return;
+      if (!active || stopped) return;
       if (channel) void supabase.removeChannel(channel);
       channel = supabase
         .channel(`notificacoes-${userId}-${Date.now()}`)
@@ -195,6 +228,16 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   // Trocar de página também confere se chegou algo (barato: uma consulta).
   useEffect(() => { refreshRef.current?.(); }, [pathname]);
 
+  // Conversa aberta: avisos dela que chegarem depois (carga inicial, consulta
+  // de segurança) também contam como vistos. Antes, se a conversa abria antes
+  // de os avisos carregarem, o contador ficava preso em 1.
+  useEffect(() => {
+    const ref = activeRef.current;
+    if (!ref || document.visibilityState !== "visible") return;
+    const ids = unreadForRef(items, ref);
+    if (ids.length) queueMicrotask(() => markRead(ids));
+  }, [items, markRead]);
+
   // Abrir a página do aviso (ex.: /pedidos) já conta como visto.
   useEffect(() => {
     const ids = readOnVisit(items, pathname);
@@ -215,7 +258,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   }, [unread, pathname]);
 
   const value = useMemo<NotificationsValue>(() => ({
-    available, items, unread, unreadByRef: unreadByRef(items), markRead, setActiveRef, open, setOpen,
+    available, items, unread, unreadMessages: unreadMessages(items), unreadByRef: unreadByRef(items), markRead, setActiveRef, open, setOpen,
   }), [available, items, unread, markRead, setActiveRef, open]);
 
   return (
@@ -232,6 +275,8 @@ const KIND_ICON: Record<NotificationKind, typeof Bell> = {
   venda: ShoppingBag,
   encomenda: Palette,
   produto: Heart,
+  avaliacao: Star,
+  conta: ShieldCheck,
 };
 
 /** Aviso flutuante no mesmo desenho do painel (ícone, título, trecho e "Abrir"). */
@@ -255,7 +300,7 @@ function NotificationToast({ item, onOpen, onClose }: {
 }
 
 function useNotificationSound() {
-  return useSyncExternalStore(subscribeNotificationSoundPreference, notificationSoundEnabled, () => true);
+  return useSyncExternalStore(subscribeNotificationSoundPreference, notificationSoundEnabled, () => false);
 }
 
 /** Sininho do cabeçalho: sempre visível para quem entrou na conta. */
@@ -298,7 +343,7 @@ function NotificationsPanel() {
           <button type="button" role="switch" aria-checked={soundOn} className="an-sound-toggle notif-sound"
             onClick={() => setNotificationSoundEnabled(!soundOn)}>
             <span className="an-sound-toggle-track" aria-hidden="true"><span /></span>
-            <span>Som das notificações: {soundOn ? "ligado" : "desligado"}</span>
+            <span>Sons da plataforma: {soundOn ? "ligados" : "desligados"}</span>
           </button>
         </div>
       </div>
@@ -346,5 +391,27 @@ function NotificationsPanel() {
         )}
       </div>
     </Dialog>
+  );
+}
+
+/**
+ * Contador de mensagens novas (link "Mensagens"). Muda em tempo real com os
+ * avisos e dá um pulo quando chega mais uma.
+ */
+export function MessagesCount({ className = "" }: { className?: string }) {
+  const notifications = useNotifications();
+  const count = notifications?.unreadMessages ?? 0;
+  const previous = useRef(count);
+  const [bump, setBump] = useState(0);
+  useEffect(() => {
+    if (count > previous.current) queueMicrotask(() => setBump((value) => value + 1));
+    previous.current = count;
+  }, [count]);
+  if (!count) return null;
+  return (
+    <span key={bump} className={`messages-count${bump ? " is-bumping" : ""} ${className}`.trim()}>
+      <span aria-hidden="true">{badgeText(count)}</span>
+      <span className="an-visually-hidden">, {count} {count === 1 ? "mensagem nova" : "mensagens novas"}</span>
+    </span>
   );
 }

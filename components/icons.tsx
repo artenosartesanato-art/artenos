@@ -43,19 +43,25 @@ export const CircleDollarSign = icon("currency-dollar");
 export const CircleSlash2 = icon("slash-circle");
 export const ClipboardList = icon("clipboard-check");
 export const Clock3 = icon("clock");
+export const CreditCard = icon("credit-card");
+export const Download = icon("download");
 export const Edit3 = icon("pencil-square");
 export const ExternalLink = icon("box-arrow-up-right");
+export const ArrowUpRight = icon("arrow-up-right");
+export const Crop = icon("crop");
 export const Eye = icon("eye");
 export const EyeOff = icon("eye-slash");
 export const FileCheck2 = icon("file-earmark-check");
 export const FileSearch = icon("file-earmark-text");
 export const FileText = icon("file-text");
+export const Flag = icon("flag");
 export const HandCoins = icon("cash-coin");
 export const HandHeart = icon("suit-heart");
 export const Heart = icon("heart");
 export const KeyRound = icon("key");
 export const History = icon("clock-history");
 export const ImagePlus = icon("image");
+export const LifeBuoy = icon("life-preserver");
 export const LayoutDashboard = icon("grid");
 export const Loader2 = icon("arrow-repeat");
 export const LoaderCircle = icon("arrow-repeat");
@@ -88,6 +94,15 @@ export const ShieldCheck = icon("shield-check");
 export const ShoppingBag = icon("bag");
 export const SlidersHorizontal = icon("sliders");
 export const Sparkles = icon("stars");
+export const Star = icon("star-fill");
+export const TrendingUp = icon("graph-up-arrow");
+export const ArrowLeftRight = icon("arrow-left-right");
+export const BagCheck = icon("bag-check");
+export const HelpCircle = icon("question-circle");
+export const Phone = icon("telephone");
+export const Whatsapp = icon("whatsapp");
+export const StarHalf = icon("star-half");
+export const StarEmpty = icon("star");
 export const Store = icon("shop");
 export const Tags = icon("tags");
 export const Trash2 = icon("trash");
@@ -97,3 +112,16 @@ export const UserRound = icon("person");
 export const UserRoundCheck = icon("person-check");
 export const X = icon("x-lg");
 export const XCircle = icon("x-circle");
+
+/**
+ * Ícone do sprite escolhido por nome em tempo de execução (ex.: o ícone de cada
+ * categoria). Nomes "art-*" são os desenhos próprios da Artenós.
+ */
+export function SpriteIcon({ name, size = 24, className = "", ...props }: IconProps & { name: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 16 16" fill="currentColor"
+      aria-hidden="true" focusable="false" className={`bi bi-${name} ${className}`.trim()} {...props}>
+      <use href={`${name.startsWith("art-") ? "/icons/artenos-categorias.svg" : "/icons/bootstrap-icons.svg"}#${name}`} />
+    </svg>
+  );
+}

@@ -6,6 +6,7 @@ import { useMarketplace } from "@/components/marketplace-state";
 import { OptimizedImage } from "@/components/optimized-image";
 import { accessHref } from "@/lib/navigation";
 import { guestCartTotals } from "@/lib/guest-cart";
+import { availabilityFor, maxQuantityFor } from "@/lib/availability";
 
 const brl = (cents: number) => (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -57,7 +58,8 @@ export function GuestCartView() {
             <ul className="cart-items">
               {lines.map(({ product, quantity }) => {
                 const cents = Math.round(Number(product.price) * 100);
-                const atLimit = product.stock != null && quantity >= product.stock;
+                const atLimit = quantity >= maxQuantityFor(product);
+                const madeToOrder = availabilityFor(product) === "made_to_order";
                 return (
                   <li className="cart-item" key={product.id}>
                     <div className="cart-item-thumb">
@@ -68,7 +70,9 @@ export function GuestCartView() {
                     <div className="cart-item-copy">
                       <h3>{product.name}</h3>
                       <p>{brl(cents)} cada</p>
-                      {product.stock != null && product.stock <= 3 && (
+                      {madeToOrder ? (
+                        <p className="cart-item-stock">Sob encomenda — produzida depois do pedido</p>
+                      ) : product.stock != null && product.stock <= 3 && (
                         <p className="cart-item-stock">{product.stock === 1 ? "Última unidade" : `${product.stock} unidades em estoque`}</p>
                       )}
                     </div>

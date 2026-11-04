@@ -14,6 +14,15 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { getSupabase } from "@/lib/supabase";
+import {
+  DEFAULT_PAYMENT_FEES,
+  PAYMENT_METHOD_LABEL,
+  feeBreakdown,
+  roundMoney,
+  suggestedPrice as priceFor,
+  type PaymentFees,
+  type PaymentMethod,
+} from "@/lib/pricing";
 import "./pricing-calculator.css";
 
 type ProductOption = {
@@ -38,6 +47,9 @@ type Calculation = {
   desired_profit: number;
   platform_fee_amount: number;
   suggested_price: number;
+  payment_method?: PaymentMethod | null;
+  payment_fee_percent?: number | null;
+  payment_fee_amount?: number | null;
   created_at: string;
 };
 
@@ -50,6 +62,7 @@ type PricingForm = {
   extraCost: string;
   operationalCost: string;
   marginPercent: string;
+  paymentMethod: PaymentMethod;
 };
 
 const EMPTY_FORM: PricingForm = {
@@ -61,6 +74,7 @@ const EMPTY_FORM: PricingForm = {
   extraCost: "",
   operationalCost: "",
   marginPercent: "",
+  paymentMethod: "card",
 };
 
 const money = new Intl.NumberFormat("pt-BR", {
@@ -78,13 +92,14 @@ function toNumber(value: string) {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 }
 
-function roundMoney(value: number) {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
-}
+const percent = (value: number) => `${value.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
 
 export default function PricingCalculatorPage() {
   const [form, setForm] = useState<PricingForm>(EMPTY_FORM);
   const [feePercent, setFeePercent] = useState<number | null>(null);
+  // Taxas do Mercado Pago (tela Tarifa do painel). null = migração ainda não
+  // rodada: a calculadora segue só com a tarifa da Artenós.
+  const [paymentFees, setPaymentFees] = useState<PaymentFees | null>(null);
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [history, setHistory] = useState<Calculation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,10 +115,16 @@ export default function PricingCalculatorPage() {
     const supabase = getSupabase();
 
     try {
-      const [settingsResponse, historyResponse] = await Promise.all([
+      const [settingsResponse, historyResponse, feesResponse] = await Promise.all([
         supabase.rpc("get_pricing_calculator_settings"),
         supabase.rpc("list_my_pricing_calculations", { p_limit: 12 }),
+        Promise.resolve(supabase.rpc("get_payment_fee_settings")).catch(() => ({ data: null, error: true })),
       ]);
+      const feesRow = (Array.isArray(feesResponse.data) ? feesResponse.data[0] : feesResponse.data) as
+        { pix_percent?: number; card_percent?: number } | null;
+      setPaymentFees(!feesResponse.error && feesRow
+        ? { pix: Number(feesRow.pix_percent ?? DEFAULT_PAYMENT_FEES.pix), card: Number(feesRow.card_percent ?? DEFAULT_PAYMENT_FEES.card) }
+        : null);
       if (settingsResponse.error) throw settingsResponse.error;
       if (historyResponse.error) throw historyResponse.error;
 
@@ -161,14 +182,21 @@ export default function PricingCalculatorPage() {
     );
     const validFee =
       feePercent !== null && feePercent >= 0 && feePercent < 100;
+    const paymentPercent = paymentFees ? paymentFees[form.paymentMethod] : 0;
     const suggestedPrice = validFee
-      ? roundMoney(
-          (productionCost + desiredProfit) / (1 - feePercent / 100),
-        )
+      ? priceFor(productionCost + desiredProfit, feePercent, paymentPercent)
       : 0;
-    const platformFeeAmount = validFee
-      ? roundMoney(suggestedPrice * (feePercent / 100))
-      : 0;
+    const breakdown = feeBreakdown(suggestedPrice, validFee ? feePercent : 0, paymentPercent);
+    const platformFeeAmount = breakdown.platform;
+    const paymentFeeAmount = breakdown.payment;
+    // Com este preço, quanto fica com a loja em cada meio de pagamento.
+    const byMethod = paymentFees && validFee
+      ? (["pix", "card"] as const).map((method) => ({
+          method,
+          percent: paymentFees[method],
+          ...feeBreakdown(suggestedPrice, feePercent, paymentFees[method]),
+        }))
+      : [];
 
     return {
       materialCost,
@@ -181,9 +209,12 @@ export default function PricingCalculatorPage() {
       productionCost,
       desiredProfit,
       platformFeeAmount,
+      paymentPercent,
+      paymentFeeAmount,
+      byMethod,
       suggestedPrice,
     };
-  }, [feePercent, form]);
+  }, [feePercent, paymentFees, form]);
 
   function setField<Key extends keyof PricingForm>(
     key: Key,
@@ -218,6 +249,7 @@ export default function PricingCalculatorPage() {
       extraCost: String(Number(calculation.extra_cost)),
       operationalCost: String(Number(calculation.operational_cost)),
       marginPercent: String(Number(calculation.margin_percent)),
+      paymentMethod: calculation.payment_method === "pix" ? "pix" : "card",
     });
     window.requestAnimationFrame(() => {
       formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -250,6 +282,8 @@ export default function PricingCalculatorPage() {
         p_operational_cost: values.operationalCost,
         p_margin_percent: values.marginPercent,
         p_product_id: form.productId || null,
+        // Só envia quando o banco já conhece as taxas do Mercado Pago.
+        ...(paymentFees ? { p_payment_method: form.paymentMethod } : {}),
       };
       const response = editingId
         ? await getSupabase().rpc("update_my_pricing_calculation", {
@@ -318,7 +352,10 @@ export default function PricingCalculatorPage() {
           </p>
         </div>
         {feePercent !== null && (
-          <span>Tarifa atual da plataforma: {feePercent}%</span>
+          <span>
+            Tarifa da Artenós: {percent(feePercent)}
+            {paymentFees && <> · Mercado Pago: Pix {percent(paymentFees.pix)}, cartão {percent(paymentFees.card)}</>}
+          </span>
         )}
       </header>
 
@@ -417,6 +454,29 @@ export default function PricingCalculatorPage() {
               onChange={(value) => setField("marginPercent", value)}
             />
           </div>
+
+          {paymentFees && (
+            <fieldset className="pricing-payment">
+              <legend>Taxa do Mercado Pago considerada no preço</legend>
+              <p>
+                O Mercado Pago retira uma porcentagem de cada venda, que muda conforme o cliente paga.
+                Calcular pelo cartão (a mais alta) garante o seu lucro em qualquer pagamento.
+              </p>
+              <div className="pricing-payment-options">
+                {(["card", "pix"] as const).map((method) => (
+                  <label key={method} className={form.paymentMethod === method ? "is-selected" : ""}>
+                    <input type="radio" name="paymentMethod" value={method}
+                      checked={form.paymentMethod === method}
+                      onChange={() => setField("paymentMethod", method)} />
+                    <span>
+                      <strong>{PAYMENT_METHOD_LABEL[method]}</strong>
+                      <small>{percent(paymentFees[method])} do preço final{method === "card" ? " · recomendado" : ""}</small>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
         </section>
 
         <aside className="pricing-summary" aria-live="polite">
@@ -435,9 +495,15 @@ export default function PricingCalculatorPage() {
               strong
             />
             <SummaryRow
-              label={`Tarifa da plataforma${feePercent === null ? "" : ` (${feePercent}%)`}`}
+              label={`Tarifa da Artenós${feePercent === null ? "" : ` (${percent(feePercent)})`}`}
               value={values.platformFeeAmount}
             />
+            {paymentFees && (
+              <SummaryRow
+                label={`Taxa do Mercado Pago · ${form.paymentMethod === "pix" ? "Pix" : "cartão"} (${percent(values.paymentPercent)})`}
+                value={values.paymentFeeAmount}
+              />
+            )}
             <SummaryRow
               label="Lucro desejado"
               value={values.desiredProfit}
@@ -448,9 +514,28 @@ export default function PricingCalculatorPage() {
             <span>Preço de venda sugerido</span>
             <strong>{money.format(values.suggestedPrice)}</strong>
           </div>
+          {values.suggestedPrice > 0 && values.byMethod.length > 0 && (
+            <div className="pricing-by-method">
+              <p>Com o preço de {money.format(values.suggestedPrice)}, em cada venda:</p>
+              <ul>
+                {values.byMethod.map((row) => (
+                  <li key={row.method}>
+                    <span>{PAYMENT_METHOD_LABEL[row.method]}</span>
+                    <span>
+                      sai {money.format(row.platform + row.payment)}
+                      <small> (Artenós {money.format(row.platform)} + Mercado Pago {money.format(row.payment)} · {percent(row.percent)})</small>
+                    </span>
+                    <strong>você recebe {money.format(row.net)}</strong>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <p className="pricing-formula-note">
-            A tarifa é calculada sobre o preço final da venda. O frete não
-            entra neste cálculo.
+            As taxas são porcentagens do preço final da venda: preço = (custo +
+            lucro) ÷ (1 − taxas). O frete não entra neste cálculo, mas o Mercado
+            Pago também cobra a taxa sobre ele. Parcelamento sem juros tem custo
+            extra, que não está incluído aqui.
           </p>
           <div className="pricing-save-actions">
             {editingId && (

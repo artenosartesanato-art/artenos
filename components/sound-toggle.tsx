@@ -7,7 +7,7 @@ export function useSoundPreference() {
   return useSyncExternalStore(subscribeSoundPreference, soundEnabled, () => false);
 }
 
-/** Interruptor explícito para os sons de interface (desligados por padrão). */
+/** Interruptor dos sons da plataforma: ações e avisos (desligados por padrão). */
 export function SoundToggle({ className = "" }: { className?: string }) {
   const enabled = useSoundPreference();
   return (
@@ -19,7 +19,7 @@ export function SoundToggle({ className = "" }: { className?: string }) {
       onClick={() => setSoundEnabled(!enabled)}
     >
       <span className="an-sound-toggle-track" aria-hidden="true"><span /></span>
-      <span>Sons da interface: {enabled ? "ligados" : "desligados"}</span>
+      <span>Sons da plataforma: {enabled ? "ligados" : "desligados"}</span>
     </button>
   );
 }

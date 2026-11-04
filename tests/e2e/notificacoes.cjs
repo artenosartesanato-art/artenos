@@ -5,6 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright');
+const { acceptCookies } = require('./_cookies.cjs');
 const { createClient } = require('@supabase/supabase-js');
 
 const base = process.argv[2] || process.env.BASE_URL || 'http://localhost:3000';
@@ -53,7 +54,7 @@ const waitFor = async (fn, timeout = 12000) => {
 };
 
 (async () => {
-  const b = await chromium.launch();
+  const b = acceptCookies(await chromium.launch());
   const stamp = new Date().toISOString().slice(11, 19);
   const buyer = await api('cliente@sandbox.artenos.test');
   const seller = await api('barro@sandbox.artenos.test');

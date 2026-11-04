@@ -1,0 +1,412 @@
+/* Central de Ajuda: busca no topo, um tema por vez, respostas numa coluna de
+   leitura e o contato num modal (convite no fim). */
+.help-main {
+  padding-top: 32px;
+  padding-bottom: 56px;
+}
+.help-hero {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: clamp(28px, 4vw, 48px) 20px;
+  border-radius: var(--an-r-xl);
+  background:
+    radial-gradient(circle, rgb(250 242 235 / 0.1) 1.2px, transparent 1.6px) 0 0 / 22px 22px,
+    var(--artenos-musgo);
+  color: var(--artenos-perola);
+  text-align: center;
+}
+.help-hero .store-eyebrow {
+  margin: 0;
+  color: var(--artenos-pessego);
+}
+.help-hero h1 {
+  margin: 0 0 6px;
+  font: 500 var(--an-fs-3xl) / 1.08 var(--font-display);
+}
+.help-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: min(100%, 620px);
+}
+.help-search svg {
+  position: absolute;
+  left: 18px;
+  color: var(--an-text-muted);
+  pointer-events: none;
+}
+.help-search input {
+  min-height: 54px;
+  padding-left: 48px;
+  border: 0;
+  border-radius: var(--an-r-pill);
+  box-shadow: var(--an-shadow-md);
+}
+
+.help-topic-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+  margin: 24px auto 0;
+  max-width: 1200px;
+}
+.help-topic-grid button {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  padding: 16px;
+  border: 1px solid var(--an-line);
+  border-radius: var(--an-r-lg);
+  background: var(--an-surface);
+  color: var(--an-text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--an-dur-fast) ease, box-shadow var(--an-dur-fast) ease;
+}
+.help-topic-grid button:hover {
+  border-color: var(--an-line-strong);
+}
+.help-topic-grid button[aria-pressed="true"] {
+  border-color: var(--artenos-musgo);
+  box-shadow: inset 0 0 0 1px var(--artenos-musgo);
+}
+.help-topic-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 6px;
+  border-radius: 50%;
+  background: var(--an-sucesso-fundo);
+  color: var(--artenos-musgo);
+}
+.help-topic-grid strong {
+  font-size: var(--an-fs-sm);
+  line-height: 1.3;
+}
+.help-topic-grid small {
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-xs);
+}
+
+.help-results {
+  max-width: 860px;
+  margin: 32px auto 0;
+  scroll-margin-top: 120px;
+}
+.help-results h2 {
+  margin: 0 0 14px;
+  font: 500 var(--an-fs-2xl) / 1.15 var(--font-display);
+}
+.help-questions {
+  display: grid;
+  gap: 10px;
+}
+.help-q {
+  overflow: hidden;
+  border: 1px solid var(--an-line);
+  border-radius: var(--an-r-md);
+  background: var(--an-surface);
+  transition: border-color var(--an-dur-fast) ease, box-shadow var(--an-dur-base) ease;
+}
+.help-q:hover {
+  border-color: var(--an-line-strong);
+}
+.help-q.is-open {
+  border-color: var(--an-line-strong);
+  box-shadow: var(--an-shadow-sm);
+}
+/* O cartão fechado inteiro é clicável. */
+.help-q-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  min-height: 58px;
+  padding: 16px 18px;
+  border: 0;
+  background: none;
+  color: var(--an-text);
+  font: inherit;
+  font-weight: 650;
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
+}
+.help-q-head:focus-visible {
+  outline: 3px solid var(--artenos-musgo);
+  outline-offset: -3px;
+  border-radius: var(--an-r-md);
+}
+.help-q-text {
+  display: grid;
+  gap: 4px;
+}
+.help-q-text small {
+  color: var(--an-argila-texto);
+  font-size: var(--an-fs-2xs);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+/* "+" que gira e vira "×" ao abrir. */
+.help-q-icon {
+  position: relative;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--an-sucesso-fundo);
+  transition: transform var(--an-dur-base) var(--an-ease-out), background-color var(--an-dur-fast) ease;
+}
+.help-q-icon::before,
+.help-q-icon::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 2px;
+  margin: -1px 0 0 -6px;
+  border-radius: 2px;
+  background: var(--artenos-musgo);
+}
+.help-q-icon::after {
+  transform: rotate(90deg);
+}
+.help-q.is-open .help-q-icon {
+  transform: rotate(45deg);
+  background: var(--artenos-musgo);
+}
+.help-q.is-open .help-q-icon::before,
+.help-q.is-open .help-q-icon::after {
+  background: #fff;
+}
+/* A resposta desliza (altura animada sem medir: grid de 0fr para 1fr). */
+.help-q-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--an-dur-slow, 320ms) var(--an-ease-out);
+}
+.help-q.is-open .help-q-body {
+  grid-template-rows: 1fr;
+}
+.help-q-body > .help-answer {
+  min-height: 0;
+  overflow: hidden;
+}
+@media (prefers-reduced-motion: reduce) {
+  .help-q-body,
+  .help-q-icon {
+    transition: none;
+  }
+}
+.help-answer {
+  padding: 0 18px;
+}
+.help-q.is-open .help-answer {
+  padding-bottom: 16px;
+}
+.help-answer p {
+  margin: 0 0 10px;
+  color: var(--an-text-muted);
+  line-height: 1.65;
+}
+.help-answer p:last-child {
+  margin-bottom: 0;
+}
+.help-empty {
+  margin: 0;
+  color: var(--an-text-muted);
+}
+
+.help-cta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px 20px;
+  max-width: 860px;
+  margin: 36px auto 0;
+  padding: 22px 24px;
+  border-radius: var(--an-r-xl);
+  background: var(--an-surface-warm);
+  scroll-margin-top: 120px;
+}
+.help-cta > div {
+  flex: 1 1 260px;
+}
+.help-cta h2 {
+  margin: 0 0 4px;
+  font: 500 var(--an-fs-2xl) / 1.15 var(--font-display);
+}
+.help-cta p {
+  margin: 0;
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-sm);
+  line-height: 1.55;
+}
+.help-cta-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--an-surface);
+  color: var(--artenos-musgo);
+}
+.help-cta-button {
+  --btn-bg: var(--artenos-musgo);
+}
+
+/* Modal de contato */
+.help-modal.an-dialog--wide {
+  width: min(640px, 100%);
+}
+.help-modal-body {
+  display: grid;
+  gap: 16px;
+  padding: 28px;
+}
+.help-modal-head h2 {
+  margin: 0 40px 4px 0;
+  font: 500 var(--an-fs-2xl) / 1.15 var(--font-display);
+}
+.help-modal-head p {
+  margin: 0;
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-sm);
+}
+.help-channels {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.help-channel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--an-line);
+  border-radius: var(--an-r-md);
+  color: var(--an-text);
+  font-size: var(--an-fs-sm);
+  font-weight: 650;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+.help-channel svg {
+  flex: none;
+  color: var(--artenos-musgo);
+}
+a.help-channel:hover {
+  border-color: var(--an-line-strong);
+}
+.help-channel--whatsapp {
+  border-color: var(--artenos-musgo);
+  background: var(--artenos-musgo);
+  color: #fff;
+}
+.help-channel--whatsapp svg {
+  color: #fff;
+}
+.help-channel--static {
+  color: var(--an-text-muted);
+  font-weight: 500;
+}
+
+.help-form {
+  display: grid;
+  gap: 10px;
+}
+.help-honeypot {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.help-form-note {
+  margin: 0;
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-2xs);
+}
+.help-sent {
+  display: flex;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--an-r-md);
+  background: var(--an-surface-warm);
+  color: var(--artenos-musgo);
+}
+.help-sent p {
+  margin: 0;
+  color: var(--an-text);
+}
+
+@media (max-width: 1100px) {
+  .help-topic-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .help-topic-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .help-topic-grid button {
+    padding: 12px;
+  }
+  .help-channels {
+    grid-template-columns: 1fr;
+  }
+  .help-modal-body {
+    padding: 22px 18px;
+  }
+  .help-cta-button {
+    width: 100%;
+  }
+}
+
+/* Formulário de contato: e-mail e confirmação lado a lado; pedido com "AN-" fixo. */
+.help-form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.help-order-input {
+  display: flex;
+  align-items: stretch;
+}
+.help-order-input > span {
+  display: grid;
+  place-items: center;
+  padding: 0 12px;
+  border: 1px solid var(--an-line-strong);
+  border-right: 0;
+  border-radius: var(--an-r-md) 0 0 var(--an-r-md);
+  background: var(--an-surface-warm);
+  color: var(--an-text-muted);
+  font-weight: 700;
+}
+.help-order-input input {
+  flex: 1;
+  min-width: 0;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.help-field-hint {
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-xs);
+}
+@media (max-width: 600px) {
+  .help-form-row {
+    grid-template-columns: 1fr;
+  }
+}

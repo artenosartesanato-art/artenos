@@ -43,3 +43,16 @@
   .payment-main { width: 100%; padding: 0; }
   .payment-card { box-shadow: none; border: 0; }
 }
+
+/* Detalhes do item: encomenda, resumo da descrição e observações. */
+.payment-item-tag {
+  color: var(--an-argila-texto);
+  font-weight: 700;
+}
+.payment-item-summary,
+.payment-item-notes {
+  overflow-wrap: anywhere;
+}
+.payment-item-notes {
+  font-style: italic;
+}

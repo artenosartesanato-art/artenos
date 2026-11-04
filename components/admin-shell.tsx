@@ -3,6 +3,8 @@
 import {
   AlertTriangle,
   CircleSlash2,
+  Flag,
+  LifeBuoy,
   History,
   LayoutDashboard,
   Loader2,
@@ -17,6 +19,7 @@ import {
   Tags,
   UserRound,
   UserRoundCheck,
+  Trash2,
 } from "@/components/icons";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -62,6 +65,9 @@ const NAV: { title: string; items: NavItem[] }[] = [
       { label: "Vendedores", href: "/administracao/vendedores", icon: Store },
       { label: "Pedidos", href: "/administracao/pedidos", icon: Package },
       { label: "Clientes", href: "/administracao/clientes", icon: UserRound },
+      { label: "Denúncias", href: "/administracao/denuncias", icon: Flag },
+      { label: "Chamados", href: "/administracao/chamados", icon: LifeBuoy },
+      { label: "Contas em exclusão", href: "/administracao/exclusoes", icon: Trash2 },
     ],
   },
   {
@@ -97,19 +103,27 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     setScreen("loading");
     try {
       const supabase = getSupabase();
-      const { data: authData, error: authError } = await supabase.auth.getUser();
+      // A sessão local diz de quem é a conta; a confirmação no servidor
+      // (getUser), a permissão e o papel saem juntos, em paralelo.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setScreen("unauthenticated");
+        return;
+      }
+      const [{ data: authData, error: authError }, { data: allowed, error: allowedError }, { data: adminRow }] = await Promise.all([
+        supabase.auth.getUser(),
+        // A permissão é decidida no banco; o navegador só lê o resultado.
+        supabase.rpc("is_active_admin"),
+        supabase.from("admin_users").select("role").eq("user_id", session.user.id).maybeSingle(),
+      ]);
       if (authError || !authData.user) {
         setScreen("unauthenticated");
         return;
       }
-      // A permissão é decidida no banco; o navegador só lê o resultado.
-      const { data: allowed, error: allowedError } = await supabase.rpc("is_active_admin");
       if (allowedError || allowed !== true) {
         setScreen("denied");
         return;
       }
-      const { data: adminRow } = await supabase.from("admin_users").select("role")
-        .eq("user_id", authData.user.id).single();
       const user = authData.user;
       setAccount({
         userId: user.id,
@@ -161,11 +175,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </>}
           {screen === "denied" && <>
             <CircleSlash2 size={34} />
-            <h1>Acesso não autorizado</h1>
-            <p>Sua conta está conectada, mas não consta como administradora ativa.</p>
+            <h1>Área exclusiva da equipe</h1>
+            <p>O painel administrativo é só para a equipe da Artenós. A conta conectada agora não tem esse acesso.</p>
             <div>
-              <Link href="/">Voltar para a vitrine</Link>
-              <button type="button" onClick={signOut}>Sair da conta</button>
+              <Link href="/">Voltar para a loja</Link>
+              <button type="button" onClick={signOut}>Entrar com outra conta</button>
             </div>
           </>}
           {screen === "error" && <>

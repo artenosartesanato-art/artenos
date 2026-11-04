@@ -1,0 +1,73 @@
+<!-- Artenós · Supabase › Authentication › Emails › Password changed (notificação de segurança)
+     Assunto sugerido: Sua senha da Artenós foi alterada
+     Feito para e-mail: tabelas e estilos na própria tag (Gmail, Outlook, iPhone). -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light only">
+<title>Sua senha da Artenós foi alterada</title>
+</head>
+<body style="margin:0;padding:0;background-color:#faf2eb;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#faf2eb;">A senha da sua conta acabou de ser alterada.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#faf2eb;">
+  <tr>
+    <td align="center" style="padding:32px 16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
+
+        <tr>
+          <td align="center" style="padding:0 0 24px;">
+            <div style="font-family:Georgia,'Times New Roman',serif;font-size:34px;line-height:1;color:#4b3026;">Artenós</div>
+            <div style="padding-top:8px;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:bold;letter-spacing:3px;color:#b26b4f;">FEITO À MÃO, ENCONTRADO AQUI</div>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="background-color:#ffffff;border:1px solid #edc5ad;border-radius:16px;padding:40px 36px;">
+            <h1 style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:28px;line-height:1.2;font-weight:normal;color:#4b3026;">Sua senha foi alterada</h1>
+            <p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#5c4339;">
+              A senha da conta <strong style="color:#4b3026;">{{ .Email }}</strong> na Artenós acabou de ser alterada.
+              Se foi você, está tudo certo: use a nova senha nos próximos acessos.
+            </p>
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 28px;">
+              <tr>
+                <td style="background-color:#faf2eb;border-left:4px solid #b26b4f;border-radius:8px;padding:16px 18px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#5c4339;">
+                  <strong style="color:#4b3026;">Não foi você?</strong> Proteja sua conta agora: entre em
+                  "Esqueci minha senha" na tela de acesso para criar uma nova senha e, em seguida,
+                  fale com a equipe da Artenós pela Central de Ajuda.
+                </td>
+              </tr>
+            </table>
+
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 28px;">
+              <tr>
+                <td align="center" bgcolor="#4b3026" style="border-radius:10px;">
+                  <a href="{{ .SiteURL }}/acesso?aba=entrar" target="_blank" style="display:inline-block;padding:15px 30px;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;color:#faf2eb;text-decoration:none;border-radius:10px;">Ir para a tela de acesso</a>
+                </td>
+              </tr>
+            </table>
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr><td style="border-top:1px solid #f1e2d6;font-size:0;line-height:0;">&nbsp;</td></tr>
+            </table>
+            <p style="margin:20px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.5;color:#8a6a5c;">
+              Este é um aviso automático de segurança. A Artenós nunca pede sua senha por e-mail, mensagem ou telefone.
+            </p>
+          </td>
+        </tr>
+
+        <tr>
+          <td align="center" style="padding:24px 16px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#8a6a5c;">
+            Artenós · Peças feitas à mão por artesãs e artesãos de todo o Brasil<br>
+            <a href="{{ .SiteURL }}" target="_blank" style="color:#566044;font-weight:bold;text-decoration:none;">Visitar a Artenós</a>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>

@@ -41,7 +41,7 @@ type ApplicationSummary = {
   application_id: string;
   application_number: number;
   status: ApplicationStatus;
-  submission_type: "standard" | "assisted";
+  submission_type: "standard" | "assisted" | "upgrade";
   assigned_admin_id: string | null;
   artisan_id: string;
   full_name: string;
@@ -59,7 +59,7 @@ type ApplicationDetail = {
   application_id: string;
   application_number: number;
   application_status: ApplicationStatus;
-  submission_type: "standard" | "assisted";
+  submission_type: "standard" | "assisted" | "upgrade";
   assigned_admin_id: string | null;
   decision_reason: string | null;
   submitted_at: string;
@@ -484,7 +484,10 @@ export default function ApprovalsPage() {
                     <strong>
                       {application.store_name || application.full_name}
                     </strong>
-                    <p>{application.full_name}</p>
+                    <p>
+                      {application.full_name}
+                      {application.submission_type === "upgrade" && " · cliente abrindo loja"}
+                    </p>
                     <div>
                       <span>
                         {application.city}/{application.state}
@@ -568,7 +571,9 @@ export default function ApprovalsPage() {
                     <small>
                       {detail.submission_type === "assisted"
                         ? "Cadastro assistido"
-                        : "Cadastro padrão"}{" "}
+                        : detail.submission_type === "upgrade"
+                          ? "Cliente abrindo loja (mesma conta; segue cliente até a aprovação)"
+                          : "Cadastro padrão"}{" "}
                       · enviado em {formatDate(detail.submitted_at)}
                     </small>
                   </div>

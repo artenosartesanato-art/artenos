@@ -6,13 +6,11 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AlertTriangle, Eye, EyeOff, Loader2, LockKeyhole } from "@/components/icons";
 import type { FieldErrors } from "@/lib/registration-validation";
+import { STORE_SPECIALTIES } from "@/lib/store-specialties";
 
-export const specialties = [
-  "Crochê e tricô", "Cerâmica", "Costura criativa", "Joias e acessórios",
-  "Papelaria", "Decoração", "Cosméticos naturais", "Outro",
-];
+export const specialties = STORE_SPECIALTIES;
 export const FIELD_LABELS: Record<string, string> = {
-  fullName: "Nome completo", storeName: "Nome da loja", specialty: "Especialidade", document: "Documento",
+  fullName: "Nome completo", storeName: "Nome da loja", specialty: "Especialidade", specialtyOther: "Sua especialidade", document: "Documento",
   phone: "Telefone", cep: "CEP", address: "Endereço", number: "Número", city: "Cidade", state: "Estado",
   email: "E-mail", password: "Senha", confirmPassword: "Confirmação da senha", story: "História da loja",
   terms: "Termos de Uso",

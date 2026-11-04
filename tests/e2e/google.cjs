@@ -9,6 +9,7 @@
 // uma conta "google" criada pela API administrativa local e um link de acesso,
 // que deixa o navegador exatamente como após o OAuth (sessão em /acesso/google).
 const { chromium } = require('playwright');
+const { acceptCookies } = require('./_cookies.cjs');
 const { execFileSync } = require('child_process');
 
 const base = process.env.BASE_URL || 'http://localhost:3002';
@@ -77,7 +78,7 @@ async function fillProfile(page, { cpf, artisan = false }) {
 }
 
 (async () => {
-  const browser = await chromium.launch();
+  const browser = acceptCookies(await chromium.launch());
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   // O Google real não é aberto: o pedido ao Supabase é feito sem seguir o
   // redirecionamento e só guardamos para onde ele mandaria.

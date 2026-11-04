@@ -1,0 +1,51 @@
+.seller-reviews-heading {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 22px;
+}
+.seller-reviews-heading h1 {
+  margin: 0;
+  color: var(--artenos-marrom);
+  font: 500 clamp(38px, 5vw, 54px) var(--font-display);
+  letter-spacing: -1.3px;
+}
+.seller-reviews-heading p:not(.seller-eyebrow) {
+  margin: 0;
+  color: var(--an-argila-texto);
+  font-size: 14px;
+}
+.seller-reviews-filter {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.seller-reviews-filter button {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--an-line-strong);
+  border-radius: var(--an-r-pill);
+  background: var(--an-surface);
+  font-weight: 650;
+  cursor: pointer;
+}
+.seller-reviews-filter button[aria-pressed="true"] {
+  border-color: var(--artenos-marrom);
+  background: var(--artenos-marrom);
+  color: var(--artenos-perola);
+}
+.seller-reviews-list {
+  padding: 18px;
+  border-radius: var(--an-r-lg, 16px);
+  background: var(--an-surface);
+}
+.seller-reviews-empty {
+  color: var(--an-text-muted);
+  font-style: italic;
+}
+.seller-review-reply-form {
+  display: grid;
+  gap: 8px;
+}
+.seller-review-reply-form .an-btn {
+  justify-self: start;
+}

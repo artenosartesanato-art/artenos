@@ -1,24 +1,29 @@
 "use client";
 
 import "@/app/storefront.css";
+import { usePathname } from "next/navigation";
 import { CustomerFooter } from "@/components/customer-footer";
 import { CustomerHeader } from "@/components/customer-header";
 import { HeaderSearchProvider } from "@/components/header-search";
 import { NotificationsProvider } from "@/components/notifications";
 import { SessionGuard } from "@/components/session-guard";
+import { UrlNotice } from "@/components/url-notice";
 import { ProfileCompletionGuard } from "@/components/profile-completion-guard";
 
 /** Cabeçalho e rodapé únicos para todas as páginas (vitrine, conta, painel da loja e administração). */
 export function SiteChrome({ children }: { children: React.ReactNode }) {
+  // Entrar/cadastrar ocupa a tela toda: sem rodapé.
+  const withFooter = usePathname() !== "/acesso";
   return (
     <HeaderSearchProvider>
       <NotificationsProvider>
         <div className="an-site">
           <CustomerHeader />
           <div className="an-site-body">{children}</div>
-          <CustomerFooter />
+          {withFooter && <CustomerFooter />}
         </div>
         <SessionGuard />
+        <UrlNotice />
         <ProfileCompletionGuard />
       </NotificationsProvider>
     </HeaderSearchProvider>

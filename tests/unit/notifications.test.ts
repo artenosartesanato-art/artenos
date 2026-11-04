@@ -58,3 +58,14 @@ test("consulta de segurança: só avisos novos ou com mais mensagens", () => {
   assert.deepEqual(freshUnread(old, next).map((item) => item.id), ["a", "c"]);
   assert.deepEqual(freshUnread(next, next), []);
 });
+
+test("avisos da conversa aberta, mesmo chegando depois", async () => {
+  const { unreadForRef } = await import("../../lib/notifications.ts");
+  const base = { kind: "mensagem", title: "", body: "", link: "/mensagens", unread_count: 1, created_at: "" } as const;
+  const items = [
+    { ...base, id: "a", ref_id: "conversa-1", read_at: null },
+    { ...base, id: "b", ref_id: "conversa-1", read_at: "2026-11-01" },
+    { ...base, id: "c", ref_id: "conversa-2", read_at: null },
+  ];
+  assert.deepEqual(unreadForRef(items, "conversa-1"), ["a"]);
+});

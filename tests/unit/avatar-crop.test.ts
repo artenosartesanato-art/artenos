@@ -53,3 +53,21 @@ test("original reduzido e caminho derivado", () => {
   assert.equal(originalPathFor("u/abc.webp"), "u/abc-original.webp");
   assert.equal(originalPathFor("u/abc.jpg"), "u/abc-original.webp");
 });
+
+test("formato largo (capa 3:1) e retrato (peça 4:5) cobrem a área sem sobrar fundo", async () => {
+  const { clampCrop, displayScale, drawParams } = await import("../../lib/avatar-crop.ts");
+  // Foto 4000×3000 numa área de 300 px de largura, capa 3:1 (300×100).
+  const wide = displayScale(4000, 3000, 300, { zoom: 1, rotation: 0 }, 3);
+  assert.equal(wide, 300 / 4000); // a largura manda
+  // Pode mover na vertical (a foto é mais alta que a faixa), mas não na horizontal.
+  const moved = clampCrop({ x: 50, y: 500, zoom: 1, rotation: 0 }, 4000, 3000, 300, 3);
+  assert.equal(moved.x, 0);
+  assert.equal(moved.y, (3000 * wide - 100) / 2);
+  // Retrato 4:5: área 300×375; uma foto quadrada precisa cobrir a altura.
+  const tall = displayScale(1000, 1000, 300, { zoom: 1, rotation: 0 }, 0.8);
+  assert.equal(tall, 375 / 1000);
+  // Centro do desenho no meio da saída 1200×1500.
+  const params = drawParams({ x: 0, y: 0, zoom: 1, rotation: 0 }, 1000, 1000, 300, 1200, 0.8);
+  assert.equal(params.centerX, 600);
+  assert.equal(params.centerY, 750);
+});

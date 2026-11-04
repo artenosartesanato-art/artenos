@@ -173,8 +173,8 @@ begin
   if coalesce(p_terms_accepted, false) is not true then
     raise exception 'Aceite os Termos de Uso e a Política de Privacidade';
   end if;
-  if length(full_name) < 3 or full_name !~ '\S+\s+\S+' or length(full_name) > 120 then
-    raise exception 'Nome completo: informe nome e sobrenome';
+  if length(full_name) < 3 or length(full_name) > 120 then
+    raise exception 'Nome completo: informe seu nome completo';
   end if;
   if not (public.valid_cpf(doc) or (p_account_type = 'artisan' and public.valid_cnpj(doc))) then
     raise exception 'Documento inválido: informe um % válido',

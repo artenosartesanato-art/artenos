@@ -19,8 +19,14 @@ import { toast } from "sonner";
 import { favoriteIntentReturnPath } from "@/components/marketplace-state";
 import { markActivity, setRememberDevice } from "@/lib/session";
 import { checkThrottle, loadThrottle, registerFailure, registerSuccess, saveThrottle, waitLabel } from "@/lib/login-throttle";
-import { getSupabase, loginWithSupabase, registerWithSupabase } from "@/lib/supabase";
-import { safeReturnPath } from "@/lib/navigation";
+import { AccountBlockedError, captchaFrom, getSupabase, loginWithSupabase, registerWithSupabase } from "@/lib/supabase";
+import { Dialog } from "@/components/ui/dialog";
+import { formatDeletionDate, reactivationMailto } from "@/lib/account-deletion";
+import { siteConfig } from "@/lib/site-config";
+import { recordAccess } from "@/lib/access-log";
+import { resetTurnstile, TurnstileWidget } from "@/components/turnstile-widget";
+import { returnPathForAccount, safeReturnPath } from "@/lib/navigation";
+import { OTHER_SPECIALTY, SPECIALTY_MAX, STORE_SPECIALTIES, resolveSpecialty } from "@/lib/store-specialties";
 import {
   fieldForServerMessage,
   validateLogin,
@@ -29,6 +35,7 @@ import {
   type FieldErrors,
 } from "@/lib/registration-validation";
 import "../storefront.css";
+import { StoryChecklist } from "@/components/story-checklist";
 
 type AccountType = "client" | "artisan";
 type Tab = "login" | AccountType;
@@ -41,6 +48,9 @@ function RegisterForm({ type, returnTo, onGoToLogin }: { type: AccountType; retu
   const [pending, setPending] = useState<"standard" | "assisted" | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [done, setDone] = useState<string | null>(null);
+  const [existingAccount, setExistingAccount] = useState(false);
+  const [specialtyChoice, setSpecialtyChoice] = useState("");
+  const [storyDraft, setStoryDraft] = useState("");
   const clear = (name: string) => setErrors((current) => {
     if (!current[name] && !current._form) return current;
     const next = { ...current };
@@ -60,12 +70,23 @@ function RegisterForm({ type, returnTo, onGoToLogin }: { type: AccountType; retu
     setErrors({});
     setPending(assisted ? "assisted" : "standard");
     try {
-      await registerWithSupabase({ ...values, type, assisted });
+      // "Outro": a especialidade salva é o que a pessoa digitou.
+      const specialty = resolveSpecialty(String(values.specialty ?? ""), String(values.specialtyOther ?? ""));
+      await registerWithSupabase({ ...values, specialty, type, assisted });
       setDone(String(values.email ?? "").trim().toLowerCase());
     } catch (error) {
       const message = error instanceof Error ? error.message : "Não foi possível concluir o cadastro. Tente novamente em instantes.";
+      // Vendedor com e-mail ou CPF de uma conta que já existe: não cria outra
+      // conta; a pessoa entra e abre a loja na conta dela (mesmos dados).
+      if (type === "artisan" && /já está cadastrad|já foi cadastrad/i.test(message)) {
+        setExistingAccount(true);
+        setErrors({ _form: "Você já tem uma conta com esse e-mail ou CPF. Entre nela e abra sua loja em Meu perfil: seus dados, compras e favoritos continuam na mesma conta." });
+        resetTurnstile();
+        return;
+      }
       const field = fieldForServerMessage(message);
       setErrors(field ? { [field]: message } : { _form: message });
+      resetTurnstile();
     } finally {
       setPending(null);
     }
@@ -108,6 +129,13 @@ function RegisterForm({ type, returnTo, onGoToLogin }: { type: AccountType; retu
       <AuthDivider label="ou cadastre com e-mail" />
       <p className="form-required-note">Todos os campos são obrigatórios.</p>
       <ErrorSummary errors={errors} />
+      {existingAccount && (
+        <p className="existing-account-cta">
+          <a className="an-btn an-btn--secondary" href={`/acesso?aba=entrar&voltar=${encodeURIComponent("/perfil?loja=1#abrir-loja")}`}>
+            Entrar e abrir minha loja
+          </a>
+        </p>
+      )}
       <div className="fields-grid">
         <p className="form-section-title">Seus dados</p>
         <Field name="fullName" label="Nome completo" error={errors.fullName} wide>
@@ -120,12 +148,21 @@ function RegisterForm({ type, returnTo, onGoToLogin }: { type: AccountType; retu
             </Field>
             <Field name="specialty" label="Especialidade principal" error={errors.specialty}>
               {(props) => (
-                <select {...props} name="specialty" defaultValue="" onChange={() => clear("specialty")}>
+                <select {...props} name="specialty" value={specialtyChoice}
+                  onChange={(event) => { setSpecialtyChoice(event.target.value); clear("specialty"); clear("specialtyOther"); }}>
                   <option value="" disabled>Selecione</option>
                   {specialties.map((item) => <option key={item}>{item}</option>)}
                 </select>
               )}
             </Field>
+            {specialtyChoice === OTHER_SPECIALTY && (
+              <Field name="specialtyOther" label="Qual é a sua especialidade?" error={errors.specialtyOther} wide>
+                {(props) => (
+                  <input {...props} name="specialtyOther" maxLength={SPECIALTY_MAX} placeholder="Ex.: marchetaria, vitral, cestaria"
+                    autoFocus onInput={() => clear("specialtyOther")} />
+                )}
+              </Field>
+            )}
           </>
         )}
         <Field name="document" label={docLabel} error={errors.document} hint="Usado só para validar o cadastro; não aparece na loja.">
@@ -162,8 +199,14 @@ function RegisterForm({ type, returnTo, onGoToLogin }: { type: AccountType; retu
         {type === "artisan" && (
           <Field name="story" label="Conte a história da sua loja" error={errors.story} wide
             hint="Como você começou, o que inspira suas peças e o que torna seu trabalho especial (40 a 1.200 caracteres).">
-            {(props) => <textarea {...props} name="story" maxLength={1200} rows={5}
-              placeholder="Ex.: comecei a bordar com minha avó, uso linhas de algodão e cada peça leva uma semana…" onInput={() => clear("story")} />}
+            {(props) => (
+              <>
+                <textarea {...props} name="story" maxLength={1200} rows={5}
+                  placeholder="Ex.: comecei a bordar com minha avó, uso linhas de algodão e cada peça leva uma semana…"
+                  onInput={(event) => { setStoryDraft(event.currentTarget.value); clear("story"); }} />
+                <StoryChecklist value={storyDraft} />
+              </>
+            )}
           </Field>
         )}
       </div>
@@ -179,6 +222,7 @@ function RegisterForm({ type, returnTo, onGoToLogin }: { type: AccountType; retu
         </label>
         {errors.terms && <small className="field-error" id="campo-terms-erro"><AlertTriangle size={13} /> {errors.terms}</small>}
       </div>
+      <TurnstileWidget />
       <div className="form-actions">
         <button className="primary-button" disabled={pending !== null} aria-busy={pending === "standard"}>
           {pending === "standard" && <Loader2 size={18} className="spin" />}
@@ -208,6 +252,8 @@ function LoginForm({ returnTo, onRecover, onRegister }: { returnTo: string | nul
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
+  // Conta em exclusão (senha certa): aviso com a data e como reativar.
+  const [pendingDeletion, setPendingDeletion] = useState<{ email: string; date: string } | null>(null);
   const rememberRef = useRef<HTMLInputElement>(null);
   const clear = (name: string) => setErrors((current) => {
     if (!current[name] && !current._form) return current;
@@ -245,18 +291,43 @@ function LoginForm({ returnTo, onRecover, onRegister }: { returnTo: string | nul
         router.replace(returnTo ? `/concluir-cadastro?voltar=${encodeURIComponent(returnTo)}` : "/concluir-cadastro");
         return;
       }
+      void recordAccess("login");
       toast.success(result.approvalStatus === "active"
         ? `Boas-vindas, ${result.firstName}!`
         : `Olá, ${result.firstName}. Acompanhe aqui a análise do seu cadastro.`);
-      const destination = result.approvalStatus !== "active" || result.redirectTo === "/administracao"
+      // O "voltar" pode ter ficado de outra sessão (ex.: a da equipe expirou no
+      // painel): só é usado se esta conta puder abrir a página.
+      const account = result.redirectTo === "/administracao" ? "admin" : result.accountType === "artisan" ? "seller" : "client";
+      const destination = result.approvalStatus !== "active"
         ? result.redirectTo
-        : returnTo || favoriteIntentReturnPath() || result.redirectTo;
+        : returnPathForAccount(returnTo, account) || (account === "admin" ? null : favoriteIntentReturnPath()) || result.redirectTo;
       router.replace(destination);
+      // Se a troca de página não andar (ex.: aba aberta numa versão antiga do
+      // site, cujos arquivos já não existem), recarrega direto no destino.
+      window.setTimeout(() => {
+        if (window.location.pathname === "/acesso") window.location.replace(destination);
+      }, 2500);
     } catch (error) {
+      if (error instanceof AccountBlockedError) {
+        // Confere no servidor (com a senha de novo) se é exclusão em andamento.
+        const situation = await fetch("/api/acesso/situacao", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password: String(values.password ?? "") }),
+        }).then((response) => response.json()).catch(() => null) as { status?: string; scheduledAt?: string } | null;
+        resetTurnstile();
+        setPending(false);
+        if (situation?.status === "pending_deletion" && situation.scheduledAt) {
+          setPendingDeletion({ email, date: formatDeletionDate(situation.scheduledAt) });
+        } else {
+          setErrors({ _form: "Esta conta está bloqueada. Entre em contato com o atendimento da Artenós." });
+        }
+        return;
+      }
       const message = error instanceof Error ? error.message : "Não foi possível entrar agora. Tente novamente.";
       // Só senha/e-mail errados contam para o limite (não falhas de conexão).
       if (/incorretos/i.test(message)) saveThrottle(registerFailure(loadThrottle(), email, Date.now()));
       setErrors({ _form: message });
+      resetTurnstile();
       setPending(false);
     }
   }
@@ -266,7 +337,7 @@ function LoginForm({ returnTo, onRecover, onRegister }: { returnTo: string | nul
       <div className="form-heading">
         <p className="eyebrow">Que bom ter você de volta</p>
         <h2>Entre na sua conta</h2>
-        <p>{returnTo ? "Depois de entrar, você volta para onde estava." : "Entre com o Google ou com o e-mail e a senha do seu cadastro."}</p>
+        <p>{returnTo && !returnTo.startsWith("/administracao") ? "Depois de entrar, você volta para onde estava." : "Entre com o Google ou com o e-mail e a senha do seu cadastro."}</p>
       </div>
       <ErrorSummary errors={errors} title="Não foi possível entrar" />
       <GoogleButton perfil={null} voltar={returnTo} onError={(message) => setErrors({ _form: message })}
@@ -295,10 +366,30 @@ function LoginForm({ returnTo, onRecover, onRegister }: { returnTo: string | nul
       <p className="remember-help" id="lembrar-ajuda">
         Desmarcado, você sai ao fechar o navegador ou após 30 min sem uso. Em computador compartilhado, deixe desmarcado.
       </p>
+      <TurnstileWidget />
       <button className="primary-button" disabled={pending} aria-busy={pending}>
         {pending && <Loader2 size={18} className="spin" />}{pending ? "Entrando…" : "Entrar"}
       </button>
       <p className="form-switch">Ainda não tem conta? <button type="button" className="link-button" onClick={onRegister}>Criar conta</button></p>
+      <Dialog open={pendingDeletion !== null} onClose={() => setPendingDeletion(null)} labelledBy="conta-exclusao-titulo"
+        className="account-pending-dialog" closeLabel="Fechar">
+        {pendingDeletion && (
+          <div className="account-pending-body">
+            <h2 id="conta-exclusao-titulo">Sua conta está em processo de exclusão</h2>
+            <p>Ela foi desativada a seu pedido e será excluída definitivamente em <strong>{pendingDeletion.date}</strong>.</p>
+            <p>
+              Para reativá-la antes dessa data, envie um e-mail para{" "}
+              {siteConfig.supportEmail ? <strong>{siteConfig.supportEmail}</strong> : "o atendimento da Artenós"} a partir do endereço da conta.
+            </p>
+            <div className="account-pending-actions">
+              {siteConfig.supportEmail && (
+                <a className="an-btn" href={reactivationMailto(siteConfig.supportEmail, pendingDeletion.email)}>Enviar e-mail</a>
+              )}
+              <button type="button" className="an-btn an-btn--ghost" onClick={() => setPendingDeletion(null)}>Fechar</button>
+            </div>
+          </div>
+        )}
+      </Dialog>
     </form>
   );
 }
@@ -323,7 +414,9 @@ function RecoveryForm({ onBack }: { onBack: () => void }) {
     try {
       const { error } = await getSupabase().auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/redefinir-senha`,
+        captchaToken: captchaFrom(values),
       });
+      resetTurnstile();
       if (error && /rate|limit|many/i.test(error.message)) {
         setErrors({ _form: "Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente novamente." });
         return;
@@ -370,6 +463,7 @@ function RecoveryForm({ onBack }: { onBack: () => void }) {
           </span>
         )}
       </Field>
+      <TurnstileWidget />
       <button className="primary-button" disabled={pending} aria-busy={pending}>
         {pending && <Loader2 size={18} className="spin" />}{pending ? "Enviando…" : "Enviar link"}
       </button>
