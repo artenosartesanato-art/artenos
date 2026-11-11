@@ -2402,6 +2402,7 @@ html {
   padding: 0;
   list-style: none;
   font-size: var(--an-fs-xs);
+  font-weight: 500;
   color: var(--an-text-muted);
 }
 .password-strength-rules li {
@@ -2431,4 +2432,15 @@ html {
   .password-strength-bars span.is-on,
   .password-strength-rules li,
   .password-rule-mark { animation: none; transition: none; }
+}
+/* Cadastro: medidor numa faixa própria abaixo de "Senha" e "Confirme a senha". */
+.field.field-password-strength {
+  margin-top: -6px;
+}
+.field-password-strength .password-strength {
+  margin-top: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--an-line);
+  border-radius: var(--an-r-md);
+  background: var(--an-surface);
 }

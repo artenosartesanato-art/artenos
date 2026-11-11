@@ -232,7 +232,26 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 15px;
-  align-items: end;
+  align-items: start;
+}
+/* Medidor de força: faixa inteira abaixo dos três campos. */
+.profile-password-form .password-strength {
+  grid-column: 1 / -1;
+  margin-top: -2px;
+  padding: 12px 14px;
+  border: 1px solid var(--artenos-pessego);
+  border-radius: 8px;
+  background: var(--artenos-perola);
+}
+.profile-password-form .password-strength-rules {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+.profile-password-mismatch {
+  grid-column: 1 / -1;
+  margin: -4px 0 0;
+  color: var(--an-erro);
+  font-size: 12px;
+  font-weight: 650;
 }
 .profile-password-form label {
   display: grid;
