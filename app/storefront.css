@@ -3251,3 +3251,111 @@ div.product-details-description :is(ul, ol) {
 .product-details-modal.an-dialog--wide {
   overflow-x: hidden;
 }
+
+/* ---------- Variações da peça (cor, tamanho...) no detalhe ---------- */
+.pd-variants {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 14px;
+  border: 1px solid var(--an-line);
+  border-radius: var(--an-r-md);
+  background: var(--an-surface-soft);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.pd-variants.has-error {
+  border-color: var(--an-erro);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--an-erro) 14%, transparent);
+}
+.pd-variant-group {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.pd-variant-group legend {
+  margin-bottom: 8px;
+  padding: 0;
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-sm);
+  font-weight: 650;
+}
+.pd-variant-group legend strong {
+  color: var(--an-text);
+}
+.pd-variant-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pd-variant-option {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 1.5px solid var(--an-line-strong);
+  border-radius: var(--an-r-sm);
+  background: var(--an-surface);
+  color: var(--an-text);
+  font: inherit;
+  font-size: var(--an-fs-sm);
+  font-weight: 650;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+.pd-variant-option.has-image {
+  padding-left: 4px;
+}
+.pd-variant-option img {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+.pd-variant-option:hover:not(:disabled) {
+  border-color: var(--artenos-argila);
+}
+.pd-variant-option.is-selected {
+  border-color: var(--artenos-marrom);
+  background: var(--artenos-marrom);
+  color: #fff;
+}
+.pd-variant-option.is-sold-out {
+  border-style: dashed;
+  color: var(--an-text-muted);
+  text-decoration: line-through;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.pd-variant-option:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--artenos-argila) 45%, transparent);
+  outline-offset: 2px;
+}
+.pd-variant-error {
+  margin: 0;
+  color: var(--an-erro);
+  font-size: var(--an-fs-sm);
+  font-weight: 650;
+}
+.product-details-price small,
+.store-product-price small {
+  margin-right: 2px;
+  color: var(--an-text-muted);
+  font-size: 0.55em;
+  font-weight: 600;
+}
+.cart-drawer-variant,
+.cart-item-copy .cart-item-variant {
+  margin: 0 0 4px;
+  color: var(--an-argila-texto);
+  font-size: var(--an-fs-xs);
+  font-weight: 700;
+}
+@media (max-width: 860px) {
+  .product-details-modal .pd-variants { order: 2; margin-top: 4px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pd-variants,
+  .pd-variant-option { transition: none; }
+}

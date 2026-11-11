@@ -224,7 +224,7 @@ export default function CarrinhoPage() {
   const missingShipping = shippingGroups.filter((group) => !group.error && !selectedShipping[group.artisanId]).length;
   const shippingReady = !shippingLoading && shippingGroups.length > 0 &&
     shippingGroups.every((group) => !group.error && Boolean(selectedShipping[group.artisanId]));
-  const blockedItems = cart.filter((item) => !item.product_active || item.quantity > cartItemLimit(item));
+  const blockedItems = cart.filter((item) => !item.product_active || item.needs_option || item.quantity > cartItemLimit(item));
   const canCheckout = !finishing && shippingReady && blockedItems.length === 0;
   const checkoutHint = blockedItems.length
     ? "Remova ou ajuste os itens indisponíveis para continuar."
@@ -326,7 +326,7 @@ export default function CarrinhoPage() {
                         const limit = cartItemLimit(item);
                         const overStock = item.quantity > limit;
                         const madeToOrder = item.availability === "made_to_order";
-                        const unavailable = !item.product_active || overStock;
+                        const unavailable = !item.product_active || overStock || Boolean(item.needs_option);
                         return (
                           <li className={`cart-item${unavailable ? " is-unavailable" : ""}${busy ? " is-busy" : ""}`} key={item.item_id}>
                             <div className="cart-item-thumb">
@@ -336,10 +336,13 @@ export default function CarrinhoPage() {
                             </div>
                             <div className="cart-item-copy">
                               <h3>{item.product_name}</h3>
+                              {item.variant_label && <p className="cart-item-variant">{item.variant_label}</p>}
                               {item.product_summary && <p className="cart-item-summary">{item.product_summary}</p>}
                               <p>{brl(toCents(item.unit_price))} cada</p>
                               {!item.product_active ? (
                                 <p className="cart-item-warning"><AlertTriangle size={14} /> Esta peça não está mais disponível.</p>
+                              ) : item.needs_option ? (
+                                <p className="cart-item-warning"><AlertTriangle size={14} /> Esta peça agora tem opções (cor, tamanho...). Remova e adicione de novo escolhendo a opção.</p>
                               ) : overStock ? (
                                 <p className="cart-item-warning"><AlertTriangle size={14} /> {limit === 0 ? "Esgotada — remova do carrinho." : `Restam ${limit} — ajuste a quantidade.`}</p>
                               ) : madeToOrder ? (

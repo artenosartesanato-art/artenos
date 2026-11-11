@@ -22,13 +22,13 @@ export function useBuyNow() {
   const [pendingId, setPendingId] = useState<string | null>(null);
 
   /** Só registra a peça (usado também para cotar o frete no modal). */
-  const prepare = useCallback(async (productId: string, quantity: number) => {
+  const prepare = useCallback(async (productId: string, quantity: number, variantId: string | null = null) => {
     if (!authReady) {
       toast.info("Aguarde um instante enquanto verificamos sua conta.");
       return false;
     }
     if (!userId) {
-      try { window.sessionStorage.setItem(BUY_NOW_KEY, serializePendingBuyNow(productId, quantity)); } catch { /* sem armazenamento */ }
+      try { window.sessionStorage.setItem(BUY_NOW_KEY, serializePendingBuyNow(productId, quantity, Date.now(), variantId)); } catch { /* sem armazenamento */ }
       router.push(accessHref(BUY_NOW_PATH));
       return false;
     }
@@ -36,7 +36,9 @@ export function useBuyNow() {
       toast.error(suspensionMessage(suspendedUntil, accountType));
       return false;
     }
-    const { error } = await getSupabase().rpc("start_buy_now", { p_product_id: productId, p_quantity: quantity });
+    const { error } = await getSupabase().rpc("start_buy_now", variantId
+      ? { p_product_id: productId, p_quantity: quantity, p_variant_id: variantId }
+      : { p_product_id: productId, p_quantity: quantity });
     if (error) {
       toast.error(getCartErrorMessage(error));
       return false;
@@ -44,9 +46,9 @@ export function useBuyNow() {
     return true;
   }, [authReady, userId, suspendedUntil, accountType, router]);
 
-  const buyNow = useCallback(async (productId: string, quantity = 1, beforeNavigate?: () => void) => {
+  const buyNow = useCallback(async (productId: string, quantity = 1, beforeNavigate?: () => void, variantId: string | null = null) => {
     setPendingId(productId);
-    const ok = await prepare(productId, quantity);
+    const ok = await prepare(productId, quantity, variantId);
     setPendingId(null);
     if (!ok) return;
     beforeNavigate?.();

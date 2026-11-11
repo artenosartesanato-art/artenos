@@ -1,5 +1,7 @@
 "use client";
 
+import { PasswordStrength } from "@/components/auth-fields";
+import { passwordPolicyError } from "@/lib/password-policy";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
@@ -118,7 +120,7 @@ function passwordError(code?: string) {
   if (code === "same_password")
     return "A nova senha precisa ser diferente da senha atual.";
   if (code === "weak_password")
-    return "A nova senha foi considerada fraca. Escolha uma senha mais forte.";
+    return "A nova senha foi considerada fraca. Use letras maiúsculas e minúsculas, números e símbolos.";
   if (code === "invalid_credentials" || code === "reauthentication_failed")
     return "A senha atual não confere.";
   if (code === "over_request_rate_limit")
@@ -457,8 +459,9 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
   async function changePassword(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!user || changingPassword) return;
-    if (newPassword.length < 8) {
-      toast.error("A nova senha deve ter pelo menos 8 caracteres.");
+    const policyProblem = passwordPolicyError(newPassword);
+    if (policyProblem) {
+      toast.error(policyProblem);
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -780,8 +783,10 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
                         minLength={8}
                         value={newPassword}
                         onChange={(event) => setNewPassword(event.target.value)}
+                        aria-describedby="perfil-nova-senha-forca"
                         required
                       />
+                      <PasswordStrength id="perfil-nova-senha-forca" password={newPassword} />
                     </label>
                     <label>
                       Confirme a nova senha

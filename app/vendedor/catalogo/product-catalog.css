@@ -832,3 +832,642 @@
   color: #7a4d00;
   font-weight: 650;
 }
+
+/* ---------- Fotos da peça (até 3; a primeira é a capa) ---------- */
+.catalog-modal .catalog-photos-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 11px;
+}
+.catalog-modal .catalog-photos-heading strong {
+  color: var(--artenos-marrom);
+  font-size: 11px;
+}
+.catalog-modal .catalog-photos-count {
+  padding: 2px 8px;
+  border-radius: var(--an-r-pill);
+  background: var(--artenos-perola);
+  color: var(--an-argila-texto);
+  font-size: 11px;
+  font-weight: 800;
+}
+.catalog-modal .catalog-photos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.catalog-modal .catalog-photos > li {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+.catalog-modal .catalog-photos > li.is-cover {
+  grid-column: 1 / -1;
+}
+.catalog-modal .catalog-photo-frame {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border: 1px solid var(--artenos-pessego);
+  border-radius: 9px;
+  background: var(--artenos-perola);
+}
+.catalog-modal .catalog-photos > li.is-cover .catalog-photo-frame {
+  aspect-ratio: auto;
+  height: 220px;
+}
+.catalog-modal .catalog-photo-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.catalog-modal .catalog-photo-badge {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  padding: 3px 9px;
+  border-radius: var(--an-r-pill);
+  background: var(--artenos-marrom);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+.catalog-modal .catalog-photo-actions {
+  display: flex;
+  gap: 5px;
+}
+.catalog-modal .catalog-photo-actions button {
+  flex: 1;
+  min-height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--artenos-pessego);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--artenos-marrom);
+  cursor: pointer;
+}
+.catalog-modal .catalog-photo-actions button.is-danger {
+  color: var(--an-erro);
+}
+.catalog-modal .catalog-photo-actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.catalog-modal .catalog-photos button.catalog-photo-reframe {
+  width: 100%;
+  min-width: 0;
+  justify-content: center;
+  font-size: 11px;
+}
+/* Fotos menores: enquadrar só com o ícone (o nome fica no title/aria). */
+.catalog-modal .catalog-photos > li:not(.is-cover) .catalog-photo-reframe {
+  min-height: 30px;
+  padding: 0;
+  font-size: 0;
+  gap: 0;
+}
+.catalog-modal .catalog-photos > li:not(.is-cover) .catalog-photo-reframe svg {
+  width: 14px;
+  height: 14px;
+}
+.catalog-modal .catalog-photos > li:not(.is-cover) .catalog-photo-actions button {
+  min-width: 0;
+}
+.catalog-modal .catalog-photo-add label {
+  aspect-ratio: 4 / 5;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 7px;
+  padding: 10px;
+  border: 1.5px dashed var(--artenos-argila);
+  border-radius: 9px;
+  background: var(--artenos-perola);
+  color: var(--an-argila-texto);
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+.catalog-modal .catalog-photos > li.catalog-photo-add:first-child {
+  grid-column: 1 / -1;
+}
+.catalog-modal .catalog-photos > li.catalog-photo-add:first-child label {
+  aspect-ratio: auto;
+  height: 220px;
+}
+.catalog-modal .catalog-photo-add label:hover {
+  border-color: var(--artenos-marrom);
+  background: color-mix(in srgb, var(--artenos-pessego) 30%, var(--artenos-perola));
+}
+.catalog-modal .catalog-photo-add label:focus-within {
+  outline: 3px solid #b26b4f40;
+  outline-offset: 2px;
+}
+.catalog-modal .catalog-photo-add label.is-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.catalog-modal .catalog-photo-add input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+/* ---------- Variações (cor, tamanho...) ---------- */
+.catalog-modal .catalog-variations {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--artenos-pessego);
+  border-radius: 11px;
+  background: #fff;
+}
+.catalog-modal .catalog-variations.is-off {
+  background: var(--artenos-perola);
+}
+.catalog-modal .catalog-variations-intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: var(--artenos-argila);
+}
+.catalog-modal .catalog-variations-intro > span {
+  flex: 1;
+  display: grid;
+  gap: 3px;
+}
+.catalog-modal .catalog-variations-intro strong {
+  color: var(--artenos-marrom);
+  font-size: 13px;
+}
+.catalog-modal .catalog-variations-intro small {
+  color: var(--an-argila-texto);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.catalog-modal .catalog-variations-enable,
+.catalog-modal .catalog-variation-add-group {
+  justify-self: start;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 14px;
+  border: 1.5px dashed var(--artenos-argila);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--an-argila-forte);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.catalog-modal .catalog-variation-add-group small {
+  color: var(--an-argila-texto);
+  font-weight: 500;
+}
+.catalog-modal .catalog-variations-enable:hover,
+.catalog-modal .catalog-variation-add-group:hover {
+  border-color: var(--artenos-marrom);
+  color: var(--artenos-marrom);
+}
+.catalog-modal .catalog-variations-remove {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 9px;
+  border: 1px solid var(--artenos-pessego);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--an-erro);
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.catalog-modal .catalog-variation-group {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 10px;
+  background: var(--artenos-perola);
+}
+.catalog-modal .catalog-variation-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.catalog-modal .catalog-variation-step {
+  color: var(--artenos-marrom);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+.catalog-modal .catalog-variation-icon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--artenos-pessego);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--artenos-marrom);
+  cursor: pointer;
+}
+.catalog-modal .catalog-form-main .catalog-variation-name {
+  display: grid;
+  gap: 6px;
+  color: var(--artenos-marrom);
+  font-size: 11px;
+  font-weight: 750;
+}
+.catalog-modal .catalog-variation-label {
+  color: var(--artenos-marrom);
+  font-size: 11px;
+  font-weight: 750;
+}
+.catalog-modal .catalog-variation-label em {
+  color: var(--an-argila-texto);
+  font-style: normal;
+  font-weight: 500;
+}
+.catalog-modal .catalog-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.catalog-modal .catalog-chip-row button {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 11px;
+  border: 1px solid var(--artenos-pessego);
+  border-radius: var(--an-r-pill);
+  background: #fff;
+  color: var(--artenos-marrom);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.catalog-modal .catalog-chip-row button:hover {
+  border-color: var(--artenos-argila);
+}
+.catalog-modal .catalog-chip-row button.is-selected {
+  border-color: var(--artenos-marrom);
+  background: var(--artenos-marrom);
+  color: #fff;
+}
+.catalog-modal .catalog-chip-row.is-suggestions button {
+  border-style: dashed;
+  color: var(--an-argila-texto);
+}
+.catalog-modal .catalog-variation-options {
+  display: grid;
+  gap: 8px;
+}
+.catalog-modal .catalog-option-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.catalog-modal .catalog-option-chips li {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--artenos-argila);
+  border-radius: var(--an-r-pill);
+  background: #fff;
+  overflow: hidden;
+}
+.catalog-modal .catalog-form-main .catalog-option-chips input {
+  width: auto;
+  height: 30px;
+  min-width: 3ch;
+  padding: 0 4px 0 11px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 700;
+}
+.catalog-modal .catalog-form-main .catalog-option-chips input:focus {
+  box-shadow: none;
+  background: var(--artenos-perola);
+}
+.catalog-modal .catalog-option-chips button {
+  width: 28px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--an-argila-texto);
+  cursor: pointer;
+}
+.catalog-modal .catalog-option-chips button:hover {
+  color: var(--an-erro);
+}
+.catalog-modal .catalog-option-add {
+  display: flex;
+  gap: 7px;
+}
+.catalog-modal .catalog-option-add input {
+  flex: 1;
+}
+.catalog-modal .catalog-option-add button,
+.catalog-modal .catalog-variant-bulk button {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--artenos-marrom);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.catalog-modal .catalog-variant-bulk button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.catalog-modal .catalog-variation-error {
+  margin: 0;
+  color: var(--an-erro);
+  font-size: 11px;
+  font-weight: 700;
+}
+.catalog-modal .catalog-option-photos {
+  display: grid;
+  gap: 8px;
+}
+.catalog-modal .catalog-option-photos ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.catalog-modal .catalog-option-photos li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: #fff;
+}
+.catalog-modal .catalog-option-photos li > span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--artenos-marrom);
+  font-size: 12px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.catalog-modal .catalog-option-photos [role="radiogroup"] {
+  display: flex;
+  gap: 5px;
+}
+.catalog-modal .catalog-option-photos [role="radio"] {
+  width: 36px;
+  height: 44px;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  background: var(--artenos-perola);
+  color: var(--an-argila-texto);
+  font-size: 9px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.catalog-modal .catalog-option-photos [role="radio"] img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.catalog-modal .catalog-option-photos [role="radio"].is-selected {
+  border-color: var(--artenos-marrom);
+}
+.catalog-modal .catalog-variant-list {
+  display: grid;
+  gap: 10px;
+}
+.catalog-modal .catalog-variant-list-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+.catalog-modal .catalog-variant-list-head small {
+  color: var(--an-argila-texto);
+  font-size: 11px;
+}
+.catalog-modal .catalog-variant-bulk {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 7px;
+  padding: 10px;
+  border-radius: 9px;
+  background: var(--artenos-perola);
+}
+.catalog-modal .catalog-variant-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--artenos-pessego);
+  border-radius: 10px;
+}
+.catalog-modal .catalog-variant-table {
+  width: 100%;
+  min-width: 420px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.catalog-modal .catalog-variant-table th,
+.catalog-modal .catalog-variant-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--artenos-pessego);
+  color: var(--artenos-marrom);
+  text-align: left;
+  vertical-align: middle;
+}
+.catalog-modal .catalog-variant-table thead th {
+  background: var(--artenos-perola);
+  font-size: 11px;
+  font-weight: 800;
+}
+.catalog-modal .catalog-variant-table .is-required {
+  color: var(--an-erro);
+}
+.catalog-modal .catalog-variant-table tbody tr:last-child > * {
+  border-bottom: 0;
+}
+.catalog-modal .catalog-variant-option {
+  border-right: 1px solid var(--artenos-pessego);
+  font-weight: 800;
+}
+.catalog-modal .catalog-variant-option img {
+  display: block;
+  width: 34px;
+  height: 42px;
+  margin-bottom: 5px;
+  border-radius: 5px;
+  object-fit: cover;
+}
+.catalog-modal .catalog-variant-option2 {
+  font-weight: 650;
+}
+.catalog-modal .catalog-variant-table input {
+  min-width: 90px;
+}
+.catalog-modal .catalog-variant-note {
+  color: var(--an-argila-texto);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.catalog-modal .catalog-variation-summary {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 11px 13px;
+  border: 1px solid var(--artenos-pessego);
+  border-radius: 9px;
+  background: var(--artenos-perola);
+  color: var(--artenos-marrom);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.catalog-modal .catalog-variation-summary svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--artenos-argila);
+}
+
+/* Selos de fotos e variações no card do catálogo. */
+.catalog-product-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 6px 0 2px;
+}
+.catalog-product-tags span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--an-r-pill);
+  background: var(--artenos-perola);
+  color: var(--an-argila-texto);
+  font-size: 10.5px;
+  font-weight: 750;
+}
+.catalog-from {
+  color: var(--an-argila-texto);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+@media (max-width: 720px) {
+  .catalog-modal .catalog-photos {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .catalog-modal .catalog-photos > li.is-cover,
+  .catalog-modal .catalog-photos > li.catalog-photo-add:first-child {
+    grid-column: auto;
+  }
+  .catalog-modal .catalog-photos > li.is-cover .catalog-photo-frame,
+  .catalog-modal .catalog-photos > li.catalog-photo-add:first-child label {
+    height: auto;
+    aspect-ratio: 4 / 5;
+  }
+  .catalog-modal .catalog-photos button.catalog-photo-reframe.catalog-photo-reframe {
+    min-height: 30px;
+    padding: 0;
+    font-size: 0;
+    gap: 0;
+  }
+  .catalog-modal .catalog-variations-intro {
+    flex-wrap: wrap;
+  }
+  .catalog-modal .catalog-variant-bulk {
+    grid-template-columns: 1fr 1fr;
+  }
+  .catalog-modal .catalog-variant-bulk button {
+    grid-column: 1 / -1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .catalog-modal .catalog-chip-row button,
+  .catalog-modal .catalog-photo-add label {
+    transition: none;
+  }
+}
+/* "R$" centralizado na tabela de variações e na barra "Aplicar a todos". */
+.catalog-modal .catalog-variant-table .catalog-money-field,
+.catalog-modal .catalog-variant-bulk .catalog-money-field {
+  display: block;
+}
+.catalog-modal .catalog-variant-table .catalog-money-field b,
+.catalog-modal .catalog-variant-bulk .catalog-money-field b {
+  top: 50%;
+  transform: translateY(-50%);
+}
+.catalog-modal .catalog-variant-bulk input {
+  width: 100%;
+  height: 42px;
+  border: 1px solid var(--artenos-pessego);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--artenos-marrom);
+  padding: 0 11px;
+  font-size: 12px;
+}
+.catalog-modal .catalog-variant-bulk .catalog-money-field input {
+  padding-left: 35px;
+}
+@media (max-width: 520px) {
+  .catalog-modal .catalog-variant-table {
+    min-width: 0;
+    table-layout: auto;
+  }
+  .catalog-modal .catalog-variant-table th,
+  .catalog-modal .catalog-variant-table td {
+    padding: 7px 5px;
+  }
+  .catalog-modal .catalog-form-main .catalog-variant-table input {
+    min-width: 0;
+    height: 38px;
+    padding-inline: 7px;
+  }
+  .catalog-modal .catalog-form-main .catalog-variant-table .catalog-money-field input {
+    padding-left: 28px;
+  }
+  .catalog-modal .catalog-variant-table .catalog-money-field b {
+    left: 7px;
+  }
+  .catalog-modal .catalog-variant-table td:last-child {
+    width: 64px;
+  }
+  .catalog-modal .catalog-variant-option img {
+    width: 28px;
+    height: 34px;
+  }
+}

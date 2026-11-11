@@ -190,8 +190,8 @@ function RegisterForm({ type, returnTo, onGoToLogin }: { type: AccountType; retu
             </span>
           )}
         </Field>
-        <Field name="password" label="Senha" error={errors.password} hint="Pelo menos 8 caracteres.">
-          {(props) => <PasswordInput id={props.id} name="password" autoComplete="new-password" placeholder="Mínimo de 8 caracteres" invalid={props["aria-invalid"]} describedBy={props["aria-describedby"]} />}
+        <Field name="password" label="Senha" error={errors.password}>
+          {(props) => <PasswordInput id={props.id} name="password" autoComplete="new-password" placeholder="Crie uma senha forte" invalid={props["aria-invalid"]} describedBy={props["aria-describedby"]} showStrength onValueChange={() => clear("password")} />}
         </Field>
         <Field name="confirmPassword" label="Confirme a senha" error={errors.confirmPassword}>
           {(props) => <PasswordInput id={props.id} name="confirmPassword" autoComplete="new-password" placeholder="Digite a senha novamente" invalid={props["aria-invalid"]} describedBy={props["aria-describedby"]} />}

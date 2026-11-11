@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Archive,
   CheckCircle2,
   Edit3,
   ImagePlus,
+  Images,
+  Layers,
   LoaderCircle,
   PackageCheck,
   PackageOpen,
@@ -14,7 +16,6 @@ import {
   Save,
   Search,
   Tags,
-  Upload,
   X,
   SpriteIcon,
 } from "@/components/icons";
@@ -28,10 +29,12 @@ import { plainSummary } from "@/lib/rich-text";
 import { useSellerProfile } from "@/components/seller-shell";
 import "./product-catalog.css";
 import { estimatePackage } from "@/lib/shipping-estimate";
-import { CROP_FORMATS } from "@/components/avatar-cropper";
-import { AdjustFramingButton } from "@/components/adjust-framing-button";
-import { useImageCropFlow } from "@/components/image-crop-flow";
 import { extensionFor, imageUploadOptions } from "@/lib/image-optimizer";
+import { ProductPhotosField, photosFromUrls, releasePhotos, type PhotoSlot } from "@/components/product-photos-field";
+import { EMPTY_VARIATIONS, ProductVariationsField, type VariationsState } from "@/components/product-variations-field";
+import {
+  buildRows, cleanText, groupsFromSaved, variationTotals, variationsError, type SavedVariant,
+} from "@/lib/product-variations";
 
 type CatalogStatus = "all" | "published" | "draft" | "out_of_stock" | "ready";
 
@@ -63,6 +66,10 @@ type Product = {
   shipping_data_complete: boolean;
 };
 
+type OptionsSummary = { photo_count: number; variation_names: string[]; variant_count: number };
+
+type SavedOptions = { gallery_urls: string[]; variation_names: string[]; variants: Array<SavedVariant & { id: string }> };
+
 type StoreOverview = {
   total_products: number;
   published_products: number;
@@ -85,7 +92,6 @@ type ProductForm = {
   packageCount: string;
   productionTimeDays: string;
   active: boolean;
-  imageUrl: string;
 };
 
 const STORE_BUCKET = "artenos-store-assets";
@@ -103,7 +109,6 @@ const EMPTY_FORM: ProductForm = {
   productionTimeDays: "",
   // Peça nova já vem para publicar; desmarque para guardar como rascunho.
   active: true,
-  imageUrl: "",
 };
 const money = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -137,6 +142,12 @@ function errorMessage(error: unknown) {
     "Categoria inválida",
     "Escolha uma categoria",
     "Adicione uma imagem",
+    "foto",
+    "Foto",
+    "variação",
+    "opção",
+    "combinação",
+    "Há uma compra em pagamento",
     "Produto não encontrado",
     "peso",
     "dimensões",
@@ -164,10 +175,13 @@ export default function ProductCatalogPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ProductForm>(EMPTY_FORM);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState("");
-  // Foto original (antes do recorte) da nova imagem, para reenquadrar.
-  const [imageSource, setImageSource] = useState<Blob | null>(null);
+  // Até 3 fotos; a primeira é a capa (products.image_url).
+  const [photos, setPhotos] = useState<PhotoSlot[]>([]);
+  // Fotos já salvas quando a edição abriu (para apagar do Storage as removidas).
+  const [savedPhotoUrls, setSavedPhotoUrls] = useState<string[]>([]);
+  const [variations, setVariations] = useState<VariationsState>(EMPTY_VARIATIONS);
+  const [optionsLoading, setOptionsLoading] = useState(false);
+  const [optionsSummary, setOptionsSummary] = useState<Record<string, OptionsSummary>>({});
   const [saving, setSaving] = useState(false);
   const [changingStatusId, setChangingStatusId] = useState<string | null>(null);
 
@@ -243,6 +257,12 @@ export default function ProductCatalogPage() {
         })),
       );
       setCategories((categoriesResponse.data ?? []) as Category[]);
+      // Resumo de fotos e variações dos cards (opcional: sem a migração, some só o selo).
+      void supabase.rpc("list_my_product_options_summary").then(({ data, error }) => {
+        if (error || !Array.isArray(data)) return;
+        setOptionsSummary(Object.fromEntries((data as Array<OptionsSummary & { product_id: string }>)
+          .map(({ product_id, ...summary }) => [product_id, summary])));
+      });
       setOverview(
         (Array.isArray(overviewResponse.data)
           ? overviewResponse.data[0]
@@ -262,18 +282,6 @@ export default function ProductCatalogPage() {
     return () => window.clearTimeout(timer);
   }, []);
 
-  useEffect(
-    () => () => {
-      if (imagePreview.startsWith("blob:")) URL.revokeObjectURL(imagePreview);
-    },
-    [imagePreview],
-  );
-
-  const imageShown = useMemo(
-    () => imagePreview || form.imageUrl,
-    [imagePreview, form.imageUrl],
-  );
-
   function setField<Key extends keyof ProductForm>(
     key: Key,
     value: ProductForm[Key],
@@ -281,30 +289,36 @@ export default function ProductCatalogPage() {
     setForm((previous) => ({ ...previous, [key]: value }));
   }
 
-  function clearImageSelection() {
-    if (imagePreview.startsWith("blob:")) URL.revokeObjectURL(imagePreview);
-    setImageFile(null);
-    setImagePreview("");
-    setImageSource(null);
+  function resetPhotos(next: PhotoSlot[] = []) {
+    setPhotos((current) => {
+      releasePhotos(current.filter((photo) => !next.includes(photo)));
+      return next;
+    });
   }
 
   function closeForm() {
     if (saving) return;
-    clearImageSelection();
+    resetPhotos();
     setFormOpen(false);
     setEditingId(null);
     setForm(EMPTY_FORM);
+    setVariations(EMPTY_VARIATIONS);
   }
 
   function createProduct() {
-    clearImageSelection();
+    resetPhotos();
+    setSavedPhotoUrls([]);
+    setVariations(EMPTY_VARIATIONS);
     setEditingId(null);
     setForm(EMPTY_FORM);
     setFormOpen(true);
   }
 
   function editProduct(product: Product) {
-    clearImageSelection();
+    const initialPhotos = photosFromUrls([product.image_url]);
+    resetPhotos(initialPhotos);
+    setSavedPhotoUrls(product.image_url ? [product.image_url] : []);
+    setVariations(EMPTY_VARIATIONS);
     setEditingId(product.id);
     setForm({
       name: product.name,
@@ -319,20 +333,39 @@ export default function ProductCatalogPage() {
       packageCount: String(product.shipping_package_count ?? 1),
       productionTimeDays: String(product.production_time_days ?? ""),
       active: product.active,
-      imageUrl: product.image_url || "",
     });
     setFormOpen(true);
+    void loadProductOptions(product);
   }
 
-  // Foto da peça: escolher → enquadrar no formato da vitrine (4:5) → otimizar
-  // (preset "content") → fica pronta para enviar ao salvar o produto. O
-  // original fica só na memória, para reenquadrar.
-  const productCrop = useImageCropFlow(CROP_FORMATS.product, async ({ avatar, original }) => {
-    clearImageSelection();
-    setImageFile(new File([avatar], `foto.${extensionFor(avatar.type)}`, { type: avatar.type }));
-    setImagePreview(URL.createObjectURL(avatar));
-    setImageSource(original);
-  });
+  // Fotos extras e variações já salvas da peça.
+  async function loadProductOptions(product: Product) {
+    setOptionsLoading(true);
+    try {
+      const { data, error } = await getSupabase().rpc("get_my_product_options", { p_product_id: product.id });
+      if (error) throw error;
+      const saved = data as SavedOptions | null;
+      if (!saved) return;
+      const loaded = photosFromUrls([product.image_url, ...(saved.gallery_urls ?? [])]);
+      resetPhotos(loaded);
+      setSavedPhotoUrls(loaded.map((photo) => photo.url!).filter(Boolean));
+      if (saved.variation_names?.length && saved.variants?.length) {
+        const { groups, values } = groupsFromSaved(saved.variation_names, saved.variants);
+        const images: Record<string, string> = {};
+        for (const variant of saved.variants) {
+          const photo = loaded.find((item) => item.url === variant.image_url);
+          if (photo && variant.image_url !== product.image_url) images[variant.option1.toLowerCase()] = photo.id;
+        }
+        setVariations({ enabled: true, groups, values, images });
+      }
+    } catch {
+      toast.error("Não foi possível carregar as fotos extras e as variações desta peça.", {
+        description: "Feche e abra a edição de novo antes de salvar, para não perder essas informações.",
+      });
+    } finally {
+      setOptionsLoading(false);
+    }
+  }
 
   const packageEstimate = estimatePackage({
     weightGrams: Number(form.weightGrams),
@@ -342,12 +375,19 @@ export default function ProductCatalogPage() {
     boxes: Number(form.packageCount),
   });
 
+  // Linhas da tabela de variações (vazia quando a peça não tem variações).
+  const variantRows = variations.enabled ? buildRows(variations.groups, variations.values) : [];
+  const variantTotals = variationTotals(variantRows);
+  const hasVariations = variations.enabled && variations.groups.length > 0;
+
   async function saveProduct(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!seller || saving) return;
+    if (!seller || saving || optionsLoading) return;
 
-    const price = Number(form.price);
-    const stock = Number(form.stock);
+    const variationProblem = hasVariations ? variationsError(variations.groups, variantRows) : null;
+    // Com variações, a peça guarda o menor preço e o estoque total das opções.
+    const price = hasVariations ? variantTotals.minPrice : Number(form.price);
+    const stock = hasVariations ? variantTotals.totalStock : Number(form.stock);
     const weightGrams = Number(form.weightGrams);
     const heightCm = Number(form.heightCm);
     const widthCm = Number(form.widthCm);
@@ -358,8 +398,10 @@ export default function ProductCatalogPage() {
       return toast.error("O nome precisa ter pelo menos 3 caracteres.");
     if (form.description.trim().length < 20)
       return toast.error("A descrição precisa ter pelo menos 20 caracteres.");
-    if (findBlockedTerm(`${form.name} ${form.description}`))
-      return toast.error("O nome ou a descrição contém termos que não são permitidos na Artenós.");
+    const variationText = variations.groups.flatMap((group) => [group.name, ...group.options]).join(" ");
+    if (findBlockedTerm(`${form.name} ${form.description} ${hasVariations ? variationText : ""}`))
+      return toast.error("O nome, a descrição ou as variações contêm termos que não são permitidos na Artenós.");
+    if (variationProblem) return toast.error(variationProblem);
     if (!Number.isFinite(price) || price < 0.01)
       return toast.error("Informe um preço válido.");
     if (!Number.isInteger(stock) || stock < 0)
@@ -398,30 +440,35 @@ export default function ProductCatalogPage() {
       return toast.error("Informe um prazo de produção entre 0 e 180 dias.");
     if (form.active && !form.categoryId)
       return toast.error("Escolha uma categoria antes de publicar.");
-    if (form.active && !imageFile && !form.imageUrl)
-      return toast.error("Adicione uma imagem antes de publicar.");
+    if (form.active && !photos.length)
+      return toast.error("Adicione pelo menos a foto de capa antes de publicar.");
 
     const supabase = getSupabase();
     const productId = editingId || crypto.randomUUID();
-    const oldImagePath = storagePathFromPublicUrl(form.imageUrl);
-    let uploadedPath: string | null = null;
-    let finalImageUrl = form.imageUrl || null;
+    const uploadedPaths: string[] = [];
     let productPersisted = false;
     setSaving(true);
 
     try {
-      if (imageFile) {
-        // A imagem já vem otimizada do editor; nome único com a extensão do tipo final.
-        uploadedPath = `${seller.id}/products/${productId}/image-${crypto.randomUUID()}.${extensionFor(imageFile.type)}`;
-        const { error: uploadError } = await supabase.storage
-          .from(STORE_BUCKET)
-          .upload(uploadedPath, imageFile, imageUploadOptions({ mimeType: imageFile.type }));
-        if (uploadError) throw uploadError;
-        finalImageUrl = supabase.storage
-          .from(STORE_BUCKET)
-          .getPublicUrl(uploadedPath).data.publicUrl;
+      // 1) Envia as fotos novas (já otimizadas no navegador), na ordem escolhida.
+      const urlById = new Map<string, string>();
+      for (const photo of photos) {
+        if (photo.file) {
+          const path = `${seller.id}/products/${productId}/image-${crypto.randomUUID()}.${extensionFor(photo.file.type)}`;
+          const { error: uploadError } = await supabase.storage
+            .from(STORE_BUCKET)
+            .upload(path, photo.file, imageUploadOptions({ mimeType: photo.file.type }));
+          if (uploadError) throw uploadError;
+          uploadedPaths.push(path);
+          urlById.set(photo.id, supabase.storage.from(STORE_BUCKET).getPublicUrl(path).data.publicUrl);
+        } else if (photo.url) {
+          urlById.set(photo.id, photo.url);
+        }
       }
+      const finalUrls = photos.map((photo) => urlById.get(photo.id)).filter((url): url is string => Boolean(url));
+      const coverUrl = finalUrls[0] ?? null;
 
+      // 2) Dados principais da peça.
       const values = {
         p_product_id: productId,
         p_name: form.name.trim(),
@@ -431,7 +478,7 @@ export default function ProductCatalogPage() {
         p_stock: stock,
         // Calculado no banco pelo estoque; enviado só por compatibilidade.
         p_ready_to_ship: stock > 0,
-        p_image_url: finalImageUrl,
+        p_image_url: coverUrl,
         // Um produto novo nasce como rascunho para que os dados logísticos
         // sejam persistidos antes de qualquer publicação na vitrine.
         p_active: editingId ? form.active : false,
@@ -457,6 +504,26 @@ export default function ProductCatalogPage() {
       if (shippingError || shippingSaved !== true)
         throw shippingError ?? new Error("Não foi possível salvar os dados de frete.");
 
+      // 3) Fotos extras e variações (preço/estoque por opção).
+      const { error: optionsError } = await supabase.rpc("save_my_product_options", {
+        p_product_id: productId,
+        p_gallery_urls: finalUrls.slice(1),
+        p_variation_names: hasVariations ? variations.groups.map((group) => cleanText(group.name)) : [],
+        p_variants: hasVariations
+          ? variantRows.map((row) => {
+            const photoId = variations.images[row.option1.toLowerCase()];
+            return {
+              option1: row.option1,
+              option2: row.option2,
+              price: Number(row.price),
+              stock: Number(row.stock),
+              image_url: (photoId && urlById.get(photoId)) || null,
+            };
+          })
+          : [],
+      });
+      if (optionsError) throw optionsError;
+
       if (!editingId && form.active) {
         const { error: publishError } = await supabase.rpc(
           "set_my_product_active",
@@ -468,9 +535,12 @@ export default function ProductCatalogPage() {
         if (publishError) throw publishError;
       }
 
-      if (uploadedPath && oldImagePath && oldImagePath !== uploadedPath) {
-        await supabase.storage.from(STORE_BUCKET).remove([oldImagePath]);
-      }
+      // 4) Fotos que saíram da peça: apaga do Storage.
+      const removed = savedPhotoUrls
+        .filter((url) => !finalUrls.includes(url))
+        .map(storagePathFromPublicUrl)
+        .filter((path): path is string => Boolean(path));
+      if (removed.length) await supabase.storage.from(STORE_BUCKET).remove(removed);
 
       playUiSound("success");
       if (!form.active) {
@@ -485,16 +555,21 @@ export default function ProductCatalogPage() {
       closeFormAfterSave();
       await loadCatalog(query, status);
     } catch (error) {
-      if (uploadedPath && !productPersisted)
-        await supabase.storage.from(STORE_BUCKET).remove([uploadedPath]);
-      toast.error(errorMessage(error));
+      if (uploadedPaths.length && !productPersisted)
+        await supabase.storage.from(STORE_BUCKET).remove(uploadedPaths);
+      const message = typeof error === "object" && error && "message" in error ? String((error as { message: unknown }).message) : "";
+      toast.error(/save_my_product_options|get_my_product_options/.test(message)
+        ? "As fotos extras e as variações ainda não estão ativadas no banco. Peça para rodar a migração 20261113_fotos_variacoes_produto.sql."
+        : errorMessage(error));
     } finally {
       setSaving(false);
     }
   }
 
   function closeFormAfterSave() {
-    clearImageSelection();
+    resetPhotos();
+    setSavedPhotoUrls([]);
+    setVariations(EMPTY_VARIATIONS);
     setFormOpen(false);
     setEditingId(null);
     setForm(EMPTY_FORM);
@@ -688,9 +763,25 @@ export default function ProductCatalogPage() {
                 <div className="catalog-product-body">
                   <small>{product.category_name || "Sem categoria"}</small>
                   <h2>{product.name}</h2>
+                  {optionsSummary[product.id] && (optionsSummary[product.id].photo_count > 1 || optionsSummary[product.id].variant_count > 0) && (
+                    <div className="catalog-product-tags">
+                      {optionsSummary[product.id].photo_count > 1 && (
+                        <span><Images size={12} /> {optionsSummary[product.id].photo_count} fotos</span>
+                      )}
+                      {optionsSummary[product.id].variant_count > 0 && (
+                        <span>
+                          <Layers size={12} /> {optionsSummary[product.id].variation_names.join(" · ")} ·{" "}
+                          {optionsSummary[product.id].variant_count} {optionsSummary[product.id].variant_count === 1 ? "opção" : "opções"}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   <p>{plainSummary(product.description, 140)}</p>
                   <div className="catalog-product-data">
-                    <strong>{money.format(Number(product.price))}</strong>
+                    <strong>
+                      {optionsSummary[product.id]?.variant_count ? <small className="catalog-from">a partir de </small> : null}
+                      {money.format(Number(product.price))}
+                    </strong>
                     <span>
                       {product.stock > 0
                         ? `${product.stock} em estoque`
@@ -782,42 +873,59 @@ export default function ProductCatalogPage() {
                     onChange={(value) => setField("description", value)}
                     placeholder="Conte os materiais, medidas, técnica e detalhes da peça"
                   />
+                  {hasVariations ? (
+                    <p className="catalog-variation-summary" role="note">
+                      <Layers size={15} />
+                      <span>
+                        Preço e estoque definidos nas variações abaixo:{" "}
+                        <strong>
+                          {variantTotals.minPrice > 0
+                            ? variantTotals.minPrice === variantTotals.maxPrice
+                              ? money.format(variantTotals.minPrice)
+                              : `a partir de ${money.format(variantTotals.minPrice)}`
+                            : "preço a definir"}
+                        </strong>
+                        {" · "}{variantTotals.totalStock} em estoque no total.
+                      </span>
+                    </p>
+                  ) : (
                   <div className="catalog-fields-row">
-                    <label>
-                      <span>Preço</span>
-                      <span className="catalog-money-field">
-                        <b>R$</b>
+                      <label>
+                        <span>Preço</span>
+                        <span className="catalog-money-field">
+                          <b>R$</b>
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            min="0.01"
+                            max="99999999.99"
+                            step="0.01"
+                            value={form.price}
+                            onChange={(event) =>
+                              setField("price", event.target.value)
+                            }
+                            placeholder="0,00"
+                            required
+                          />
+                        </span>
+                      </label>
+                      <label>
+                        <span>Estoque</span>
                         <input
                           type="number"
-                          inputMode="decimal"
-                          min="0.01"
-                          max="99999999.99"
-                          step="0.01"
-                          value={form.price}
+                          inputMode="numeric"
+                          min="0"
+                          max="999999"
+                          step="1"
+                          value={form.stock}
                           onChange={(event) =>
-                            setField("price", event.target.value)
+                            setField("stock", event.target.value)
                           }
-                          placeholder="0,00"
                           required
                         />
-                      </span>
-                    </label>
-                    <label>
-                      <span>Estoque</span>
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        min="0"
-                        max="999999"
-                        step="1"
-                        value={form.stock}
-                        onChange={(event) =>
-                          setField("stock", event.target.value)
-                        }
-                        required
-                      />
-                    </label>
-                  </div>
+                      </label>
+                    </div>
+                  )}
                   <label>
                     <span className="seller-category-label">
                       Categoria
@@ -842,6 +950,8 @@ export default function ProductCatalogPage() {
                         : "Nenhuma categoria disponível no momento."}
                     </small>
                   </label>
+                  <ProductVariationsField value={variations} onChange={setVariations} photos={photos}
+                    disabled={saving || optionsLoading} />
                   <section className="catalog-logistics-fields">
                     <div>
                       <Ruler size={17} />
@@ -997,7 +1107,7 @@ export default function ProductCatalogPage() {
                   </section>
                   <p className="catalog-availability-note" role="note">
                     <PackageCheck size={15} />
-                    {Number(form.stock) > 0
+                    {(hasVariations ? variantTotals.totalStock : Number(form.stock)) > 0
                       ? "Com estoque, a peça aparece como Pronta entrega. Quando as unidades acabarem, ela passa sozinha para Sob encomenda (ou Esgotado, se a loja não aceitar encomendas)."
                       : "Sem estoque, a peça aparece como Sob encomenda se a loja aceitar encomendas; se não aceitar, como Esgotado. Informe o estoque para vender a pronta entrega."}
                   </p>
@@ -1020,48 +1130,10 @@ export default function ProductCatalogPage() {
                   </div>
                 </div>
 
-                <aside className="catalog-image-field">
-                  <strong>Imagem principal</strong>
-                  <div className="catalog-image-preview">
-                    {imageShown ? (
-                      <img src={imageShown} alt="Prévia do produto" />
-                    ) : (
-                      <>
-                        <ImagePlus size={37} />
-                        <span>Nenhuma imagem selecionada</span>
-                      </>
-                    )}
-                  </div>
-                  <label>
-                    {productCrop.preparing ? <LoaderCircle className="seller-spin" size={16} /> : <Upload size={16} />}{" "}
-                    {productCrop.preparing ? "Abrindo..." : imageShown ? "Trocar imagem" : "Adicionar imagem"}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(event) => void productCrop.pick(event)}
-                      disabled={saving || productCrop.preparing}
-                    />
-                  </label>
-                  {imageShown && (
-                    <AdjustFramingButton
-                      disabled={saving || productCrop.preparing}
-                      onClick={() => imageSource ? productCrop.reopen(imageSource) : void productCrop.adjust([imageShown])}
-                    />
-                  )}
-                  {imageFile && (
-                    <button type="button" onClick={clearImageSelection}>
-                      Cancelar nova imagem
-                    </button>
-                  )}
-                  <small>
-                    JPG, PNG, WebP ou foto do celular · você enquadra antes de salvar.
-                    <br />A imagem é obrigatória para publicar.
-                  </small>
-                  {productCrop.element}
-                </aside>
+                <ProductPhotosField photos={photos} onChange={setPhotos} disabled={saving || optionsLoading} />
               </div>
               <footer>
-                <button type="submit" disabled={saving}>
+                <button type="submit" disabled={saving || optionsLoading}>
                   {saving ? (
                     <LoaderCircle className="seller-spin" size={17} />
                   ) : (
@@ -1069,6 +1141,8 @@ export default function ProductCatalogPage() {
                   )}
                   {saving
                     ? "Salvando..."
+                    : optionsLoading
+                      ? "Carregando fotos e variações..."
                     : editingId
                       ? "Salvar alterações"
                       : form.active

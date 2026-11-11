@@ -3,6 +3,7 @@ import { authStorage, markActivity } from "@/lib/session";
 import { meaningfulTextError } from "@/lib/text-quality";
 import { emailTakenMessage } from "@/lib/account-deletion";
 import { siteConfig } from "@/lib/site-config";
+import { passwordPolicyError } from "@/lib/password-policy";
 
 let client: SupabaseClient | null = null;
 
@@ -168,7 +169,7 @@ function friendlyAuthError(error: SupabaseError, action: "signup" | "login") {
     user_already_exists:
       EMAIL_TAKEN,
     weak_password:
-      "A senha é muito fraca. Use pelo menos 8 caracteres e evite sequências fáceis.",
+      "A senha é muito fraca. Use letras maiúsculas e minúsculas, números e símbolos, com pelo menos 8 caracteres.",
     email_address_invalid: "Informe um endereço de e-mail válido.",
     email_address_not_authorized:
       "Esse endereço de e-mail não está autorizado para cadastro.",
@@ -262,10 +263,10 @@ export async function registerWithSupabase(values: Record<string, unknown>) {
     throw new Error(
       "Informe um e-mail válido, incluindo o domínio completo. Exemplo: nome@gmail.com.",
     );
-  if (password.length < 8 || password !== text(values.confirmPassword))
-    throw new Error(
-      "Use uma senha de pelo menos 8 caracteres e confirme-a corretamente.",
-    );
+  const passwordProblem = passwordPolicyError(password);
+  if (passwordProblem) throw new Error(passwordProblem);
+  if (password !== text(values.confirmPassword))
+    throw new Error("As senhas não são iguais. Confirme a senha corretamente.");
   if (
     type === "client"
       ? !validCpf(document)

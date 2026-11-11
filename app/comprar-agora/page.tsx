@@ -22,6 +22,8 @@ type BuyNow = {
   product_id: string; product_name: string; image_url: string | null; artisan_id: string; store_name: string;
   quantity: number; unit_price: number; current_price: number; availability: "ready" | "made_to_order" | "sold_out";
   max_quantity: number; product_summary: string | null; customer_notes: string | null; product_active: boolean;
+  /** Opção escolhida (cor, tamanho...), quando a peça tem variações. */
+  variant_id?: string | null; variant_label?: string | null;
 };
 
 const formatCep = (cep: string) => cep.replace(/(\d{5})(\d{3})/, "$1-$2");
@@ -51,7 +53,9 @@ export default function BuyNowPage() {
       window.sessionStorage.removeItem(BUY_NOW_KEY);
     } catch { /* sem armazenamento */ }
     if (pending) {
-      const { error: startError } = await getSupabase().rpc("start_buy_now", { p_product_id: pending.productId, p_quantity: pending.quantity });
+      const { error: startError } = await getSupabase().rpc("start_buy_now", pending.variantId
+        ? { p_product_id: pending.productId, p_quantity: pending.quantity, p_variant_id: pending.variantId }
+        : { p_product_id: pending.productId, p_quantity: pending.quantity });
       if (startError) toast.error(getCartErrorMessage(startError));
     }
     const { data, error } = await getSupabase().rpc("get_buy_now");
@@ -198,6 +202,7 @@ export default function BuyNowPage() {
                     </div>
                     <div className="cart-item-copy">
                       <h3>{item.product_name}</h3>
+                      {item.variant_label && <p className="cart-item-variant">{item.variant_label}</p>}
                       {item.product_summary && <p className="cart-item-summary">{item.product_summary}</p>}
                       <p>{item.quantity} × {brl(toCents(item.unit_price))}</p>
                       {!item.product_active || item.availability === "sold_out" ? (

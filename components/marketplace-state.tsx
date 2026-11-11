@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
-import { guestCartAdd, guestCartTotals, type GuestCartLine, type GuestProduct } from "@/lib/guest-cart";
+import { guestCartAdd, guestCartTotals, guestLineKey, type GuestCartLine, type GuestProduct } from "@/lib/guest-cart";
 import { toast } from "sonner";
 import { isSuspended, suspensionMessage } from "@/lib/suspension";
 
@@ -45,7 +45,8 @@ type MarketplaceState = {
   guestCart: readonly GuestCartLine[];
   guestFavorites: readonly GuestProduct[];
   addGuestToCart: (product: GuestProduct, quantity: number) => void;
-  setGuestQuantity: (productId: string, quantity: number) => void;
+  /** lineKey: guestLineKey(produto), pois a mesma peça pode estar em opções diferentes. */
+  setGuestQuantity: (lineKey: string, quantity: number) => void;
 };
 
 export type CepStatus = "loading" | "guest" | "account" | "error";
@@ -70,7 +71,9 @@ async function carryGuestItems(userId: string, cart: readonly GuestCartLine[], f
   for (const line of cart) {
     try {
       // RPC direto (lib/cart importa este módulo; evita import circular).
-      const { error } = await supabase.rpc("add_to_cart", { p_product_id: line.product.id, p_quantity: line.quantity });
+      const { error } = await supabase.rpc("add_to_cart", line.product.variant_id
+        ? { p_product_id: line.product.id, p_quantity: line.quantity, p_variant_id: line.product.variant_id }
+        : { p_product_id: line.product.id, p_quantity: line.quantity });
       if (error) throw error;
       movedUnits += line.quantity;
     } catch {
@@ -362,10 +365,10 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
     setGuestCart(next);
   }, []);
 
-  const setGuestQuantity = useCallback((productId: string, quantity: number) => {
+  const setGuestQuantity = useCallback((lineKey: string, quantity: number) => {
     const next = quantity <= 0
-      ? guestCartRef.current.filter((line) => line.product.id !== productId)
-      : guestCartRef.current.map((line) => line.product.id === productId
+      ? guestCartRef.current.filter((line) => guestLineKey(line.product) !== lineKey)
+      : guestCartRef.current.map((line) => guestLineKey(line.product) === lineKey
         ? { ...line, quantity: Math.min(quantity, line.product.stock ?? quantity) }
         : line);
     guestCartRef.current = next;

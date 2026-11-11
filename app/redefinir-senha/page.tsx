@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, Eye, EyeOff, Loader2, LockKeyhole, ShieldCheck } from "@/components/icons";
+import { AlertTriangle, Loader2, ShieldCheck } from "@/components/icons";
+import { PasswordInput } from "@/components/auth-fields";
 import { getSupabase } from "@/lib/supabase";
 import { validateNewPassword, type FieldErrors } from "@/lib/registration-validation";
 import "../storefront.css";
@@ -11,7 +12,7 @@ import { recordAccess } from "@/lib/access-log";
 type Stage = "checking" | "ready" | "invalid" | "expired" | "done";
 
 const UPDATE_ERRORS: Record<string, string> = {
-  weak_password: "A senha é muito fraca. Use pelo menos 8 caracteres e evite sequências fáceis.",
+  weak_password: "A senha é muito fraca. Use letras maiúsculas e minúsculas, números e símbolos.",
   same_password: "Escolha uma senha diferente da anterior.",
   session_expired: "O link expirou. Peça um novo link de recuperação.",
   over_request_rate_limit: "Muitas tentativas em pouco tempo. Aguarde alguns minutos.",
@@ -33,7 +34,6 @@ export default function ResetPasswordPage() {
   const [link] = useState(linkFromUrl);
   const [stage, setStage] = useState<Stage>("checking");
   const [pending, setPending] = useState(false);
-  const [visible, setVisible] = useState({ password: false, confirmPassword: false });
   const [errors, setErrors] = useState<FieldErrors>({});
 
   useEffect(() => {
@@ -107,7 +107,7 @@ export default function ResetPasswordPage() {
             <div className="form-heading">
               <p className="eyebrow">Recuperar acesso</p>
               <h1>Crie uma nova senha</h1>
-              <p>Use pelo menos 8 caracteres. Evite datas e sequências fáceis.</p>
+              <p>Use letras maiúsculas e minúsculas, números e símbolos, com pelo menos 8 caracteres.</p>
             </div>
             {errors._form && (
               <div className="an-alert an-alert--error form-error-summary" role="alert">
@@ -117,18 +117,17 @@ export default function ResetPasswordPage() {
             {(["password", "confirmPassword"] as const).map((name) => (
               <div className="field" key={name}>
                 <label htmlFor={`campo-${name}`}>{name === "password" ? "Nova senha" : "Repita a nova senha"}</label>
-                <span className="input-wrap">
-                  <LockKeyhole size={18} className="input-icon" />
-                  <input id={`campo-${name}`} name={name} type={visible[name] ? "text" : "password"} autoComplete="new-password"
-                    className="with-icon with-action" aria-invalid={errors[name] ? true : undefined}
-                    placeholder={name === "password" ? "Mínimo de 8 caracteres" : "Digite a nova senha novamente"}
-                    aria-describedby={errors[name] ? `campo-${name}-erro` : undefined} />
-                  <button type="button" className="icon-button"
-                    onClick={() => setVisible((current) => ({ ...current, [name]: !current[name] }))}
-                    aria-label={visible[name] ? "Ocultar senha" : "Mostrar senha"} aria-pressed={visible[name]}>
-                    {visible[name] ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </span>
+                <PasswordInput id={`campo-${name}`} name={name} autoComplete="new-password"
+                  invalid={errors[name] ? true : undefined}
+                  placeholder={name === "password" ? "Crie uma senha forte" : "Digite a nova senha novamente"}
+                  describedBy={errors[name] ? `campo-${name}-erro` : undefined}
+                  showStrength={name === "password"}
+                  onValueChange={() => setErrors((current) => {
+                    if (!current[name]) return current;
+                    const next = { ...current };
+                    delete next[name];
+                    return next;
+                  })} />
                 {errors[name] && <small className="field-error" id={`campo-${name}-erro`}><AlertTriangle size={13} /> {errors[name]}</small>}
               </div>
             ))}

@@ -13,7 +13,13 @@ export type GuestProduct = {
   ready_to_ship?: boolean;
   availability?: Availability | null;
   category_name?: string | null;
+  /** Opção escolhida (cor, tamanho...), quando a peça tem variações. */
+  variant_id?: string | null;
+  variant_label?: string | null;
 };
+
+/** Identifica a linha: a mesma peça em opções diferentes são linhas diferentes. */
+export const guestLineKey = (product: Pick<GuestProduct, "id" | "variant_id">) => `${product.id}:${product.variant_id ?? ""}`;
 
 export type GuestCartLine = { product: GuestProduct; quantity: number };
 
@@ -25,7 +31,8 @@ export function guestCartAdd(cart: readonly GuestCartLine[], product: GuestProdu
   if (!Number.isFinite(amount) || amount < 1) throw new Error("A quantidade informada não é válida.");
   const max = maxQuantityFor(product);
   if (max === 0) throw new Error("Peça esgotada no momento.");
-  const current = cart.find((line) => line.product.id === product.id);
+  const key = guestLineKey(product);
+  const current = cart.find((line) => guestLineKey(line.product) === key);
   const total = (current?.quantity ?? 0) + amount;
   if (total > max) {
     throw new Error(current
@@ -34,7 +41,7 @@ export function guestCartAdd(cart: readonly GuestCartLine[], product: GuestProdu
   }
   if (!current && cart.length >= MAX_GUEST_LINES) throw new Error("Seu carrinho atingiu o limite de itens.");
   return current
-    ? cart.map((line) => line.product.id === product.id ? { product, quantity: total } : line)
+    ? cart.map((line) => guestLineKey(line.product) === key ? { product, quantity: total } : line)
     : [...cart, { product, quantity: amount }];
 }
 

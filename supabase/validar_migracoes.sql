@@ -137,7 +137,10 @@ checagens as (
   from colunas c
   union all
   select f.script, 'função', f.assinatura,
-    case when to_regprocedure(f.assinatura) is null then 'FALTA' else 'OK' end
+    -- add_to_cart/start_buy_now ganharam p_variant_id em 20261113 (a versão de 2 argumentos sai).
+    case when to_regprocedure(f.assinatura) is null
+           and to_regprocedure(replace(f.assinatura, '(uuid,integer)', '(uuid,integer,uuid)')) is null
+         then 'FALTA' else 'OK' end
   from funcoes f
   union all
   select g.script, 'gatilho', g.tabela || ' → ' || g.nome,
@@ -240,11 +243,18 @@ checagens as (
     case when to_regprocedure('public.mark_notifications_read_by_ref(uuid)') is null
          then 'FALTA: rode migrations/20261112_notificacoes_lidas_por_conversa.sql' else 'OK' end
   union all
+  select '20261113 fotos_variacoes_produto', 'função', 'até 3 fotos e variações (cor, tamanho) por peça',
+    case when to_regclass('public.product_variants') is null
+           or to_regprocedure('public.save_my_product_options(uuid,text[],text[],jsonb)') is null
+           or to_regprocedure('public.add_to_cart(uuid,integer,uuid)') is null
+           or to_regprocedure('public.start_buy_now(uuid,integer,uuid)') is null
+         then 'FALTA: rode migrations/20261113_fotos_variacoes_produto.sql' else 'OK' end
+  union all
   -- Sobrecargas duplicadas deixam chamadas ambíguas (acontece ao rodar um script antigo depois de um novo).
   select 'ordem dos scripts', 'sobrecarga', p.proname,
     case when count(*) > 1 then 'ATENÇÃO: ' || count(*) || ' versões; rode de novo os scripts a partir do 06' else 'OK' end
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-  where n.nspname = 'public' and p.proname in ('browse_storefront_products', 'get_cart_shipping_packages', 'list_cart', 'list_order_item_details')
+  where n.nspname = 'public' and p.proname in ('browse_storefront_products', 'get_cart_shipping_packages', 'list_cart', 'list_order_item_details', 'add_to_cart', 'start_buy_now')
   group by p.proname
 )
 select status, script, tipo, item

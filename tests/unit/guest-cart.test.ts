@@ -30,3 +30,15 @@ test("quantidade inválida é recusada", () => {
   assert.throws(() => guestCartAdd([], colar, 0), /quantidade/);
   assert.throws(() => guestCartAdd([], colar, Number.NaN), /quantidade/);
 });
+
+test("a mesma peça em opções diferentes vira linhas diferentes", () => {
+  const azul: GuestProduct = { ...vaso, price: 25, stock: 2, variant_id: "v1", variant_label: "Cor: Azul" };
+  const verde: GuestProduct = { ...vaso, price: 30, stock: 1, variant_id: "v2", variant_label: "Cor: Verde" };
+  let cart = guestCartAdd([], azul, 1);
+  cart = guestCartAdd(cart, verde, 1);
+  cart = guestCartAdd(cart, azul, 1);
+  assert.equal(cart.length, 2);
+  assert.equal(cart[0].quantity, 2);
+  assert.throws(() => guestCartAdd(cart, verde, 1), /Estoque insuficiente/);
+  assert.equal(guestCartTotals(cart).subtotalCents, 2 * 2500 + 3000);
+});
