@@ -14,7 +14,7 @@ import {
   Store,
 } from "@/components/icons";
 import { AuthDivider, GoogleButton } from "@/components/google-button";
-import { AddressFields, ErrorSummary, Field, PasswordInput, maskDocument, maskPhone, specialties } from "@/components/auth-fields";
+import { AddressFields, ErrorSummary, Field, PasswordInput, PasswordStrength, maskDocument, maskPhone, specialties } from "@/components/auth-fields";
 import { toast } from "sonner";
 import { favoriteIntentReturnPath } from "@/components/marketplace-state";
 import { markActivity, setRememberDevice } from "@/lib/session";
@@ -51,6 +51,7 @@ function RegisterForm({ type, returnTo, onGoToLogin }: { type: AccountType; retu
   const [existingAccount, setExistingAccount] = useState(false);
   const [specialtyChoice, setSpecialtyChoice] = useState("");
   const [storyDraft, setStoryDraft] = useState("");
+  const [passwordDraft, setPasswordDraft] = useState("");
   const clear = (name: string) => setErrors((current) => {
     if (!current[name] && !current._form) return current;
     const next = { ...current };
@@ -191,11 +192,16 @@ function RegisterForm({ type, returnTo, onGoToLogin }: { type: AccountType; retu
           )}
         </Field>
         <Field name="password" label="Senha" error={errors.password}>
-          {(props) => <PasswordInput id={props.id} name="password" autoComplete="new-password" placeholder="Crie uma senha forte" invalid={props["aria-invalid"]} describedBy={props["aria-describedby"]} showStrength onValueChange={() => clear("password")} />}
+          {(props) => <PasswordInput id={props.id} name="password" autoComplete="new-password" placeholder="Crie uma senha forte" invalid={props["aria-invalid"]} describedBy={[props["aria-describedby"], "cadastro-senha-forca"].filter(Boolean).join(" ")}
+            onValueChange={(value) => { setPasswordDraft(value); clear("password"); }} />}
         </Field>
         <Field name="confirmPassword" label="Confirme a senha" error={errors.confirmPassword}>
           {(props) => <PasswordInput id={props.id} name="confirmPassword" autoComplete="new-password" placeholder="Digite a senha novamente" invalid={props["aria-invalid"]} describedBy={props["aria-describedby"]} />}
         </Field>
+        {/* Medidor na largura toda, abaixo das duas senhas: a linha dos campos fica alinhada. */}
+        <div className="field field-wide field-password-strength">
+          <PasswordStrength id="cadastro-senha-forca" password={passwordDraft} />
+        </div>
         {type === "artisan" && (
           <Field name="story" label="Conte a história da sua loja" error={errors.story} wide
             hint="Como você começou, o que inspira suas peças e o que torna seu trabalho especial (40 a 1.200 caracteres).">

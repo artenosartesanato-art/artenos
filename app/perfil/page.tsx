@@ -786,7 +786,6 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
                         aria-describedby="perfil-nova-senha-forca"
                         required
                       />
-                      <PasswordStrength id="perfil-nova-senha-forca" password={newPassword} />
                     </label>
                     <label>
                       Confirme a nova senha
@@ -801,6 +800,11 @@ export function ProfileContent({ sellerMode = false }: { sellerMode?: boolean })
                         required
                       />
                     </label>
+                    {/* Medidor numa faixa própria, abaixo dos três campos, para não desalinhar a linha. */}
+                    <PasswordStrength id="perfil-nova-senha-forca" password={newPassword} />
+                    {confirmPassword && confirmPassword !== newPassword && (
+                      <p className="profile-password-mismatch" role="status">As senhas ainda não são iguais.</p>
+                    )}
                     {awaitingNonce && (
                       <div className="profile-nonce">
                         <label>

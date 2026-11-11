@@ -119,7 +119,7 @@ export default function ResetPasswordPage() {
                 <label htmlFor={`campo-${name}`}>{name === "password" ? "Nova senha" : "Repita a nova senha"}</label>
                 <PasswordInput id={`campo-${name}`} name={name} autoComplete="new-password"
                   invalid={errors[name] ? true : undefined}
-                  placeholder={name === "password" ? "Crie uma senha forte" : "Digite a nova senha novamente"}
+                  placeholder={name === "password" ? "Crie uma senha forte" : "Digite a senha de novo"}
                   describedBy={errors[name] ? `campo-${name}-erro` : undefined}
                   showStrength={name === "password"}
                   onValueChange={() => setErrors((current) => {
