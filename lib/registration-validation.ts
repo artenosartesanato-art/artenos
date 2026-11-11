@@ -4,6 +4,7 @@
 import { validBrazilianPhone, validCnpj, validCpf, validEmail } from "@/lib/supabase";
 import { meaningfulTextError } from "@/lib/text-quality";
 import { findBlockedTerm } from "@/lib/moderation";
+import { passwordPolicyError } from "@/lib/password-policy";
 import { OTHER_SPECIALTY, resolveSpecialty, specialtyError } from "@/lib/store-specialties";
 
 export type FieldErrors = Record<string, string>;
@@ -29,7 +30,8 @@ export function validateRecovery(values: Record<string, unknown>): FieldErrors {
 export function validateNewPassword(values: Record<string, unknown>): FieldErrors {
   const errors: FieldErrors = {};
   const password = text(values.password);
-  if (password.length < 8) errors.password = "Use pelo menos 8 caracteres.";
+  const passwordProblem = passwordPolicyError(password);
+  if (passwordProblem) errors.password = passwordProblem;
   if (!text(values.confirmPassword)) errors.confirmPassword = "Repita a nova senha.";
   else if (password !== text(values.confirmPassword)) errors.confirmPassword = "As senhas não são iguais.";
   return errors;
@@ -79,7 +81,8 @@ export function validateRegistration(values: Record<string, unknown>, type: "cli
   if (!email) errors.email = "Informe seu e-mail.";
   else if (!validEmail(email)) errors.email = "Informe um e-mail completo, como nome@gmail.com.";
   const password = text(values.password);
-  if (password.length < 8) errors.password = "Use pelo menos 8 caracteres.";
+  const passwordProblem = passwordPolicyError(password);
+  if (passwordProblem) errors.password = passwordProblem;
   if (!text(values.confirmPassword)) errors.confirmPassword = "Repita a senha.";
   else if (password !== text(values.confirmPassword)) errors.confirmPassword = "As senhas não são iguais.";
   return errors;

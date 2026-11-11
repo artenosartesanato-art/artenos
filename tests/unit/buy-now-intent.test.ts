@@ -6,7 +6,9 @@ const id = "00000000-0000-0000-0000-000000000001";
 
 test("guarda e retoma a compra iniciada sem login", () => {
   const raw = serializePendingBuyNow(id, 2, 1_000);
-  assert.deepEqual(parsePendingBuyNow(raw, 2_000), { productId: id, quantity: 2, at: 1_000 });
+  assert.deepEqual(parsePendingBuyNow(raw, 2_000), { productId: id, quantity: 2, at: 1_000, variantId: null });
+  const withOption = serializePendingBuyNow(id, 1, 1_000, id);
+  assert.equal(parsePendingBuyNow(withOption, 2_000)?.variantId, id);
 });
 
 test("descarta intenção velha, inválida ou adulterada", () => {

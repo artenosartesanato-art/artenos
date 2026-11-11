@@ -24,6 +24,9 @@ export type ActionProduct = {
   stock?: number | null;
   ready_to_ship?: boolean;
   availability?: Availability | null;
+  /** Opção escolhida (cor, tamanho...): preço, estoque e foto já são os da opção. */
+  variant_id?: string | null;
+  variant_label?: string | null;
 };
 
 type AddedLine = { product: ActionProduct; quantity: number };
@@ -82,7 +85,7 @@ export function StorefrontActionsProvider({ children }: { children: ReactNode })
     pending.current.add(product.id);
     setPendingCartIds(new Set(pending.current));
     try {
-      await addProductToCart(product.id, quantity);
+      await addProductToCart(product.id, quantity, product.variant_id);
       await refreshCart();
       setAdded({ product, quantity });
       setDrawerOpen(true);
@@ -145,6 +148,7 @@ export function StorefrontActionsProvider({ children }: { children: ReactNode })
               <div>
                 {added.product.shop_name && <small>{added.product.shop_name}</small>}
                 <h3>{added.product.name}</h3>
+                {added.product.variant_label && <p className="cart-drawer-variant">{added.product.variant_label}</p>}
                 <p>
                   {added.quantity} × {money.format(Number(added.product.price))}
                   {" · "}

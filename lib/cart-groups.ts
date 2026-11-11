@@ -21,6 +21,11 @@ export type CartItem = {
   /** Presentes após a migração 20261029_descricao_observacoes.sql. */
   product_summary?: string | null;
   customer_notes?: string | null;
+  /** Presentes após a migração 20261113_fotos_variacoes_produto.sql. */
+  variant_id?: string | null;
+  variant_label?: string | null;
+  /** A peça ganhou variações depois de entrar no carrinho: escolha a opção de novo. */
+  needs_option?: boolean | null;
 };
 
 /** Quantidade máxima do item (sob encomenda não depende do estoque). */

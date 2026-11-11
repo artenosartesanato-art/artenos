@@ -30,3 +30,47 @@ export function feeBreakdown(price: number, platformPercent: number, paymentPerc
   const payment = roundMoney(price * paymentPercent / 100);
   return { platform, payment, net: roundMoney(price - platform - payment) };
 }
+
+export type PricingInputs = {
+  materialCost: number;
+  hoursSpent: number;
+  hourlyRate: number;
+  extraCost: number;
+  operationalCost: number;
+  marginPercent: number;
+};
+
+/** Converte o texto digitado (aceita vírgula); vazio ou negativo vira 0. */
+export function parsePricingNumber(value: string) {
+  const parsed = Number(String(value ?? "").replace(",", "."));
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+}
+
+/**
+ * Conta completa da calculadora (página Precificação e painel do produto).
+ * feePercent null = tarifa ainda não carregada (preço sugerido 0).
+ * paymentFees null = banco sem taxas do Mercado Pago (só a tarifa da Artenós).
+ */
+export function computePricing(inputs: PricingInputs, feePercent: number | null, paymentFees: PaymentFees | null, method: PaymentMethod) {
+  const laborCost = roundMoney(inputs.hoursSpent * inputs.hourlyRate);
+  const productionCost = roundMoney(inputs.materialCost + laborCost + inputs.extraCost + inputs.operationalCost);
+  const desiredProfit = roundMoney(productionCost * (inputs.marginPercent / 100));
+  const validFee = feePercent !== null && feePercent >= 0 && feePercent < 100;
+  const paymentPercent = paymentFees ? paymentFees[method] : 0;
+  const price = validFee ? suggestedPrice(productionCost + desiredProfit, feePercent, paymentPercent) : 0;
+  const breakdown = feeBreakdown(price, validFee ? feePercent : 0, paymentPercent);
+  const byMethod = paymentFees && validFee
+    ? (["pix", "card"] as const).map((item) => ({ method: item, percent: paymentFees[item], ...feeBreakdown(price, feePercent, paymentFees[item]) }))
+    : [];
+  return {
+    ...inputs,
+    laborCost,
+    productionCost,
+    desiredProfit,
+    platformFeeAmount: breakdown.platform,
+    paymentPercent,
+    paymentFeeAmount: breakdown.payment,
+    byMethod,
+    suggestedPrice: price,
+  };
+}

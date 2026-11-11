@@ -36,3 +36,20 @@ Os arquivos em `supabase/tests/` rodam **somente em banco local de teste** (o sa
 ```bash
 for t in disponibilidade_estoque moderacao_chat comprar_agora avaliacoes status_encomenda seguranca_privacidade notas_fiscais; do psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/$t.sql; done
 ```
+
+## Novembro/2026 — fotos, variações e senha forte
+
+| Arquivo | O que faz |
+|---|---|
+| `supabase/migrations/20261113_fotos_variacoes_produto.sql` | Até 3 fotos por peça (capa + 2) e variações (cor, tamanho, estilo...) com preço e estoque por opção; carrinho, "Comprar agora", checkout, cancelamento e pedido passam a usar a opção escolhida |
+
+- Rode **depois** de `20261112_notificacoes_lidas_por_conversa.sql`. Pode ser repetida. Exige Postgres 15+ (todo projeto Supabase atual).
+- Ela troca `add_to_cart(uuid, integer)` e `start_buy_now(uuid, integer)` pelas versões com `p_variant_id` (opcional): publique o site junto com a migração.
+- `products.stock` passa a ser a soma do estoque das opções e `products.price` o menor preço ("a partir de") quando a peça tem variações; peças sem variação continuam iguais.
+- Teste local: `psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/fotos_variacoes_produto.sql`.
+
+**Senha forte:** o site passa a exigir letra minúscula, maiúscula, número, símbolo e 8+ caracteres
+(cadastro, redefinição e troca no perfil), com medidor de 4 barras. Para a regra valer também
+fora do site, no Supabase marque **Authentication → Providers → Email → Password requirements:
+"Lowercase, uppercase letters, digits and symbols"** e **Minimum password length: 8**.
+Contas antigas continuam entrando com a senha atual; a regra vale ao criar ou trocar a senha.

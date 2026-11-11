@@ -4,7 +4,8 @@
 // /concluir-cadastro (conclusão do cadastro com Google): mesmos rótulos,
 // máscaras, mensagens de erro e consulta de CEP.
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { AlertTriangle, Eye, EyeOff, Loader2, LockKeyhole } from "@/components/icons";
+import { AlertTriangle, Check, Eye, EyeOff, Loader2, LockKeyhole } from "@/components/icons";
+import { checkPassword, PASSWORD_LEVEL_LABEL, PASSWORD_RULES } from "@/lib/password-policy";
 import type { FieldErrors } from "@/lib/registration-validation";
 import { STORE_SPECIALTIES } from "@/lib/store-specialties";
 
@@ -49,20 +50,60 @@ export function Field({ name, label, error, hint, wide = false, children }: {
   );
 }
 
-export function PasswordInput({ id, name, autoComplete, invalid, describedBy, placeholder }: {
+export function PasswordInput({ id, name, autoComplete, invalid, describedBy, placeholder, showStrength = false, onValueChange }: {
   id: string; name: string; autoComplete: string; invalid?: true; describedBy?: string; placeholder?: string;
+  /** Mostra o medidor de 4 barras e a lista de critérios (senha nova). */
+  showStrength?: boolean;
+  onValueChange?: (value: string) => void;
 }) {
   const [visible, setVisible] = useState(false);
+  const [value, setValue] = useState("");
+  const strengthId = `${id}-forca`;
   return (
-    <span className="input-wrap">
-      <LockKeyhole size={18} className="input-icon" />
-      <input id={id} name={name} type={visible ? "text" : "password"} autoComplete={autoComplete}
-        className="with-icon with-action" aria-invalid={invalid} aria-describedby={describedBy} placeholder={placeholder} />
-      <button type="button" className="icon-button" onClick={() => setVisible(!visible)}
-        aria-label={visible ? "Ocultar senha" : "Mostrar senha"} aria-pressed={visible}>
-        {visible ? <EyeOff size={18} /> : <Eye size={18} />}
-      </button>
-    </span>
+    <>
+      <span className="input-wrap">
+        <LockKeyhole size={18} className="input-icon" />
+        <input id={id} name={name} type={visible ? "text" : "password"} autoComplete={autoComplete}
+          className="with-icon with-action" aria-invalid={invalid}
+          aria-describedby={[describedBy, showStrength ? strengthId : ""].filter(Boolean).join(" ") || undefined}
+          placeholder={placeholder}
+          onChange={(event) => { setValue(event.currentTarget.value); onValueChange?.(event.currentTarget.value); }} />
+        <button type="button" className="icon-button" onClick={() => setVisible(!visible)}
+          aria-label={visible ? "Ocultar senha" : "Mostrar senha"} aria-pressed={visible}>
+          {visible ? <EyeOff size={18} /> : <Eye size={18} />}
+        </button>
+      </span>
+      {showStrength && <PasswordStrength id={strengthId} password={value} />}
+    </>
+  );
+}
+
+/**
+ * Medidor de força: 4 barras que vão se completando (minúscula, maiúscula,
+ * número e símbolo; a última só acende com o tamanho mínimo) e a lista dos
+ * critérios obrigatórios, marcados conforme a pessoa digita.
+ */
+export function PasswordStrength({ id, password }: { id?: string; password: string }) {
+  const check = checkPassword(password);
+  return (
+    <div className={`password-strength is-${check.level}`} id={id}>
+      <div className="password-strength-bars" aria-hidden="true">
+        {[1, 2, 3, 4].map((bar) => <span key={bar} className={bar <= check.bars ? "is-on" : undefined} />)}
+      </div>
+      <p className="password-strength-label" aria-live="polite">
+        {PASSWORD_LEVEL_LABEL[check.level]}
+        <span className="an-visually-hidden"> ({check.score} de {PASSWORD_RULES.length} critérios atendidos)</span>
+      </p>
+      <ul className="password-strength-rules">
+        {PASSWORD_RULES.map((rule) => (
+          <li key={rule.id} className={check.passed[rule.id] ? "is-ok" : undefined}>
+            <span className="password-rule-mark" aria-hidden="true">{check.passed[rule.id] ? <Check size={12} /> : null}</span>
+            {rule.label}
+            <span className="an-visually-hidden">{check.passed[rule.id] ? ": atendido" : ": pendente"}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

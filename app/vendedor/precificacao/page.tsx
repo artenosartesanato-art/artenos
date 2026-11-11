@@ -17,9 +17,8 @@ import { getSupabase } from "@/lib/supabase";
 import {
   DEFAULT_PAYMENT_FEES,
   PAYMENT_METHOD_LABEL,
-  feeBreakdown,
-  roundMoney,
-  suggestedPrice as priceFor,
+  computePricing,
+  parsePricingNumber as toNumber,
   type PaymentFees,
   type PaymentMethod,
 } from "@/lib/pricing";
@@ -87,10 +86,6 @@ const date = new Intl.DateTimeFormat("pt-BR", {
   timeStyle: "short",
 });
 
-function toNumber(value: string) {
-  const parsed = Number(value.replace(",", "."));
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
-}
 
 const percent = (value: number) => `${value.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
 
@@ -166,55 +161,14 @@ export default function PricingCalculatorPage() {
     return () => window.clearTimeout(timer);
   }, []);
 
-  const values = useMemo(() => {
-    const materialCost = toNumber(form.materialCost);
-    const hoursSpent = toNumber(form.hoursSpent);
-    const hourlyRate = toNumber(form.hourlyRate);
-    const extraCost = toNumber(form.extraCost);
-    const operationalCost = toNumber(form.operationalCost);
-    const marginPercent = toNumber(form.marginPercent);
-    const laborCost = roundMoney(hoursSpent * hourlyRate);
-    const productionCost = roundMoney(
-      materialCost + laborCost + extraCost + operationalCost,
-    );
-    const desiredProfit = roundMoney(
-      productionCost * (marginPercent / 100),
-    );
-    const validFee =
-      feePercent !== null && feePercent >= 0 && feePercent < 100;
-    const paymentPercent = paymentFees ? paymentFees[form.paymentMethod] : 0;
-    const suggestedPrice = validFee
-      ? priceFor(productionCost + desiredProfit, feePercent, paymentPercent)
-      : 0;
-    const breakdown = feeBreakdown(suggestedPrice, validFee ? feePercent : 0, paymentPercent);
-    const platformFeeAmount = breakdown.platform;
-    const paymentFeeAmount = breakdown.payment;
-    // Com este preço, quanto fica com a loja em cada meio de pagamento.
-    const byMethod = paymentFees && validFee
-      ? (["pix", "card"] as const).map((method) => ({
-          method,
-          percent: paymentFees[method],
-          ...feeBreakdown(suggestedPrice, feePercent, paymentFees[method]),
-        }))
-      : [];
-
-    return {
-      materialCost,
-      hoursSpent,
-      hourlyRate,
-      extraCost,
-      operationalCost,
-      marginPercent,
-      laborCost,
-      productionCost,
-      desiredProfit,
-      platformFeeAmount,
-      paymentPercent,
-      paymentFeeAmount,
-      byMethod,
-      suggestedPrice,
-    };
-  }, [feePercent, paymentFees, form]);
+  const values = useMemo(() => computePricing({
+    materialCost: toNumber(form.materialCost),
+    hoursSpent: toNumber(form.hoursSpent),
+    hourlyRate: toNumber(form.hourlyRate),
+    extraCost: toNumber(form.extraCost),
+    operationalCost: toNumber(form.operationalCost),
+    marginPercent: toNumber(form.marginPercent),
+  }, feePercent, paymentFees, form.paymentMethod), [feePercent, paymentFees, form]);
 
   function setField<Key extends keyof PricingForm>(
     key: Key,

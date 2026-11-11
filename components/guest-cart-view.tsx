@@ -5,7 +5,7 @@ import { AlertTriangle, ArrowRight, LockKeyhole, Minus, PackageOpen, Plus, Spark
 import { useMarketplace } from "@/components/marketplace-state";
 import { OptimizedImage } from "@/components/optimized-image";
 import { accessHref } from "@/lib/navigation";
-import { guestCartTotals } from "@/lib/guest-cart";
+import { guestCartTotals, guestLineKey } from "@/lib/guest-cart";
 import { availabilityFor, maxQuantityFor } from "@/lib/availability";
 
 const brl = (cents: number) => (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -61,7 +61,7 @@ export function GuestCartView() {
                 const atLimit = quantity >= maxQuantityFor(product);
                 const madeToOrder = availabilityFor(product) === "made_to_order";
                 return (
-                  <li className="cart-item" key={product.id}>
+                  <li className="cart-item" key={guestLineKey(product)}>
                     <div className="cart-item-thumb">
                       {product.image_url
                         ? <OptimizedImage src={product.image_url} alt="" width={96} height={96} sizes="96px" />
@@ -69,6 +69,7 @@ export function GuestCartView() {
                     </div>
                     <div className="cart-item-copy">
                       <h3>{product.name}</h3>
+                      {product.variant_label && <p className="cart-item-variant">{product.variant_label}</p>}
                       <p>{brl(cents)} cada</p>
                       {madeToOrder ? (
                         <p className="cart-item-stock">Sob encomenda — produzida depois do pedido</p>
@@ -78,18 +79,18 @@ export function GuestCartView() {
                     </div>
                     <div className="cart-item-controls">
                       <div className="an-stepper an-stepper--sm" role="group" aria-label={`Quantidade de ${product.name}`}>
-                        <button type="button" onClick={() => setGuestQuantity(product.id, quantity - 1)}
+                        <button type="button" onClick={() => setGuestQuantity(guestLineKey(product), quantity - 1)}
                           aria-label={quantity === 1 ? `Remover ${product.name}` : "Diminuir quantidade"}>
                           {quantity === 1 ? <Trash2 size={13} /> : <Minus size={13} />}
                         </button>
                         <output aria-live="polite">{quantity}</output>
                         <button type="button" aria-label="Aumentar quantidade" disabled={atLimit}
-                          onClick={() => setGuestQuantity(product.id, quantity + 1)}>
+                          onClick={() => setGuestQuantity(guestLineKey(product), quantity + 1)}>
                           <Plus size={13} />
                         </button>
                       </div>
                       <strong>{brl(cents * quantity)}</strong>
-                      <button className="cart-remove" type="button" onClick={() => setGuestQuantity(product.id, 0)}>
+                      <button className="cart-remove" type="button" onClick={() => setGuestQuantity(guestLineKey(product), 0)}>
                         Remover
                       </button>
                     </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Heart, LoaderCircle, ShoppingBag, Sparkles } from "@/components/icons";
 import { ProductDetailsButton } from "@/components/product-details-button";
 import { useMarketplace } from "@/components/marketplace-state";
@@ -11,6 +12,8 @@ import { plainSummary } from "@/lib/rich-text";
 import { StarRating } from "@/components/stars";
 import { useMyCustomOrderLabel } from "@/components/my-custom-orders";
 import { useBuyNow } from "@/components/use-buy-now";
+import { toast } from "sonner";
+import { fetchProductOptions, useProductOptionsFlag } from "@/lib/product-options";
 
 export type MarketplaceProduct = {
   id: string;
@@ -69,6 +72,25 @@ export function MarketplaceProductCard({ product, shopName, cartDisabled = false
   const { buyNow, pendingId } = useBuyNow();
   const buying = pendingId === product.id;
   const kind = availabilityFor(product);
+  // Peça com variações (cor, tamanho...): a escolha acontece no detalhe.
+  const optionsFlag = useProductOptionsFlag(product.id);
+  const [checkingOptions, setCheckingOptions] = useState(false);
+  async function needsChoice(openDetails: () => void) {
+    if (optionsFlag) {
+      openDetails();
+      toast.info(`Escolha ${optionsFlag.variationNames.join(" e ").toLowerCase()} da peça para continuar.`);
+      return true;
+    }
+    setCheckingOptions(true);
+    const options = await fetchProductOptions(product.id);
+    setCheckingOptions(false);
+    if (options?.variants.length && options.variation_names.length) {
+      openDetails();
+      toast.info(`Escolha ${options.variation_names.join(" e ").toLowerCase()} da peça para continuar.`);
+      return true;
+    }
+    return false;
+  }
   const buyLabel = cartDisabled ? "Indisponível" : kind === "sold_out" ? "Esgotado" : kind === "made_to_order" ? "Encomendar" : "Comprar";
 
   return (
@@ -116,16 +138,19 @@ export function MarketplaceProductCard({ product, shopName, cartDisabled = false
               </button>
             </h3>
             <p className="store-product-summary">{summary}</p>
-            <p className="store-product-price">{money.format(Number(product.price))}</p>
+            <p className="store-product-price">
+              {optionsFlag && optionsFlag.minPrice !== optionsFlag.maxPrice && <small>a partir de </small>}
+              {money.format(Number(product.price))}
+            </p>
             <div className="store-product-actions">
-              <button type="button" className="store-product-buy" disabled={unavailable || buying || ownProduct}
-                aria-busy={buying} onClick={() => void buyNow(product.id, 1)}
+              <button type="button" className="store-product-buy" disabled={unavailable || buying || checkingOptions || ownProduct}
+                aria-busy={buying || checkingOptions} onClick={() => void (async () => { if (!(await needsChoice(openDetails))) await buyNow(product.id, 1); })()}
                 aria-label={unavailable ? `${product.name}: ${buyLabel.toLowerCase()}` : `${buyLabel} ${product.name}`}>
                 {buying && <LoaderCircle size={16} className="spin" />}
                 <span>{buying ? "Abrindo…" : buyLabel}</span>
               </button>
-              <button type="button" className="store-product-cart" disabled={unavailable || adding || ownProduct}
-                aria-busy={adding} onClick={() => void addToCart(fullProduct)}
+              <button type="button" className="store-product-cart" disabled={unavailable || adding || checkingOptions || ownProduct}
+                aria-busy={adding} onClick={() => void (async () => { if (!(await needsChoice(openDetails))) await addToCart(fullProduct); })()}
                 aria-label={`Adicionar ${product.name} ao carrinho`} title="Adicionar ao carrinho">
                 {adding ? <LoaderCircle size={17} className="spin" /> : <ShoppingBag size={18} />}
               </button>

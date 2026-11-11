@@ -34,6 +34,8 @@ import { StarRating } from "@/components/stars";
 import { ReviewsList } from "@/components/reviews-list";
 import { AVAILABILITY_LABEL, availabilityFor, maxQuantityFor, productionLabel, type Availability } from "@/lib/availability";
 import { StoreAvatar } from "@/components/store-avatar";
+import { fetchProductOptions } from "@/lib/product-options";
+import { findVariant, optionSoldOut, uniqueOptions, variantLabel, type ProductOptions } from "@/lib/product-variations";
 
 type ProductDetails = {
   id: string;
@@ -103,6 +105,17 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
   const [imageIndex, setImageIndex] = useState(0);
   const [store, setStore] = useState<StoreSummary | null>(null);
   const [storeRating, setStoreRating] = useState<{ avg: number | null; count: number }>({ avg: null, count: 0 });
+  // Fotos extras e variações (cor, tamanho...) da peça.
+  const [options, setOptions] = useState<ProductOptions | null>(null);
+  const [choice, setChoice] = useState<{ option1: string | null; option2: string | null }>({ option1: null, option2: null });
+  const [choiceError, setChoiceError] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+    void fetchProductOptions(product.id, true).then((loaded) => { if (active) setOptions(loaded); });
+    return () => { active = false; };
+  }, [open, product.id]);
 
   // Cartão da loja: cidade e nota média (só quando o detalhe é aberto).
   useEffect(() => {
@@ -153,24 +166,60 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
     setFreight({ loading: false, error: "", options: null });
     setZoomed(false);
     setImageIndex(0);
+    setChoice({ option1: null, option2: null });
+    setChoiceError(false);
     setEverOpened(true);
     setOpen(true);
   }
 
+  // Peça com variações: só segue depois de escolher a opção.
+  function requireChoice() {
+    if (!hasVariants || selected) return true;
+    setChoiceError(true);
+    document.getElementById(`${titleId}-opcoes`)?.scrollIntoView({ block: "center", behavior: "smooth" });
+    return false;
+  }
+
   async function add() {
-    const ok = await addToCart(product, quantity);
+    if (!requireChoice()) return;
+    const ok = await addToCart(selected ? {
+      ...product,
+      price: selected.price,
+      stock: selected.stock,
+      availability: selected.availability,
+      image_url: selected.image_url || product.image_url,
+      variant_id: selected.id,
+      variant_label: variantLabel(variationNames, selected.option1, selected.option2),
+    } : product, quantity);
     if (ok) setOpen(false);
   }
 
   async function buyNow() {
+    if (!requireChoice()) return;
     setBuying(true);
-    await startBuyNowFlow(product.id, quantity, () => setOpen(false));
+    await startBuyNowFlow(product.id, quantity, () => setOpen(false), selected?.id ?? null);
     setBuying(false);
   }
 
+  function choose(level: 1 | 2, value: string) {
+    setChoiceError(false);
+    setFreight({ loading: false, error: "", options: null });
+    const next = level === 1 ? { ...choice, option1: choice.option1 === value ? null : value } : { ...choice, option2: choice.option2 === value ? null : value };
+    setChoice(next);
+    // Mostra a foto da opção escolhida, quando houver.
+    const match = options?.variants.find((variant) => variant.option1 === next.option1 && variant.image_url);
+    if (match?.image_url) {
+      const index = gallery.indexOf(match.image_url);
+      if (index >= 0) { setImageIndex(index); setZoomed(false); }
+    }
+    const variant = findVariant(options?.variants ?? [], next.option1, next.option2, needsSecond);
+    if (variant) setQuantity((current) => Math.max(1, Math.min(current, variant.max_quantity || 1)));
+  }
+
   async function estimateFreight() {
+    if (!requireChoice()) return;
     setFreight({ loading: true, error: "", options: null });
-    if (!(await prepareBuyNow(product.id, quantity))) return setFreight({ loading: false, error: "", options: null });
+    if (!(await prepareBuyNow(product.id, quantity, selected?.id ?? null))) return setFreight({ loading: false, error: "", options: null });
     try {
       const groups = await requestShippingQuotes(cep, "buy_now");
       const group = groups[0];
@@ -181,14 +230,28 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
     }
   }
 
-  // Galeria: hoje cada peça tem uma foto; com mais de uma (images), aparecem as miniaturas.
-  const gallery = Array.from(new Set([product.image_url, ...(product.images ?? [])].filter((url): url is string => Boolean(url))));
+  // Galeria: até 3 fotos (capa + extras); com mais de uma, aparecem as miniaturas.
+  const gallery = Array.from(new Set([product.image_url, ...(options?.images ?? product.images ?? [])].filter((url): url is string => Boolean(url))));
+  const variationNames = options?.variation_names ?? [];
+  const variants = options?.variants ?? [];
+  const hasVariants = variationNames.length > 0 && variants.length > 0;
+  const needsSecond = variationNames.length > 1;
+  const level1 = uniqueOptions(variants, 1);
+  const level2 = needsSecond ? uniqueOptions(variants, 2) : [];
+  const selected = hasVariants ? findVariant(variants, choice.option1, choice.option2, needsSecond) : null;
+  const prices = variants.map((variant) => variant.price);
+  const minPrice = prices.length ? Math.min(...prices) : Number(product.price);
+  const maxPrice = prices.length ? Math.max(...prices) : Number(product.price);
+  const unitPrice = selected ? selected.price : Number(product.price);
+  const missingChoice = [!choice.option1 ? variationNames[0] : "", needsSecond && !choice.option2 ? variationNames[1] : ""]
+    .filter(Boolean).map((name) => name.toLowerCase()).join(" e ");
   const currentImage = gallery[Math.min(imageIndex, gallery.length - 1)] ?? null;
   const storeLocation = store ? [store.city, store.state].filter(Boolean).join(" · ") : "";
   const storeInitials = (product.shop_name || store?.store_name || "A").split(/\s+/).filter((word) => word.length > 2).slice(0, 2)
     .map((word) => word[0]?.toUpperCase()).join("") || "A";
-  const availability = availabilityFor(product);
-  const maxQuantity = Math.max(1, maxQuantityFor(product));
+  const availability: Availability = selected ? selected.availability : availabilityFor(product);
+  const maxQuantity = Math.max(1, selected ? selected.max_quantity : maxQuantityFor(product));
+  const shownStock = selected ? selected.stock : product.stock;
   const unavailable = availability === "sold_out" || cartDisabled;
   const adding = pendingCartIds.has(product.id);
   const ownProduct = Boolean(userId && product.shop_id === userId);
@@ -201,7 +264,7 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
   const stockLabel = availability === "sold_out"
     ? "Esgotado no momento"
     : availability === "ready"
-      ? `${product.stock} ${product.stock === 1 ? "unidade a pronta entrega" : "unidades a pronta entrega"}`
+      ? `${shownStock} ${shownStock === 1 ? "unidade a pronta entrega" : "unidades a pronta entrega"}`
       : "Feita especialmente para você";
 
   return <>
@@ -339,7 +402,11 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
             {product.category_name && <span className="product-details-category">· {product.category_name}</span>}
           </p>
           <h2 id={titleId}>{product.name}</h2>
-          <p className="product-details-price">{money.format(Number(product.price))}</p>
+          <p className="product-details-price">
+            {hasVariants && !selected && minPrice !== maxPrice
+              ? <><small>a partir de </small>{money.format(minPrice)}</>
+              : money.format(unitPrice)}
+          </p>
           {Number(product.rating_count) > 0 && (
             <a className="product-details-rating" href={`#${titleId}-avaliacoes`}>
               <StarRating avg={product.rating_avg} count={product.rating_count} />
@@ -361,6 +428,43 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
           </ul>
         </div>
 
+        {hasVariants && (
+          <div className={`pd-block pd-variants${choiceError ? " has-error" : ""}`} id={`${titleId}-opcoes`}>
+            {([1, 2] as const).filter((level) => level === 1 || needsSecond).map((level) => {
+              const values = level === 1 ? level1 : level2;
+              const current = level === 1 ? choice.option1 : choice.option2;
+              const other = level === 1 ? choice.option2 : choice.option1;
+              const name = variationNames[level - 1];
+              return (
+                <fieldset key={level} className="pd-variant-group">
+                  <legend>
+                    {name}{current ? <>: <strong>{current}</strong></> : null}
+                  </legend>
+                  <div className="pd-variant-options">
+                    {values.map((value) => {
+                      const soldOut = optionSoldOut(variants, level, value, other);
+                      const image = level === 1 ? variants.find((variant) => variant.option1 === value && variant.image_url)?.image_url : null;
+                      return (
+                        <button type="button" key={value} onClick={() => choose(level, value)}
+                          className={`pd-variant-option${current === value ? " is-selected" : ""}${soldOut ? " is-sold-out" : ""}${image ? " has-image" : ""}`}
+                          aria-pressed={current === value} disabled={soldOut && current !== value}
+                          title={soldOut ? `${value}: esgotado` : value}>
+                          {image && <OptimizedImage src={image} alt="" width={40} height={50} sizes="32px" />}
+                          <span>{value}</span>
+                          {soldOut && <span className="an-visually-hidden"> (esgotado)</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+              );
+            })}
+            {choiceError && !selected && (
+              <p className="pd-variant-error" role="alert">Escolha {missingChoice || "uma opção"} para continuar.</p>
+            )}
+          </div>
+        )}
+
         <div className="pd-block pd-buy">
           <div className="an-stepper" role="group" aria-label="Quantidade">
             <button type="button" onClick={() => { setQuantity((value) => Math.max(1, value - 1)); setFreight({ loading: false, error: "", options: null }); }}
@@ -376,7 +480,8 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
               {buying ? <LoaderCircle size={18} className="spin" /> : <ArrowRight size={18} />}
               {unavailable ? (availability === "sold_out" ? "Esgotado" : "Indisponível")
                 : buying ? "Abrindo…"
-                  : `${availability === "made_to_order" ? "Encomendar" : "Comprar agora"} · ${money.format(Number(product.price) * quantity)}`}
+                  : hasVariants && !selected ? (availability === "made_to_order" ? "Encomendar" : "Comprar agora")
+                    : `${availability === "made_to_order" ? "Encomendar" : "Comprar agora"} · ${money.format(unitPrice * quantity)}`}
             </button>
             <button type="button" className="an-icon-btn product-details-cart" onClick={() => void add()}
               disabled={unavailable || adding || ownProduct} aria-busy={adding} aria-label="Adicionar ao carrinho" title="Adicionar ao carrinho">

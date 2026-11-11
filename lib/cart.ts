@@ -9,7 +9,9 @@ export function getCartErrorMessage(error: unknown) {
         ? String(error.message)
         : "";
 
-  if (/estoque insuficiente|esgotad|conta está suspensa/i.test(message)) return message;
+  if (/estoque insuficiente|esgotad|conta está suspensa|escolha uma opção/i.test(message)) return message;
+  if (/opção não encontrada|opção escolhida/i.test(message))
+    return "Essa opção da peça não está mais disponível. Escolha outra.";
   if (/indisponível|não encontrado/i.test(message))
     return "Este produto não está mais disponível.";
   if (/login/i.test(message)) return "Entre na sua conta para usar o carrinho.";
@@ -18,11 +20,10 @@ export function getCartErrorMessage(error: unknown) {
   return "Não foi possível atualizar o carrinho. Tente novamente.";
 }
 
-export async function addProductToCart(productId: string, quantity = 1) {
-  const { error } = await getSupabase().rpc("add_to_cart", {
-    p_product_id: productId,
-    p_quantity: quantity,
-  });
+export async function addProductToCart(productId: string, quantity = 1, variantId?: string | null) {
+  const { error } = await getSupabase().rpc("add_to_cart", variantId
+    ? { p_product_id: productId, p_quantity: quantity, p_variant_id: variantId }
+    : { p_product_id: productId, p_quantity: quantity });
 
   if (error) throw new Error(getCartErrorMessage(error));
   notifyCartChanged();

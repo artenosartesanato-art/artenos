@@ -2354,3 +2354,81 @@ html {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- Medidor de força da senha (cadastro, redefinição e perfil) ---------- */
+.password-strength {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+.password-strength-bars {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.password-strength-bars span {
+  height: 6px;
+  border-radius: var(--an-r-pill);
+  background: var(--an-line);
+  transform-origin: left center;
+  transition: background-color 0.25s ease, transform 0.25s ease;
+}
+.password-strength-bars span.is-on {
+  animation: password-bar-fill 0.3s ease-out;
+}
+.password-strength.is-weak .password-strength-bars span.is-on { background: var(--an-erro); }
+.password-strength.is-fair .password-strength-bars span.is-on { background: var(--artenos-argila); }
+.password-strength.is-good .password-strength-bars span.is-on { background: #c08a2d; }
+.password-strength.is-strong .password-strength-bars span.is-on { background: var(--artenos-musgo); }
+@keyframes password-bar-fill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.password-strength-label {
+  margin: 0;
+  font-size: var(--an-fs-xs);
+  font-weight: 700;
+  color: var(--an-text-muted);
+}
+.password-strength.is-weak .password-strength-label { color: var(--an-erro); }
+.password-strength.is-fair .password-strength-label { color: var(--an-argila-texto); }
+.password-strength.is-good .password-strength-label { color: var(--an-alerta); }
+.password-strength.is-strong .password-strength-label { color: var(--an-sucesso); }
+.password-strength-rules {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 4px 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--an-fs-xs);
+  color: var(--an-text-muted);
+}
+.password-strength-rules li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.2s ease;
+}
+.password-strength-rules li.is-ok { color: var(--an-sucesso); }
+.password-rule-mark {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--an-line-strong);
+  border-radius: 50%;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+.password-strength-rules li.is-ok .password-rule-mark {
+  border-color: var(--artenos-musgo);
+  background: var(--artenos-musgo);
+  color: #fff;
+}
+@media (prefers-reduced-motion: reduce) {
+  .password-strength-bars span,
+  .password-strength-bars span.is-on,
+  .password-strength-rules li,
+  .password-rule-mark { animation: none; transition: none; }
+}
