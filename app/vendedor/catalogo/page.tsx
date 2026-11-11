@@ -5,6 +5,7 @@ import {
   Archive,
   CheckCircle2,
   Edit3,
+  Calculator,
   ImagePlus,
   Images,
   Layers,
@@ -32,6 +33,7 @@ import { estimatePackage } from "@/lib/shipping-estimate";
 import { extensionFor, imageUploadOptions } from "@/lib/image-optimizer";
 import { ProductPhotosField, photosFromUrls, releasePhotos, type PhotoSlot } from "@/components/product-photos-field";
 import { EMPTY_VARIATIONS, ProductVariationsField, type VariationsState } from "@/components/product-variations-field";
+import { ProductPricingPanel, type AppliedPricing } from "@/components/product-pricing-panel";
 import {
   buildRows, cleanText, groupsFromSaved, variationTotals, variationsError, type SavedVariant,
 } from "@/lib/product-variations";
@@ -183,6 +185,9 @@ export default function ProductCatalogPage() {
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [optionsSummary, setOptionsSummary] = useState<Record<string, OptionsSummary>>({});
   const [saving, setSaving] = useState(false);
+  // Precificação dentro do cadastro da peça (gaveta lateral).
+  const [pricingOpen, setPricingOpen] = useState(false);
+  const [appliedPricing, setAppliedPricing] = useState<AppliedPricing | null>(null);
   const [changingStatusId, setChangingStatusId] = useState<string | null>(null);
 
   async function loadCatalog(
@@ -303,9 +308,11 @@ export default function ProductCatalogPage() {
     setEditingId(null);
     setForm(EMPTY_FORM);
     setVariations(EMPTY_VARIATIONS);
+    setAppliedPricing(null);
   }
 
   function createProduct() {
+    setAppliedPricing(null);
     resetPhotos();
     setSavedPhotoUrls([]);
     setVariations(EMPTY_VARIATIONS);
@@ -315,6 +322,7 @@ export default function ProductCatalogPage() {
   }
 
   function editProduct(product: Product) {
+    setAppliedPricing(null);
     const initialPhotos = photosFromUrls([product.image_url]);
     resetPhotos(initialPhotos);
     setSavedPhotoUrls(product.image_url ? [product.image_url] : []);
@@ -542,6 +550,9 @@ export default function ProductCatalogPage() {
         .filter((path): path is string => Boolean(path));
       if (removed.length) await supabase.storage.from(STORE_BUCKET).remove(removed);
 
+      // 5) Cálculo de precificação feito no cadastro: vai para o histórico, ligado à peça.
+      if (appliedPricing) await savePricingForProduct(productId, appliedPricing);
+
       playUiSound("success");
       if (!form.active) {
         // Rascunho não aparece para os clientes: deixa isso claro.
@@ -566,7 +577,41 @@ export default function ProductCatalogPage() {
     }
   }
 
+  async function savePricingForProduct(productId: string, pricing: AppliedPricing) {
+    const supabase = getSupabase();
+    const payload = {
+      p_title: form.name.trim().slice(0, 120),
+      p_material_cost: pricing.inputs.materialCost,
+      p_hours_spent: pricing.inputs.hoursSpent,
+      p_hourly_rate: pricing.inputs.hourlyRate,
+      p_extra_cost: pricing.inputs.extraCost,
+      p_operational_cost: pricing.inputs.operationalCost,
+      p_margin_percent: pricing.inputs.marginPercent,
+      p_product_id: productId,
+    };
+    let { error } = await supabase.rpc("save_pricing_calculation", { ...payload, p_payment_method: pricing.paymentMethod });
+    // Banco sem a taxa do Mercado Pago na calculadora (antes de 20261111): versão sem o meio de pagamento.
+    if (error?.code === "PGRST202") ({ error } = await supabase.rpc("save_pricing_calculation", payload));
+    if (error) toast.warning("A peça foi salva, mas o cálculo de preço não entrou no histórico da Precificação.");
+  }
+
+  function applyPricing(result: AppliedPricing) {
+    const price = result.price.toFixed(2);
+    if (hasVariations) {
+      // Mesmo preço em todas as combinações; a loja ajusta cada uma depois, se quiser.
+      const values = { ...variations.values };
+      for (const row of variantRows) values[row.key] = { price, stock: row.stock };
+      setVariations({ ...variations, values });
+    } else {
+      setField("price", price);
+    }
+    setAppliedPricing(result);
+    setPricingOpen(false);
+    toast.success(`Preço de ${money.format(result.price)} aplicado${hasVariations ? " a todas as variações" : ""}.`);
+  }
+
   function closeFormAfterSave() {
+    setAppliedPricing(null);
     resetPhotos();
     setSavedPhotoUrls([]);
     setVariations(EMPTY_VARIATIONS);
@@ -926,6 +971,20 @@ export default function ProductCatalogPage() {
                       </label>
                     </div>
                   )}
+                  <div className={`catalog-pricing-cta${appliedPricing ? " is-applied" : ""}`}>
+                    <Calculator size={18} />
+                    <span>
+                      <strong>{appliedPricing ? `Preço calculado: ${money.format(appliedPricing.price)}` : "Quanto cobrar por esta peça?"}</strong>
+                      <small>
+                        {appliedPricing
+                          ? "Feito com seus custos, tempo, margem e as taxas. Vai para o histórico da Precificação ao salvar."
+                          : "Calcule o preço ideal com materiais, tempo, custos e margem, já com as taxas da Artenós e do Mercado Pago."}
+                      </small>
+                    </span>
+                    <button type="button" onClick={() => setPricingOpen(true)} disabled={saving || optionsLoading}>
+                      {appliedPricing ? "Rever cálculo" : "Calcular preço ideal"}
+                    </button>
+                  </div>
                   <label>
                     <span className="seller-category-label">
                       Categoria
@@ -1151,6 +1210,16 @@ export default function ProductCatalogPage() {
                 </button>
               </footer>
             </form>
+            <ProductPricingPanel
+              open={pricingOpen}
+              onClose={() => setPricingOpen(false)}
+              productId={editingId}
+              productName={form.name}
+              currentPrice={hasVariations ? variantTotals.minPrice : Number(form.price) || 0}
+              variationCount={hasVariations ? variantRows.length : 0}
+              applied={appliedPricing}
+              onApply={applyPricing}
+            />
           </section>
         </div>
       )}

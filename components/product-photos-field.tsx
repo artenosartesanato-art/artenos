@@ -18,6 +18,10 @@ export type PhotoSlot = {
   source: Blob | null;
 };
 
+const formatBytes = (bytes: number) => (bytes >= 1024 * 1024
+  ? `${(bytes / 1024 / 1024).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} MB`
+  : `${Math.max(1, Math.round(bytes / 1024))} KB`);
+
 export const photoSrc = (photo: PhotoSlot) => photo.preview || photo.url || "";
 
 export function photosFromUrls(urls: Array<string | null | undefined>): PhotoSlot[] {
@@ -107,6 +111,12 @@ export function ProductPhotosField({ photos, onChange, disabled = false }: {
             <div className="catalog-photo-frame">
               <img src={photoSrc(photo)} alt={index === 0 ? "Foto de capa da peça" : `Foto ${index + 1} da peça`} />
               {index === 0 && <span className="catalog-photo-badge">Capa</span>}
+              {photo.file && (
+                // Comprimida no navegador antes do envio (lib/image-optimizer.ts).
+                <span className="catalog-photo-size" title="Foto comprimida antes do envio, sem perda visível de qualidade">
+                  Otimizada · {formatBytes(photo.file.size)}
+                </span>
+              )}
             </div>
             <div className="catalog-photo-actions">
               <button type="button" onClick={() => move(index, -1)} disabled={busy || index === 0}
@@ -138,7 +148,7 @@ export function ProductPhotosField({ photos, onChange, disabled = false }: {
       </ol>
       <small>
         Até {MAX_PRODUCT_PHOTOS} fotos · a primeira é a capa da vitrine. Mostre a peça de frente, um detalhe e ela em uso.
-        <br />JPG, PNG, WebP ou foto do celular · você enquadra antes de salvar. A capa é obrigatória para publicar.
+        <br />JPG, PNG, WebP ou foto do celular · você enquadra e a foto é comprimida antes do envio, sem perder qualidade. A capa é obrigatória para publicar.
       </small>
       {crop.element}
     </aside>
