@@ -102,45 +102,180 @@
   font-size: var(--an-fs-md);
   font-weight: 750;
 }
-.public-shop-about {
-  display: grid;
-  grid-template-columns: minmax(200px, 1fr) minmax(0, 2fr);
-  gap: 32px;
+/* ---------- Por trás da loja: seção editorial ----------
+   Cabeçalho centralizado com o fio da marca; a história fica numa coluna de
+   leitura (~64 caracteres), com aspas decorativas e a assinatura da loja. */
+.public-shop-about-wrap {
   margin-top: 44px;
-  padding: clamp(24px, 4vw, 44px);
+}
+.public-shop-about {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 26px;
+  overflow: hidden;
+  padding: clamp(32px, 5vw, 64px) clamp(20px, 5vw, 72px);
+  border: 1px solid color-mix(in srgb, var(--artenos-pessego) 70%, transparent);
   border-radius: var(--an-r-organic);
-  background: var(--an-surface-warm);
+  background:
+    radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--artenos-pessego) 55%, transparent) 0%, transparent 55%),
+    radial-gradient(90% 80% at 100% 100%, color-mix(in srgb, var(--artenos-musgo) 10%, transparent) 0%, transparent 60%),
+    var(--artenos-perola);
+}
+.public-shop-about > * {
+  min-width: 0;
+  max-width: 100%;
+}
+.public-shop-about-head {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  text-align: center;
+}
+.public-shop-about-head .store-eyebrow {
+  margin: 0;
 }
 .public-shop-about h2 {
   margin: 0;
   font: 500 var(--an-fs-3xl) / 1.1 var(--font-display);
+  text-wrap: balance;
+}
+.public-shop-about-thread {
+  width: min(240px, 60vw);
+  height: auto;
+  margin-top: 10px;
+  opacity: 0.85;
 }
 .public-shop-announcement {
   display: flex;
+  align-items: flex-start;
   gap: 10px;
-  margin: 0 0 16px;
-  padding: 12px 14px;
+  width: min(100%, 64ch);
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px solid color-mix(in srgb, var(--artenos-musgo) 30%, transparent);
+  border-left: 4px solid var(--artenos-musgo);
   border-radius: var(--an-r-md);
   background: var(--an-surface);
-  font-weight: 650;
+  line-height: 1.55;
 }
 .public-shop-announcement svg {
   flex: none;
-  margin-top: 3px;
+  margin-top: 4px;
   color: var(--artenos-musgo);
 }
-.public-shop-about > * {
-  min-width: 0;
+.public-shop-announcement strong {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--artenos-musgo);
+  font-size: var(--an-fs-xs);
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
 }
 .public-shop-story,
 .public-shop-announcement span {
   overflow-wrap: anywhere;
 }
-.public-shop-story {
+.public-shop-story-figure {
+  display: grid;
+  gap: 24px;
+  width: min(100%, 64ch);
   margin: 0;
-  font-size: var(--an-fs-lg);
-  line-height: 1.75;
+}
+.public-shop-story {
+  position: relative;
+  margin: 0;
+  padding: 0 0 0 clamp(36px, 5vw, 56px);
+  color: var(--an-text);
+  font: 500 clamp(1.2rem, 1rem + 0.7vw, 1.5rem) / 1.65 var(--font-display);
   white-space: pre-line;
+}
+.public-shop-story::before {
+  content: "“";
+  position: absolute;
+  top: -0.32em;
+  left: -4px;
+  color: var(--artenos-argila);
+  font: 600 clamp(4rem, 3rem + 3vw, 5.5rem) / 1 var(--font-display);
+  opacity: 0.55;
+}
+.public-shop-signature {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-left: clamp(36px, 5vw, 56px);
+}
+.public-shop-signature::before {
+  content: "";
+  width: 28px;
+  height: 1.5px;
+  flex: none;
+  background: var(--artenos-argila);
+}
+.public-shop-signature-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  border: 2px solid var(--an-surface);
+  border-radius: 46% 54% 52% 48%;
+  background: var(--artenos-pessego);
+  color: var(--artenos-marrom);
+  font: 600 1rem / 1 var(--font-display);
+  box-shadow: var(--an-shadow-sm);
+}
+.public-shop-signature-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.public-shop-signature > span {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+.public-shop-signature strong {
+  font-size: var(--an-fs-md);
+}
+.public-shop-signature small {
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-sm);
+}
+.public-shop-story-empty {
+  width: min(100%, 56ch);
+  margin: 0;
+  color: var(--an-text-muted);
+  font-size: var(--an-fs-md);
+  line-height: 1.7;
+  text-align: center;
+}
+.public-shop-values {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 2px 0 0;
+  padding: 18px 0 0;
+  border-top: 1px dashed color-mix(in srgb, var(--artenos-argila) 35%, transparent);
+  list-style: none;
+  width: min(100%, 64ch);
+}
+.public-shop-values li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border: 1px solid var(--an-line);
+  border-radius: var(--an-r-pill);
+  background: var(--an-surface);
+  color: var(--an-text);
+  font-size: var(--an-fs-sm);
+  font-weight: 650;
+}
+.public-shop-values svg {
+  color: var(--artenos-argila);
 }
 .public-shop-products {
   padding-top: 44px;
@@ -191,8 +326,7 @@
     flex-wrap: wrap;
   }
   .public-shop-about {
-    grid-template-columns: 1fr;
-    gap: 14px;
+    gap: 20px;
   }
 }
 @media (max-width: 760px) {
@@ -235,5 +369,20 @@
   .public-shop-reviews {
     grid-template-columns: 1fr;
     gap: 14px;
+  }
+}
+
+@media (max-width: 560px) {
+  .public-shop-story {
+    padding-left: 28px;
+  }
+  .public-shop-story::before {
+    font-size: 3.4rem;
+  }
+  .public-shop-signature {
+    padding-left: 0;
+  }
+  .public-shop-values {
+    justify-content: flex-start;
   }
 }

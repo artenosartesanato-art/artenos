@@ -170,16 +170,44 @@ function PublicStoreContent({ initial }: { initial: PublicStoreInitial | null })
               </div>
             </section>
 
-            <section className="store-container public-shop-about" aria-labelledby="historia-titulo">
-              <div>
-                <p className="store-eyebrow">Por trás da loja</p>
-                <h2 id="historia-titulo">A história de quem faz</h2>
-              </div>
-              <div>
+            <section className="store-container public-shop-about-wrap" aria-labelledby="historia-titulo">
+              <div className="public-shop-about">
+                <header className="public-shop-about-head">
+                  <p className="store-eyebrow">Por trás da loja</p>
+                  <h2 id="historia-titulo">A história de quem faz</h2>
+                  <img className="public-shop-about-thread" src="/brand/fio-continuo.svg" alt="" aria-hidden="true" width={240} height={32} />
+                </header>
+
                 {store.announcement && (
-                  <p className="public-shop-announcement"><Clock3 size={16} /> <span>{store.announcement}</span></p>
+                  <aside className="public-shop-announcement" aria-label="Recado da loja">
+                    <Clock3 size={16} />
+                    <span><strong>Recado da loja</strong>{store.announcement}</span>
+                  </aside>
                 )}
-                <p className="public-shop-story">{store.story || "A loja ainda não publicou a sua história."}</p>
+
+                {store.story?.trim() ? (
+                  <figure className="public-shop-story-figure">
+                    <blockquote className="public-shop-story">{store.story.trim()}</blockquote>
+                    <figcaption className="public-shop-signature">
+                      <StoreAvatar className="public-shop-signature-avatar" artisanId={artisanId} initials={initials(store.store_name)} />
+                      <span>
+                        <strong>{store.store_name}</strong>
+                        <small>{[store.specialty || "Artesanato autoral", location].filter(Boolean).join(" · ")}</small>
+                      </span>
+                    </figcaption>
+                  </figure>
+                ) : (
+                  <p className="public-shop-story-empty">
+                    A loja ainda não contou a sua história. Enquanto isso, conheça as peças abaixo ou mande uma mensagem pelo detalhe de qualquer peça.
+                  </p>
+                )}
+
+                <ul className="public-shop-values" aria-label="Como esta loja trabalha">
+                  <li><Sparkles size={15} /> Feito à mão</li>
+                  <li><Clock3 size={15} /> Produção em até {store.production_time_days} {store.production_time_days === 1 ? "dia" : "dias"}</li>
+                  {store.accepts_custom_orders && !store.vacation_mode && <li><Store size={15} /> Aceita encomendas</li>}
+                  {location && <li><MapPin size={15} /> {location}</li>}
+                </ul>
               </div>
             </section>
 
