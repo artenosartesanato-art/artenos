@@ -60,6 +60,11 @@ async function exportData(request: Request) {
     rows(admin.from('store_reviews').select('artisan_id,rating,comment,status,created_at').eq('client_id', uid).limit(LIMIT)),
   ]);
   const profile = profileRows[0] ?? null;
+  // Em consulta separada: sem a migração da data de nascimento, o resto da exportação segue igual.
+  if (profile) {
+    const [birth] = await rows(admin.from('profiles').select('birth_date').eq('id', uid).limit(1));
+    if (birth?.birth_date) profile.birth_date = birth.birth_date;
+  }
   const isSeller = profile?.account_type === 'artisan';
   const ids = (list: Row[], key: string) => [...new Set(list.map((row) => String(row[key] ?? '')).filter(Boolean))].slice(0, 1000);
 

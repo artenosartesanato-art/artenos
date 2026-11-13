@@ -8,10 +8,11 @@ import { AlertTriangle, Check, Eye, EyeOff, Loader2, LockKeyhole } from "@/compo
 import { checkPassword, PASSWORD_LEVEL_LABEL, PASSWORD_RULES } from "@/lib/password-policy";
 import type { FieldErrors } from "@/lib/registration-validation";
 import { STORE_SPECIALTIES } from "@/lib/store-specialties";
+import { MINIMUM_AGE, maskBirthDate } from "@/lib/birth-date";
 
 export const specialties = STORE_SPECIALTIES;
 export const FIELD_LABELS: Record<string, string> = {
-  fullName: "Nome completo", storeName: "Nome da loja", specialty: "Especialidade", specialtyOther: "Sua especialidade", document: "Documento",
+  fullName: "Nome completo", birthDate: "Data de nascimento", storeName: "Nome da loja", specialty: "Especialidade", specialtyOther: "Sua especialidade", document: "Documento",
   phone: "Telefone", cep: "CEP", address: "Endereço", number: "Número", city: "Cidade", state: "Estado",
   email: "E-mail", password: "Senha", confirmPassword: "Confirmação da senha", story: "História da loja",
   terms: "Termos de Uso",
@@ -47,6 +48,19 @@ export function Field({ name, label, error, hint, wide = false, children }: {
       {hint && <small className="field-hint" id={`${id}-dica`}>{hint}</small>}
       {error && <small className="field-error" id={`${id}-erro`}><AlertTriangle size={13} /> {error}</small>}
     </div>
+  );
+}
+
+/** Data de nascimento (dd/mm/aaaa) do cadastro: a Artenós é só para maiores de 18. */
+export function BirthDateField({ error, onClear }: { error?: string; onClear: (name: string) => void }) {
+  return (
+    <Field name="birthDate" label="Data de nascimento" error={error}
+      hint={`A Artenós é só para maiores de ${MINIMUM_AGE} anos. A data não aparece para outras pessoas.`}>
+      {(props) => (
+        <input {...props} name="birthDate" inputMode="numeric" autoComplete="bday" maxLength={10} placeholder="dd/mm/aaaa"
+          onChange={(event) => { event.currentTarget.value = maskBirthDate(event.currentTarget.value); onClear("birthDate"); }} />
+      )}
+    </Field>
   );
 }
 

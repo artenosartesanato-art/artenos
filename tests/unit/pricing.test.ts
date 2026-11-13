@@ -28,3 +28,26 @@ test("computePricing: mesma conta da página e do painel do produto", async () =
   assert.equal(parsePricingNumber("12,5"), 12.5);
   assert.equal(parsePricingNumber("-3"), 0);
 });
+
+test("custo por item: entra depois do lucro e antes das taxas", async () => {
+  const { computePricing, itemCostSettingsFrom, withItemCost, withoutItemCost } = await import("../../lib/pricing.ts");
+  const inputs = { materialCost: 30, hoursSpent: 2, hourlyRate: 15, extraCost: 0, operationalCost: 0, marginPercent: 40 };
+  // Custo 60 + lucro 24 + item 4 = 88; cartão: 88 / (1 - 12,98%) = 101,13.
+  const result = computePricing(inputs, 8, { pix: 0.99, card: 4.98 }, "card", 4);
+  assert.equal(result.itemCost, 4);
+  assert.equal(result.desiredProfit, 24); // a margem não incide sobre o custo por item
+  assert.equal(result.suggestedPrice, 101.13);
+  assert.equal(computePricing(inputs, 8, { pix: 0.99, card: 4.98 }, "card").suggestedPrice, 96.53);
+  // Sem custo de produção, o custo por item não cria um preço sozinho.
+  const empty = computePricing({ ...inputs, materialCost: 0, hoursSpent: 0 }, 8, null, "card", 4);
+  assert.equal(empty.itemCost, 0);
+  assert.equal(empty.suggestedPrice, 0);
+
+  assert.equal(withItemCost(50, 4), 54);
+  assert.equal(withItemCost(50, 0), 50);
+  assert.equal(withoutItemCost(54, 4), 50);
+  assert.equal(withoutItemCost(3, 4), 0.01);
+  assert.deepEqual(itemCostSettingsFrom({ data: [{ amount: "4.00", catalog_enabled: true }], error: null }), { amount: 4, catalogEnabled: true });
+  assert.deepEqual(itemCostSettingsFrom({ data: { amount: 4, catalog_enabled: null }, error: null }), { amount: 4, catalogEnabled: false });
+  assert.equal(itemCostSettingsFrom({ data: null, error: { code: "PGRST202" } }), null);
+});

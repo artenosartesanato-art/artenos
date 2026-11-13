@@ -1198,6 +1198,37 @@
 .adm-payment-fees {
   margin-top: 18px;
 }
+.adm-item-cost {
+  margin-top: 18px;
+}
+.adm-item-cost-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.adm-item-cost-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.adm-item-cost-state::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.45;
+}
+.adm-item-cost-state.is-on {
+  color: var(--artenos-musgo);
+}
+.adm-item-cost-state.is-on::before {
+  opacity: 1;
+}
 
 /* Celular: filtros numa linha que desliza para o lado (em vez de várias linhas
    de botões empilhados). A borda direita esmaece para indicar que há mais. */

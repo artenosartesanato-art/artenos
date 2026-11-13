@@ -18,7 +18,9 @@ import {
   DEFAULT_PAYMENT_FEES,
   PAYMENT_METHOD_LABEL,
   computePricing,
+  itemCostSettingsFrom,
   parsePricingNumber as toNumber,
+  type ItemCostSettings,
   type PaymentFees,
   type PaymentMethod,
 } from "@/lib/pricing";
@@ -49,6 +51,7 @@ type Calculation = {
   payment_method?: PaymentMethod | null;
   payment_fee_percent?: number | null;
   payment_fee_amount?: number | null;
+  item_cost_amount?: number | null;
   created_at: string;
 };
 
@@ -62,6 +65,7 @@ type PricingForm = {
   operationalCost: string;
   marginPercent: string;
   paymentMethod: PaymentMethod;
+  includeItemCost: boolean;
 };
 
 const EMPTY_FORM: PricingForm = {
@@ -74,6 +78,7 @@ const EMPTY_FORM: PricingForm = {
   operationalCost: "",
   marginPercent: "",
   paymentMethod: "card",
+  includeItemCost: false,
 };
 
 const money = new Intl.NumberFormat("pt-BR", {
@@ -95,6 +100,9 @@ export default function PricingCalculatorPage() {
   // Taxas do Mercado Pago (tela Tarifa do painel). null = migração ainda não
   // rodada: a calculadora segue só com a tarifa da Artenós.
   const [paymentFees, setPaymentFees] = useState<PaymentFees | null>(null);
+  // Custo fixo por item (tela Tarifa do painel). null = migração ainda não
+  // rodada: a calculadora segue sem a opção.
+  const [itemCost, setItemCost] = useState<ItemCostSettings | null>(null);
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [history, setHistory] = useState<Calculation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,11 +118,13 @@ export default function PricingCalculatorPage() {
     const supabase = getSupabase();
 
     try {
-      const [settingsResponse, historyResponse, feesResponse] = await Promise.all([
+      const [settingsResponse, historyResponse, feesResponse, itemCostResponse] = await Promise.all([
         supabase.rpc("get_pricing_calculator_settings"),
         supabase.rpc("list_my_pricing_calculations", { p_limit: 12 }),
         Promise.resolve(supabase.rpc("get_payment_fee_settings")).catch(() => ({ data: null, error: true })),
+        Promise.resolve(supabase.rpc("get_item_cost_settings")).catch(() => ({ data: null, error: true })),
       ]);
+      setItemCost(itemCostSettingsFrom(itemCostResponse));
       const feesRow = (Array.isArray(feesResponse.data) ? feesResponse.data[0] : feesResponse.data) as
         { pix_percent?: number; card_percent?: number } | null;
       setPaymentFees(!feesResponse.error && feesRow
@@ -168,7 +178,8 @@ export default function PricingCalculatorPage() {
     extraCost: toNumber(form.extraCost),
     operationalCost: toNumber(form.operationalCost),
     marginPercent: toNumber(form.marginPercent),
-  }, feePercent, paymentFees, form.paymentMethod), [feePercent, paymentFees, form]);
+  }, feePercent, paymentFees, form.paymentMethod, itemCost && form.includeItemCost ? itemCost.amount : 0),
+  [feePercent, paymentFees, itemCost, form]);
 
   function setField<Key extends keyof PricingForm>(
     key: Key,
@@ -204,6 +215,7 @@ export default function PricingCalculatorPage() {
       operationalCost: String(Number(calculation.operational_cost)),
       marginPercent: String(Number(calculation.margin_percent)),
       paymentMethod: calculation.payment_method === "pix" ? "pix" : "card",
+      includeItemCost: Number(calculation.item_cost_amount) > 0,
     });
     window.requestAnimationFrame(() => {
       formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -238,6 +250,8 @@ export default function PricingCalculatorPage() {
         p_product_id: form.productId || null,
         // Só envia quando o banco já conhece as taxas do Mercado Pago.
         ...(paymentFees ? { p_payment_method: form.paymentMethod } : {}),
+        // Só envia quando o banco já conhece o custo por item.
+        ...(itemCost ? { p_include_item_cost: form.includeItemCost } : {}),
       };
       const response = editingId
         ? await getSupabase().rpc("update_my_pricing_calculation", {
@@ -431,6 +445,20 @@ export default function PricingCalculatorPage() {
               </div>
             </fieldset>
           )}
+
+          {itemCost && (
+            <label className={`pricing-item-cost${form.includeItemCost ? " is-selected" : ""}`}>
+              <input type="checkbox" checked={form.includeItemCost}
+                onChange={(event) => setField("includeItemCost", event.target.checked)} />
+              <span>
+                <strong>Incluir o custo por item de {money.format(itemCost.amount)}</strong>
+                <small>
+                  Valor fixo por peça vendida. Marcado, ele é somado ao custo e ao lucro antes das taxas,
+                  para o preço sugerido já cobrir esse valor.
+                </small>
+              </span>
+            </label>
+          )}
         </section>
 
         <aside className="pricing-summary" aria-live="polite">
@@ -448,6 +476,9 @@ export default function PricingCalculatorPage() {
               value={values.productionCost}
               strong
             />
+            {values.itemCost > 0 && (
+              <SummaryRow label="Custo por item" value={values.itemCost} />
+            )}
             <SummaryRow
               label={`Tarifa da Artenós${feePercent === null ? "" : ` (${percent(feePercent)})`}`}
               value={values.platformFeeAmount}
@@ -487,7 +518,7 @@ export default function PricingCalculatorPage() {
           )}
           <p className="pricing-formula-note">
             As taxas são porcentagens do preço final da venda: preço = (custo +
-            lucro) ÷ (1 − taxas). O frete não entra neste cálculo, mas o Mercado
+            lucro{values.itemCost > 0 ? " + custo por item" : ""}) ÷ (1 − taxas). O frete não entra neste cálculo, mas o Mercado
             Pago também cobra a taxa sobre ele. Parcelamento sem juros tem custo
             extra, que não está incluído aqui.
           </p>

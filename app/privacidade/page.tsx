@@ -74,7 +74,7 @@ export default function PrivacyPage() {
       <section id="dados">
         <h2>3. Dados que coletamos</h2>
         <h3>Ao criar uma conta de comprador</h3>
-        <p>Nome completo, e-mail, CPF ou CNPJ, telefone, CEP e endereço (rua, número, cidade e estado), foto de perfil (opcional) e a data de aceite dos Termos.</p>
+        <p>Nome completo, data de nascimento (para confirmar que você tem 18 anos ou mais), e-mail, CPF ou CNPJ, telefone, CEP e endereço (rua, número, cidade e estado), foto de perfil (opcional) e a data de aceite dos Termos.</p>
         <h3>Ao cadastrar uma loja</h3>
         <p>Os dados acima e também nome da loja, especialidade, história da loja, capa e foto, CEP de origem dos envios, prazos de produção e a chave Pix para receber os repasses.</p>
         <h3>Ao comprar</h3>

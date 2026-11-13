@@ -236,7 +236,9 @@ checagens as (
   union all
   select '20261111 taxa_pagamento_calculadora', 'função', 'taxa do Mercado Pago na calculadora',
     case when to_regprocedure('public.get_payment_fee_settings()') is null
-           or to_regprocedure('public.save_pricing_calculation(text,numeric,numeric,numeric,numeric,numeric,numeric,uuid,text)') is null
+           -- 20261115 troca a versão de 9 argumentos pela de 10 (custo por item).
+           or (to_regprocedure('public.save_pricing_calculation(text,numeric,numeric,numeric,numeric,numeric,numeric,uuid,text)') is null
+               and to_regprocedure('public.save_pricing_calculation(text,numeric,numeric,numeric,numeric,numeric,numeric,uuid,text,boolean)') is null)
          then 'FALTA: rode migrations/20261111_taxa_pagamento_calculadora.sql' else 'OK' end
   union all
   select '20261112 notificacoes_lidas_por_conversa', 'função', 'contador de mensagens zera ao abrir a conversa',
@@ -250,11 +252,23 @@ checagens as (
            or to_regprocedure('public.start_buy_now(uuid,integer,uuid)') is null
          then 'FALTA: rode migrations/20261113_fotos_variacoes_produto.sql' else 'OK' end
   union all
+  select '20261114 data_nascimento', 'função', 'data de nascimento e idade mínima de 18 anos',
+    case when to_regprocedure('public.get_my_age_gate()') is null
+           or to_regprocedure('public.set_my_birth_date(date)') is null
+           or not exists (select 1 from pg_trigger where tgname = 'profile_birth_date_on_insert' and tgrelid = 'public.profiles'::regclass)
+         then 'FALTA: rode migrations/20261114_data_nascimento.sql' else 'OK' end
+  union all
+  select '20261115 custo_por_item', 'função', 'custo fixo por item na calculadora e no cadastro da peça',
+    case when to_regprocedure('public.get_item_cost_settings()') is null
+           or to_regprocedure('public.set_my_product_item_cost(uuid,boolean)') is null
+           or to_regprocedure('public.save_pricing_calculation(text,numeric,numeric,numeric,numeric,numeric,numeric,uuid,text,boolean)') is null
+         then 'FALTA: rode migrations/20261115_custo_por_item.sql' else 'OK' end
+  union all
   -- Sobrecargas duplicadas deixam chamadas ambíguas (acontece ao rodar um script antigo depois de um novo).
   select 'ordem dos scripts', 'sobrecarga', p.proname,
     case when count(*) > 1 then 'ATENÇÃO: ' || count(*) || ' versões; rode de novo os scripts a partir do 06' else 'OK' end
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-  where n.nspname = 'public' and p.proname in ('browse_storefront_products', 'get_cart_shipping_packages', 'list_cart', 'list_order_item_details', 'add_to_cart', 'start_buy_now')
+  where n.nspname = 'public' and p.proname in ('browse_storefront_products', 'get_cart_shipping_packages', 'list_cart', 'list_order_item_details', 'add_to_cart', 'start_buy_now', 'save_pricing_calculation', 'update_my_pricing_calculation', 'pricing_compute')
   group by p.proname
 )
 select status, script, tipo, item

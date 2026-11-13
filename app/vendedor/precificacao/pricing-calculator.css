@@ -602,6 +602,49 @@
   font-size: 11px;
 }
 
+/* Custo fixo por item: a loja escolhe se entra na conta */
+.pricing-inputs label.pricing-item-cost {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--artenos-pessego);
+  border-radius: 11px;
+  background: #fff;
+  cursor: pointer;
+}
+.pricing-inputs label.pricing-item-cost.is-selected {
+  border-color: var(--artenos-marrom);
+  box-shadow: 0 0 0 1px var(--artenos-marrom);
+}
+.pricing-inputs label.pricing-item-cost input[type="checkbox"] {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  margin: 2px 0 0;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  accent-color: var(--artenos-marrom);
+}
+.pricing-inputs label.pricing-item-cost > span {
+  display: grid;
+  gap: 2px;
+}
+.pricing-inputs label.pricing-item-cost strong {
+  color: var(--artenos-marrom);
+  font-size: 13px;
+}
+.pricing-inputs label.pricing-item-cost small {
+  margin: 0;
+  color: var(--an-argila-texto);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 /* Com o preço sugerido: quanto sai e quanto fica, no Pix e no cartão */
 .pricing-by-method {
   margin-top: 14px;
