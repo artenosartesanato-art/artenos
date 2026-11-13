@@ -70,4 +70,4 @@ Contas antigas continuam entrando com a senha atual; a regra vale ao criar ou tr
 - Testes locais: `psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/data_nascimento.sql` e
   `psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/custo_por_item.sql`.
 - Detalhes, limites e como corrigir uma data digitada errada: [`docs/IDADE-MINIMA.md`](IDADE-MINIMA.md).
-- O custo por item nasce **desativado** no cadastro de peças: ative em **Administração → Tarifa → Custo por item**.
+- O custo por item nasce **desativado** (a loja escolhe no cadastro da peça se soma o valor). Ao ativar em **Administração → Tarifa → Custo por item**, ele passa a ser **obrigatório** em toda peça cadastrada ou editada — a loja não consegue desmarcar.

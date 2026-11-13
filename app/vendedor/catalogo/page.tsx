@@ -416,10 +416,12 @@ export default function ProductCatalogPage() {
   const variantRows = variations.enabled ? buildRows(variations.groups, variations.values) : [];
   const variantTotals = variationTotals(variantRows);
   const hasVariations = variations.enabled && variations.groups.length > 0;
+  // Com a opção ativada pela administração, o custo por item é obrigatório em
+  // toda peça (caixa marcada e travada); desativada, a loja escolhe.
+  const itemCostRequired = Boolean(itemCostSettings?.catalogEnabled);
+  const itemCostChecked = itemCostRequired || form.itemCost;
   // Custo por item desta peça: o valor já gravado nela ou o configurado hoje.
-  const activeItemCost = form.itemCost ? editingItemCost || itemCostSettings?.amount || 0 : 0;
-  // A administração desligou a opção: só quem já tem o custo pode mantê-lo (ou retirar).
-  const itemCostLocked = !itemCostSettings?.catalogEnabled && editingItemCost === 0;
+  const activeItemCost = itemCostChecked ? editingItemCost || itemCostSettings?.amount || 0 : 0;
   const basePrice = hasVariations ? variantTotals.minPrice : Number(form.price) || 0;
 
   async function saveProduct(event: React.FormEvent<HTMLFormElement>) {
@@ -486,14 +488,16 @@ export default function ProductCatalogPage() {
       return toast.error("Adicione pelo menos a foto de capa antes de publicar.");
 
     const supabase = getSupabase();
-    // Custo por item sendo ligado agora: confere se a administração não desligou a opção nesse meio-tempo.
-    if (activeItemCost > 0 && editingItemCost === 0) {
+    // Confere se a administração não mudou a regra do custo por item nesse meio-tempo.
+    if (itemCostSettings) {
       const current = itemCostSettingsFrom(
         await Promise.resolve(supabase.rpc("get_item_cost_settings")).catch(() => ({ data: null, error: true })));
-      if (!current?.catalogEnabled) {
+      if (current && current.catalogEnabled !== itemCostSettings.catalogEnabled) {
         setItemCostSettings(current);
-        setField("itemCost", false);
-        return toast.error("O custo por item foi desativado pela administração da Artenós. Confira o preço e salve de novo.");
+        if (!current.catalogEnabled) setField("itemCost", editingItemCost > 0);
+        return toast.error(current.catalogEnabled
+          ? "A administração da Artenós tornou o custo por item obrigatório. Confira o preço e salve de novo."
+          : "A administração da Artenós liberou a escolha do custo por item. Confira o preço e salve de novo.");
       }
     }
     const productId = editingId || crypto.randomUUID();
@@ -1037,12 +1041,12 @@ export default function ProductCatalogPage() {
                     </div>
                   )}
                   {itemCostSettings && (
-                    <div className={`catalog-item-cost${form.itemCost ? " is-on" : ""}${itemCostLocked ? " is-locked" : ""}`}>
+                    <div className={`catalog-item-cost${itemCostChecked ? " is-on" : ""}${itemCostRequired ? " is-locked" : ""}`}>
                       <label>
                         <input
                           type="checkbox"
-                          checked={form.itemCost}
-                          disabled={itemCostLocked || saving || optionsLoading}
+                          checked={itemCostChecked}
+                          disabled={itemCostRequired || saving || optionsLoading}
                           onChange={(event) => setField("itemCost", event.target.checked)}
                         />
                         <span>
@@ -1050,18 +1054,14 @@ export default function ProductCatalogPage() {
                             Somar o custo por item de {money.format(editingItemCost || itemCostSettings.amount)} ao preço
                           </strong>
                           <small>
-                            {itemCostLocked
-                              ? "Opção desativada pela administração da Artenós no momento."
-                              : !form.itemCost
+                            {itemCostRequired ? "Obrigatório pela administração da Artenós. " : ""}
+                            {!itemCostChecked
                                 ? "Marque para a vitrine mostrar o seu preço mais esse valor fixo por item."
                                 : hasVariations
                                   ? `Na vitrine, cada variação aparece com ${money.format(activeItemCost)} a mais que o preço da tabela.`
                                   : basePrice > 0
                                     ? `Preço na vitrine: ${money.format(withItemCost(basePrice, activeItemCost))} (${money.format(basePrice)} + ${money.format(activeItemCost)} de custo por item).`
                                     : "Informe o preço para ver quanto aparece na vitrine."}
-                            {form.itemCost && editingItemCost > 0 && !itemCostSettings.catalogEnabled
-                              ? " A administração desativou a opção: se desmarcar e salvar, não será possível marcar de novo por enquanto."
-                              : ""}
                           </small>
                         </span>
                       </label>

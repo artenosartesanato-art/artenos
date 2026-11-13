@@ -43,49 +43,45 @@ begin
   select * into r from public.list_my_pricing_calculations(5) where id = v_id;
   assert r.suggested_price = 0 and r.item_cost_amount = 0, 'sem custo de produção';
 
-  -- Catálogo: com a opção desligada, a loja não soma o custo à peça.
-  failed := false;
-  begin perform public.set_my_product_item_cost('00000000-0000-0000-0000-00000000f0a1', true);
-  exception when others then failed := sqlerrm like '%desativado%'; end;
-  assert failed, 'opção bloqueada pela administração';
+  -- Catálogo: com a opção desligada, a loja escolhe (liga e retira à vontade).
+  assert public.set_my_product_item_cost('00000000-0000-0000-0000-00000000f0a1', true) = 4, 'loja liga com a opção desligada';
+  assert public.set_my_product_item_cost('00000000-0000-0000-0000-00000000f0a1', false) = 0, 'loja retira com a opção desligada';
+  assert (select count(*) from public.list_my_product_item_costs()) = 0, 'sem custo depois de retirar';
   -- A loja não liga a opção.
   failed := false;
   begin perform public.admin_set_item_cost_catalog_enabled(true);
   exception when others then failed := true; end;
   assert failed, 'loja não altera a configuração';
 
-  -- A proprietária liga.
+  -- A proprietária liga: o custo passa a ser obrigatório.
   perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000f2', true);
   assert public.admin_set_item_cost_catalog_enabled(true), 'ativar';
 
   perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000f1', true);
-  assert (select catalog_enabled from public.get_item_cost_settings()), 'opção liberada';
+  assert (select catalog_enabled from public.get_item_cost_settings()), 'opção ativada';
   assert public.set_my_product_item_cost('00000000-0000-0000-0000-00000000f0a1', true) = 4, 'peça com custo por item';
   assert (select count(*) from public.list_my_product_item_costs()) = 1, 'lista da loja';
+  failed := false;
+  begin perform public.set_my_product_item_cost('00000000-0000-0000-0000-00000000f0a1', false);
+  exception when others then failed := sqlerrm like '%obrigatório%'; end;
+  assert failed, 'não retira com a opção ativada';
+  assert (select count(*) from public.list_my_product_item_costs()) = 1, 'custo continua na peça';
 
   -- Outra loja não mexe na peça alheia nem enxerga o custo.
   perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000f3', true);
   failed := false;
-  begin perform public.set_my_product_item_cost('00000000-0000-0000-0000-00000000f0a1', false);
-  exception when others then failed := true; end;
+  begin perform public.set_my_product_item_cost('00000000-0000-0000-0000-00000000f0a1', true);
+  exception when others then failed := sqlerrm like '%não encontrado%'; end;
   assert failed, 'peça de outra loja';
   assert (select count(*) from public.list_my_product_item_costs()) = 0, 'lista só da própria loja';
 
-  -- A proprietária desliga: quem já tem mantém (e pode retirar), mas ninguém liga de novo.
+  -- A proprietária desliga: a loja volta a escolher.
   perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000f2', true);
   assert not public.admin_set_item_cost_catalog_enabled(false), 'desativar';
   perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000f1', true);
   assert public.set_my_product_item_cost('00000000-0000-0000-0000-00000000f0a1', true) = 4, 'peça que já tinha mantém';
-  failed := false;
-  begin perform public.set_my_product_item_cost('00000000-0000-0000-0000-00000000f0a2', true);
-  exception when others then failed := true; end;
-  assert failed, 'peça nova não liga com a opção desligada';
   assert public.set_my_product_item_cost('00000000-0000-0000-0000-00000000f0a1', false) = 0, 'retirar';
-  assert (select count(*) from public.list_my_product_item_costs()) = 0, 'sem custo depois de retirar';
-  failed := false;
-  begin perform public.set_my_product_item_cost('00000000-0000-0000-0000-00000000f0a1', true);
-  exception when others then failed := true; end;
-  assert failed, 'não liga de novo com a opção desligada';
+  assert public.set_my_product_item_cost('00000000-0000-0000-0000-00000000f0a2', true) = 4, 'liga em outra peça';
 end $$;
 
 select 'ok: custo_por_item' as resultado;

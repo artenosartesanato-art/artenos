@@ -2,9 +2,9 @@
 --   * Calculadora de precificação: a loja escolhe (caixa de seleção) se o custo
 --     por item entra na conta. Ele é somado ao custo + lucro antes das taxas:
 --     preço = (custo + lucro + custo por item) / (1 - (tarifa + taxa de pagamento)/100).
---   * Cadastro da peça (catálogo): a loja pode somar o custo por item ao preço
---     da vitrine, mas só quando a administração libera (tela Tarifa). Com a
---     opção desligada, a caixa fica bloqueada no cadastro da peça.
+--   * Cadastro da peça (catálogo): com a opção ativada pela administração (tela
+--     Tarifa), o custo por item é obrigatório (a caixa fica marcada e a loja não
+--     pode retirar). Com a opção desligada, a loja escolhe se soma o custo.
 --   * O valor somado fica guardado por peça (product_item_costs): o preço salvo
 --     em products/product_variants já inclui o custo, e o cadastro mostra o
 --     preço da loja separado ao editar.
@@ -58,8 +58,8 @@ revoke all on function public.admin_set_item_cost_catalog_enabled(boolean) from 
 grant execute on function public.admin_set_item_cost_catalog_enabled(boolean) to authenticated;
 
 -- 2) Custo por item da peça (cadastro no catálogo) --------------------------------
--- Ligar exige a opção liberada pela administração; peça que já tem o custo
--- continua com ele (e pode retirar) mesmo depois de a opção ser desligada.
+-- Opção ativada pela administração: o custo é obrigatório (não pode retirar).
+-- Opção desligada: a loja liga ou retira à vontade.
 create or replace function public.set_my_product_item_cost(p_product_id uuid, p_enabled boolean)
 returns numeric language plpgsql security definer set search_path = '' as $$
 declare v_current numeric; v_setting public.platform_pricing_settings;
@@ -69,14 +69,17 @@ begin
     raise exception 'Produto não encontrado';
   end if;
   select c.amount into v_current from public.product_item_costs c where c.product_id = p_product_id;
+  select * into v_setting from public.platform_pricing_settings where id = 1;
   if not coalesce(p_enabled, false) then
+    if coalesce(v_setting.item_cost_catalog_enabled, false) then
+      raise exception 'O custo por item é obrigatório pela administração da Artenós';
+    end if;
     delete from public.product_item_costs where product_id = p_product_id;
     return 0;
   end if;
   if v_current is not null then return v_current; end if;
-  select * into v_setting from public.platform_pricing_settings where id = 1;
-  if not coalesce(v_setting.item_cost_catalog_enabled, false) or coalesce(v_setting.item_cost_amount, 0) <= 0 then
-    raise exception 'O custo por item está desativado pela administração da Artenós';
+  if coalesce(v_setting.item_cost_amount, 0) <= 0 then
+    raise exception 'O custo por item não está configurado';
   end if;
   insert into public.product_item_costs (product_id, amount) values (p_product_id, v_setting.item_cost_amount);
   return v_setting.item_cost_amount;

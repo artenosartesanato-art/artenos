@@ -103,8 +103,8 @@ export default function PlatformFeePage() {
     if (!owner || savingItemCost || !itemCost) return;
     const next = !itemCost.catalogEnabled;
     if (!window.confirm(next
-      ? `Ativar o custo por item? As lojas poderão somar ${brl(itemCost.amount)} ao preço ao cadastrar ou editar uma peça.`
-      : "Desativar o custo por item? A opção fica bloqueada no cadastro de peças. As peças que já têm o custo somado continuam com o preço atual.")) return;
+      ? `Ativar o custo por item? ${brl(itemCost.amount)} passa a ser somado obrigatoriamente ao preço de toda peça cadastrada ou editada, sem a loja poder retirar.`
+      : "Desativar o custo por item? A loja passa a escolher no cadastro da peça se soma o valor. As peças que já têm o custo somado continuam com o preço atual.")) return;
     setSavingItemCost(true);
     const { error: saveError } = await getSupabase().rpc("admin_set_item_cost_catalog_enabled", { p_enabled: next });
     setSavingItemCost(false);
@@ -114,8 +114,8 @@ export default function PlatformFeePage() {
     }
     setItemCost({ ...itemCost, catalogEnabled: next });
     toast.success(next
-      ? "Custo por item ativado: a opção já aparece liberada no cadastro de peças."
-      : "Custo por item desativado: a opção fica bloqueada no cadastro de peças.");
+      ? "Custo por item ativado: agora é obrigatório no cadastro de peças."
+      : "Custo por item desativado: a loja escolhe no cadastro de peças.");
   }
 
   const preview = Number(fee.replace(",", "."));
@@ -205,14 +205,15 @@ export default function PlatformFeePage() {
             <h2 id="custo-item-titulo"><Package size={18} /> Custo por item</h2>
             <p className="adm-note">
               <span>
-                Valor fixo de <strong>{brl(itemCost.amount)}</strong> por peça. Com a opção ativada, a loja pode marcar no
-                cadastro da peça (Catálogo) para somar esse valor ao preço da vitrine; desativada, a caixa fica bloqueada.
+                Valor fixo de <strong>{brl(itemCost.amount)}</strong> por peça. Com a opção ativada, o valor é somado
+                obrigatoriamente ao preço da vitrine de toda peça cadastrada ou editada no Catálogo (a loja não pode
+                desmarcar); desativada, a loja escolhe se marca a caixa para somar o valor.
                 Na calculadora de precificação a loja sempre pode escolher se inclui o custo na conta.
               </span>
             </p>
             <div className="adm-item-cost-row">
               <span className={`adm-item-cost-state${itemCost.catalogEnabled ? " is-on" : ""}`} role="status">
-                {itemCost.catalogEnabled ? "Ativado no cadastro de peças" : "Desativado no cadastro de peças"}
+                {itemCost.catalogEnabled ? "Obrigatório no cadastro de peças" : "Opcional no cadastro de peças (a loja escolhe)"}
               </span>
               {owner ? (
                 <button type="button" className="adm-btn" role="switch" aria-checked={itemCost.catalogEnabled}
