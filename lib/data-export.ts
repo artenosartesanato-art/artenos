@@ -90,11 +90,14 @@ export function buildExport(input: ExportInput, now = new Date()): ExportResult 
     name: "Dados pessoais",
     columns: [
       { key: "nome", header: "Nome" }, { key: "email", header: "E-mail" }, { key: "telefone", header: "Telefone" },
+      { key: "nascimento", header: "Data de nascimento" },
       { key: "documento", header: "CPF/CNPJ" }, { key: "tipo", header: "Tipo de conta" }, { key: "cadastro", header: "Cadastro em", type: "date" },
       { key: "comunicacao", header: "Comunicações", type: "long" },
     ],
     rows: [{
       nome: str(profile.full_name), email: str(profile.email) || input.email, telefone: str(profile.phone),
+      // Texto dd/mm/aaaa (data sem hora: não passa pela conversão de fuso das outras datas).
+      nascimento: str(profile.birth_date).replace(/^(\d{4})-(\d{2})-(\d{2}).*$/, "$3/$2/$1"),
       documento: maskDocument(profile.document), tipo: isSeller ? "Loja" : "Comprador", cadastro: profile.created_at ?? null,
       comunicacao: "Só e-mails de serviço (pedidos e conta). A Artenós não envia publicidade.",
     }],

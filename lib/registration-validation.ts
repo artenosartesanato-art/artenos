@@ -6,6 +6,7 @@ import { meaningfulTextError } from "@/lib/text-quality";
 import { findBlockedTerm } from "@/lib/moderation";
 import { passwordPolicyError } from "@/lib/password-policy";
 import { OTHER_SPECIALTY, resolveSpecialty, specialtyError } from "@/lib/store-specialties";
+import { birthDateError } from "@/lib/birth-date";
 
 export type FieldErrors = Record<string, string>;
 const text = (value: unknown) => String(value ?? "").trim();
@@ -43,6 +44,9 @@ export function validateNewPassword(values: Record<string, unknown>): FieldError
  */
 function validateProfileFields(values: Record<string, unknown>, type: "client" | "artisan", errors: FieldErrors) {
   if (text(values.fullName).length < 3) errors.fullName = "Informe seu nome completo.";
+  // Idade mínima de 18 anos (o banco confere de novo ao criar o profile).
+  const birthProblem = birthDateError(values.birthDate);
+  if (birthProblem) errors.birthDate = birthProblem;
   if (type === "artisan") {
     if (!text(values.storeName)) errors.storeName = "Informe o nome da sua loja.";
     const choice = text(values.specialty);
@@ -97,6 +101,7 @@ export function validateCompletion(values: Record<string, unknown>, type: "clien
 
 /** Associa uma mensagem do servidor ao campo correspondente, quando possível. */
 export function fieldForServerMessage(message: string): string | null {
+  if (/nascimento|18 anos/i.test(message)) return "birthDate";
   if (/cpf|cnpj/i.test(message)) return "document";
   if (/e-mail|email/i.test(message)) return "email";
   if (/telefone/i.test(message)) return "phone";

@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { AlertTriangle, HandHeart, Loader2, LogOut, Mail, ShieldCheck, ShoppingBag, Store } from "@/components/icons";
-import { AddressFields, ErrorSummary, Field, maskDocument, maskPhone, specialties } from "@/components/auth-fields";
+import { AddressFields, BirthDateField, ErrorSummary, Field, maskDocument, maskPhone, specialties } from "@/components/auth-fields";
 import { GoogleLogo } from "@/components/google-button";
 import { getSupabase } from "@/lib/supabase";
 import { endSession } from "@/lib/session";
@@ -13,6 +13,7 @@ import { fieldForServerMessage, validateCompletion, type FieldErrors } from "@/l
 import { safeReturnPath } from "@/lib/navigation";
 import { OTHER_SPECIALTY, SPECIALTY_MAX, resolveSpecialty } from "@/lib/store-specialties";
 import { StoryChecklist } from "@/components/story-checklist";
+import { checkBirthDate } from "@/lib/birth-date";
 import "../storefront.css";
 
 type Account = { email: string; name: string; avatar: string | null; viaGoogle: boolean };
@@ -95,6 +96,18 @@ function CompleteSignup() {
     setErrors({});
     setPending(assisted ? "assisted" : "standard");
     try {
+      // A data de nascimento vai nos metadados da conta, como no cadastro com
+      // e-mail: o banco copia para o profile e recusa menores de 18.
+      const birth = checkBirthDate(values.birthDate);
+      if (!birth.ok) {
+        setErrors({ birthDate: birth.message });
+        return;
+      }
+      const { error: birthError } = await getSupabase().auth.updateUser({ data: { birth_date: birth.iso } });
+      if (birthError) {
+        setErrors({ _form: "Não foi possível salvar sua data de nascimento agora. Tente novamente em instantes." });
+        return;
+      }
       // Validado de novo no banco (complete_oauth_signup); o e-mail vem da conta.
       const { data, error } = await getSupabase().rpc("complete_oauth_signup", {
         p_account_type: type,
@@ -202,6 +215,7 @@ function CompleteSignup() {
                 {(props) => <input {...props} name="fullName" autoComplete="name" defaultValue={account.name}
                   placeholder="Seu nome e sobrenome" onInput={() => clear("fullName")} />}
               </Field>
+              <BirthDateField error={errors.birthDate} onClear={clear} />
               {type === "artisan" && (
                 <>
                   <Field name="storeName" label="Nome da loja" error={errors.storeName}>

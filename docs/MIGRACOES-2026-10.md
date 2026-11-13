@@ -53,3 +53,21 @@ for t in disponibilidade_estoque moderacao_chat comprar_agora avaliacoes status_
 fora do site, no Supabase marque **Authentication → Providers → Email → Password requirements:
 "Lowercase, uppercase letters, digits and symbols"** e **Minimum password length: 8**.
 Contas antigas continuam entrando com a senha atual; a regra vale ao criar ou trocar a senha.
+
+## Novembro/2026 — idade mínima (18 anos) e custo por item
+
+| Arquivo | O que faz |
+|---|---|
+| `supabase/migrations/20261114_data_nascimento.sql` | Data de nascimento no cadastro (cliente e loja), bloqueio de menores de 18 e pedido da data, no próximo acesso, para quem já tinha conta |
+| `supabase/migrations/20261115_custo_por_item.sql` | Custo fixo por item (R$ 4,00): caixa de seleção na calculadora e no cadastro da peça, com liga/desliga na tela Tarifa do painel |
+
+- Rode as duas **depois** de `20261113_fotos_variacoes_produto.sql`, nessa ordem. Podem ser repetidas.
+- Pode rodar antes de publicar o site: a versão antiga do site continua funcionando (cadastros sem a
+  data nascem normalmente e a pessoa informa a data no primeiro acesso depois da publicação).
+- Não rode `20261111_taxa_pagamento_calculadora.sql` de novo depois da `20261115`: ela recriaria as
+  versões antigas de `save_pricing_calculation`/`update_my_pricing_calculation` e as chamadas ficariam
+  ambíguas (`validar_migracoes.sql` avisa em "ordem dos scripts"; a correção é rodar a `20261115` de novo).
+- Testes locais: `psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/data_nascimento.sql` e
+  `psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/custo_por_item.sql`.
+- Detalhes, limites e como corrigir uma data digitada errada: [`docs/IDADE-MINIMA.md`](IDADE-MINIMA.md).
+- O custo por item nasce **desativado** no cadastro de peças: ative em **Administração → Tarifa → Custo por item**.

@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Percent, Save } from "@/components/icons";
+import { Loader2, Package, Percent, Save } from "@/components/icons";
 import { useAdmin } from "@/components/admin-shell";
 import { AdminPageHead, LoadState, friendlyError } from "@/components/admin-ui";
 import { getSupabase } from "@/lib/supabase";
 import { brl, formatDate } from "@/lib/admin";
-import { feeBreakdown } from "@/lib/pricing";
+import { feeBreakdown, itemCostSettingsFrom, type ItemCostSettings } from "@/lib/pricing";
 
 export default function PlatformFeePage() {
   const { account } = useAdmin();
@@ -23,15 +23,20 @@ export default function PlatformFeePage() {
   const [card, setCard] = useState("");
   const [savedFees, setSavedFees] = useState<{ pix: number; card: number } | null>(null);
   const [savingFees, setSavingFees] = useState(false);
+  // Custo fixo por item: liga/desliga a opção no cadastro de peças das lojas.
+  const [itemCost, setItemCost] = useState<ItemCostSettings | null>(null);
+  const [savingItemCost, setSavingItemCost] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     const supabase = getSupabase();
-    const [{ data, error: loadError }, fees] = await Promise.all([
+    const [{ data, error: loadError }, fees, itemCostResponse] = await Promise.all([
       supabase.rpc("get_admin_platform_fee"),
       Promise.resolve(supabase.rpc("get_payment_fee_settings")).catch(() => ({ data: null, error: true })),
+      Promise.resolve(supabase.rpc("get_item_cost_settings")).catch(() => ({ data: null, error: true })),
     ]);
+    setItemCost(itemCostSettingsFrom(itemCostResponse));
     const feesRow = (Array.isArray(fees.data) ? fees.data[0] : fees.data) as { pix_percent?: number; card_percent?: number } | null;
     if (!fees.error && feesRow) {
       const next = { pix: Number(feesRow.pix_percent), card: Number(feesRow.card_percent) };
@@ -92,6 +97,25 @@ export default function PlatformFeePage() {
     }
     setSavedFees({ pix: pixValue, card: cardValue });
     toast.success("Taxas atualizadas. A calculadora das lojas já usa os novos valores.");
+  }
+
+  async function toggleItemCost() {
+    if (!owner || savingItemCost || !itemCost) return;
+    const next = !itemCost.catalogEnabled;
+    if (!window.confirm(next
+      ? `Ativar o custo por item? As lojas poderão somar ${brl(itemCost.amount)} ao preço ao cadastrar ou editar uma peça.`
+      : "Desativar o custo por item? A opção fica bloqueada no cadastro de peças. As peças que já têm o custo somado continuam com o preço atual.")) return;
+    setSavingItemCost(true);
+    const { error: saveError } = await getSupabase().rpc("admin_set_item_cost_catalog_enabled", { p_enabled: next });
+    setSavingItemCost(false);
+    if (saveError) {
+      toast.error(friendlyError(saveError, "Não foi possível alterar o custo por item."));
+      return;
+    }
+    setItemCost({ ...itemCost, catalogEnabled: next });
+    toast.success(next
+      ? "Custo por item ativado: a opção já aparece liberada no cadastro de peças."
+      : "Custo por item desativado: a opção fica bloqueada no cadastro de peças.");
   }
 
   const preview = Number(fee.replace(",", "."));
@@ -175,6 +199,31 @@ export default function PlatformFeePage() {
               </button>
             ) : <p className="adm-note">Somente a proprietária pode alterar as taxas.</p>}
           </form>
+        ) : null}
+        {itemCost ? (
+          <section className="adm-card adm-form adm-item-cost" aria-labelledby="custo-item-titulo">
+            <h2 id="custo-item-titulo"><Package size={18} /> Custo por item</h2>
+            <p className="adm-note">
+              <span>
+                Valor fixo de <strong>{brl(itemCost.amount)}</strong> por peça. Com a opção ativada, a loja pode marcar no
+                cadastro da peça (Catálogo) para somar esse valor ao preço da vitrine; desativada, a caixa fica bloqueada.
+                Na calculadora de precificação a loja sempre pode escolher se inclui o custo na conta.
+              </span>
+            </p>
+            <div className="adm-item-cost-row">
+              <span className={`adm-item-cost-state${itemCost.catalogEnabled ? " is-on" : ""}`} role="status">
+                {itemCost.catalogEnabled ? "Ativado no cadastro de peças" : "Desativado no cadastro de peças"}
+              </span>
+              {owner ? (
+                <button type="button" className="adm-btn" role="switch" aria-checked={itemCost.catalogEnabled}
+                  onClick={() => void toggleItemCost()} disabled={savingItemCost}>
+                  {savingItemCost ? <Loader2 size={15} className="admin-spin" /> : null}
+                  {itemCost.catalogEnabled ? "Desativar" : "Ativar"}
+                </button>
+              ) : null}
+            </div>
+            {!owner && <p className="adm-note">Somente a proprietária pode ativar ou desativar.</p>}
+          </section>
         ) : null}
       </LoadState>
     </div>

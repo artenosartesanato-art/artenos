@@ -1473,6 +1473,51 @@
 }
 
 /* ---------- Precificação dentro do cadastro da peça ---------- */
+/* Custo fixo por item somado ao preço (liberado ou bloqueado pela administração) */
+.catalog-modal .catalog-item-cost label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--artenos-pessego);
+  border-radius: 11px;
+  background: #fff;
+  cursor: pointer;
+}
+.catalog-modal .catalog-item-cost.is-on label {
+  border-color: var(--artenos-marrom);
+  box-shadow: inset 0 0 0 1px var(--artenos-marrom);
+}
+.catalog-modal .catalog-item-cost.is-locked label {
+  background: color-mix(in srgb, var(--artenos-pessego) 22%, #fff);
+  cursor: not-allowed;
+}
+.catalog-modal .catalog-item-cost input[type="checkbox"] {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  margin: 1px 0 0;
+  padding: 0;
+  accent-color: var(--artenos-marrom);
+}
+.catalog-modal .catalog-item-cost label > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.catalog-modal .catalog-item-cost strong {
+  color: var(--artenos-marrom);
+  font-size: 12px;
+}
+.catalog-modal .catalog-item-cost.is-locked strong {
+  color: var(--an-argila-texto);
+}
+.catalog-modal .catalog-item-cost small {
+  color: var(--an-argila-texto);
+  font-size: 11px;
+  line-height: 1.45;
+}
 .catalog-modal .catalog-pricing-cta {
   display: flex;
   align-items: center;

@@ -4,6 +4,7 @@ import { meaningfulTextError } from "@/lib/text-quality";
 import { emailTakenMessage } from "@/lib/account-deletion";
 import { siteConfig } from "@/lib/site-config";
 import { passwordPolicyError } from "@/lib/password-policy";
+import { checkBirthDate } from "@/lib/birth-date";
 
 let client: SupabaseClient | null = null;
 
@@ -275,6 +276,9 @@ export async function registerWithSupabase(values: Record<string, unknown>) {
     throw new Error(
       `Informe um ${type === "client" ? "CPF" : "CPF ou CNPJ"} válido.`,
     );
+  // Só maiores de 18 (o gatilho do banco confere de novo ao criar o profile).
+  const birth = checkBirthDate(values.birthDate);
+  if (!birth.ok) throw new Error(birth.message);
   await ensureDocumentAvailable(document);
   if (!validBrazilianPhone(values.phone))
     throw new Error(
@@ -289,6 +293,7 @@ export async function registerWithSupabase(values: Record<string, unknown>) {
     account_type: type,
     registration_mode: values.assisted ? "assisted" : "standard",
     full_name: text(values.fullName),
+    birth_date: birth.iso,
     document,
     phone: digits(values.phone),
     cep,
