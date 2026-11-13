@@ -10,6 +10,7 @@ import { specialtyValueError } from "@/lib/store-specialties";
 import { SpecialtyField } from "@/components/specialty-field";
 import { StoryChecklist } from "@/components/story-checklist";
 import { meaningfulTextError } from "@/lib/text-quality";
+import { MINIMUM_AGE, checkBirthDate, maskBirthDate } from "@/lib/birth-date";
 
 type SellerRequest = {
   status: "pending_review" | "under_review" | "changes_requested" | "approved" | "rejected" | "suspended" | null;
@@ -31,12 +32,19 @@ export function SellerUpgrade() {
   const [storeName, setStoreName] = useState("");
   const [specialty, setSpecialty] = useState("");
   const [story, setStory] = useState("");
+  // Idade mínima vale só para quem vende: o cliente informa a data ao pedir a loja.
+  const [birthMissing, setBirthMissing] = useState(false);
+  const [birthDate, setBirthDate] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const sectionRef = useRef<HTMLElement>(null);
 
   const load = useCallback(async () => {
-    const { data, error: loadError } = await getSupabase().rpc("get_my_seller_request");
+    const supabase = getSupabase();
+    const { data: missing } = await Promise.resolve(supabase.rpc("my_birth_date_missing"))
+      .catch(() => ({ data: null }));
+    setBirthMissing(missing === true);
+    const { data, error: loadError } = await supabase.rpc("get_my_seller_request");
     const row = (Array.isArray(data) ? data[0] : data) as SellerRequest | undefined;
     if (!loadError && row) {
       setRequest(row);
@@ -66,8 +74,18 @@ export function SellerUpgrade() {
     const storyProblem = meaningfulTextError(story, "A história da loja");
     if (storyProblem) return setError(storyProblem);
     if (findBlockedTerm(`${storeName} ${specialty} ${story}`)) return setError("Os dados da loja contêm termos que não são permitidos na Artenós.");
+    const birth = birthMissing ? checkBirthDate(birthDate) : null;
+    if (birth && !birth.ok) return setError(birth.message);
     setSending(true);
     setError("");
+    if (birth?.ok) {
+      const { error: birthError } = await getSupabase().rpc("set_my_birth_date", { p_birth_date: birth.iso });
+      if (birthError) {
+        setSending(false);
+        return setError(birthError.message || "Não foi possível salvar sua data de nascimento. Tente de novo.");
+      }
+      setBirthMissing(false);
+    }
     const { error: sendError } = await getSupabase().rpc("request_seller_profile", {
       p_store_name: storeName.trim(), p_specialty: specialty.trim(), p_story: story.trim(),
     });
@@ -149,6 +167,14 @@ export function SellerUpgrade() {
               placeholder="Conte como você começou, as técnicas e os materiais que usa (pelo menos 40 caracteres)." />
             <StoryChecklist value={story} />
           </label>
+          {birthMissing && (
+            <label className="an-field">
+              <span>Data de nascimento</span>
+              <input value={birthDate} onChange={(event) => setBirthDate(maskBirthDate(event.target.value))}
+                inputMode="numeric" autoComplete="bday" maxLength={10} placeholder="dd/mm/aaaa" required />
+              <small className="an-field-hint">Para vender na Artenós é preciso ter {MINIMUM_AGE} anos ou mais. A data não aparece para outras pessoas.</small>
+            </label>
+          )}
           {error && <p className="an-field-error" role="alert">{error}</p>}
           <div className="seller-upgrade-actions">
             <button type="button" className="an-btn an-btn--ghost" onClick={() => { setFormOpen(false); setError(""); }} disabled={sending}>Cancelar</button>

@@ -252,9 +252,11 @@ checagens as (
            or to_regprocedure('public.start_buy_now(uuid,integer,uuid)') is null
          then 'FALTA: rode migrations/20261113_fotos_variacoes_produto.sql' else 'OK' end
   union all
-  select '20261114 data_nascimento', 'função', 'data de nascimento e idade mínima de 18 anos',
+  select '20261114 data_nascimento', 'função', 'idade mínima de 18 anos (só vendedores)',
     case when to_regprocedure('public.get_my_age_gate()') is null
            or to_regprocedure('public.set_my_birth_date(date)') is null
+           or to_regprocedure('public.my_birth_date_missing()') is null
+           or not exists (select 1 from pg_trigger where tgname = 'seller_upgrade_age_guard' and tgrelid = 'public.artisan_applications'::regclass)
            or not exists (select 1 from pg_trigger where tgname = 'profile_birth_date_on_insert' and tgrelid = 'public.profiles'::regclass)
          then 'FALTA: rode migrations/20261114_data_nascimento.sql' else 'OK' end
   union all

@@ -19,7 +19,7 @@ type Gate = { missing: boolean; blocked: boolean; unblockOn: string | null };
 const NO_GATE: Gate = { missing: false, blocked: false, unblockOn: null };
 
 /**
- * Idade mínima (18 anos). Conta criada antes de a data de nascimento ser
+ * Idade mínima (18 anos), só para lojas. Loja criada antes de a data de nascimento ser
  * obrigatória: no próximo acesso, este aviso cobre a tela e só sai depois de a
  * data ser informada. Quem declara menos de 18 fica com a conta bloqueada (o
  * banco também recusa compras, mensagens e alterações na loja).
@@ -127,7 +127,7 @@ export function AgeGate() {
         <div className="account-pending-body" role="alert">
           <h2 id={titleId}>Conta bloqueada</h2>
           <p>
-            A Artenós é só para maiores de {MINIMUM_AGE} anos. Pela data de nascimento informada, esta conta fica bloqueada
+            Para vender na Artenós é preciso ter {MINIMUM_AGE} anos ou mais. Pela data de nascimento informada, esta conta fica bloqueada
             {gate.unblockOn ? <> até <strong>{formatBirthDate(gate.unblockOn)}</strong></> : null}: não é possível comprar,
             vender, favoritar ou enviar mensagens.
           </p>
@@ -142,8 +142,8 @@ export function AgeGate() {
           <h2 id={titleId}>Confirme sua data de nascimento</h2>
           <p>
             Você informou <strong>{formatBirthDate(confirmMinor.iso)}</strong>, o que dá{" "}
-            <strong>{confirmMinor.age} {confirmMinor.age === 1 ? "ano" : "anos"}</strong>. A Artenós é só para maiores de{" "}
-            {MINIMUM_AGE} anos: se confirmar, a conta será bloqueada.
+            <strong>{confirmMinor.age} {confirmMinor.age === 1 ? "ano" : "anos"}</strong>. Para vender na Artenós é preciso ter{" "}
+            {MINIMUM_AGE} anos ou mais: se confirmar, a conta será bloqueada.
           </p>
           {error && <p className="field-error" role="alert">{error}</p>}
           <div className="account-pending-actions">
@@ -160,8 +160,8 @@ export function AgeGate() {
         <form className="account-pending-body" onSubmit={submit} noValidate>
           <h2 id={titleId}>Informe sua data de nascimento</h2>
           <p>
-            <ShieldCheck size={16} aria-hidden="true" /> A Artenós passou a ser só para maiores de {MINIMUM_AGE} anos.
-            Para continuar usando sua conta, informe sua data de nascimento. É só uma vez.
+            <ShieldCheck size={16} aria-hidden="true" /> Para vender na Artenós é preciso ter {MINIMUM_AGE} anos ou mais.
+            Para continuar usando sua loja, informe sua data de nascimento. É só uma vez.
           </p>
           <Field name="birthDateGate" label="Data de nascimento" error={error || undefined}
             hint="Dia, mês e ano. Ela não aparece para outras pessoas.">

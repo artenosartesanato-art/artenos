@@ -1,13 +1,16 @@
--- Data de nascimento e idade mínima (18 anos).
--- A Artenós é só para maiores de 18. A data é DECLARADA pela pessoa (não há
--- conferência com a Receita Federal aqui; veja docs/IDADE-MINIMA.md):
---   * cadastro novo (e-mail e senha ou Google): a data vai nos metadados da
---     conta (birth_date, AAAA-MM-DD) e o gatilho abaixo copia para o profile.
---     Menor de 18 não cria a conta;
---   * conta antiga (sem data): o site pede a data no próximo acesso e só libera
+-- Data de nascimento e idade mínima (18 anos) — SÓ PARA VENDEDORES (lojas).
+-- Clientes (compradores) não informam a data e não passam pela regra.
+-- A data é DECLARADA pela pessoa (não há conferência com a Receita Federal
+-- aqui; veja docs/IDADE-MINIMA.md):
+--   * cadastro novo de loja (e-mail e senha ou Google): a data vai nos
+--     metadados da conta (birth_date, AAAA-MM-DD) e o gatilho abaixo copia para
+--     o profile. Menor de 18 não cria a loja;
+--   * cliente que pede para abrir loja: informa a data no pedido; menor de 18
+--     não envia o pedido (a conta de cliente segue normal);
+--   * loja antiga (sem data): o site pede a data no próximo acesso e só libera
 --     o uso depois (set_my_birth_date). Quem declarar menos de 18 fica com a
 --     conta bloqueada até completar 18 anos;
---   * conta bloqueada entra e navega, mas não compra, favorita, envia mensagens
+--   * loja bloqueada entra e navega, mas não compra, favorita, envia mensagens
 --     nem altera a loja (mesmas tabelas da suspensão).
 -- A própria pessoa não altera a data depois de informada (a coluna fica fora
 -- do grant de update de profiles); a correção é feita pela equipe.
@@ -40,11 +43,13 @@ returns boolean language sql stable set search_path = '' as $$
      and p_birth_date >= public.age_today() - interval '120 years';
 $$;
 
--- 1) Cadastro novo: copia a data dos metadados e barra menores -------------------
+-- 1) Cadastro novo de loja: copia a data dos metadados e barra menores ------------
 create or replace function public.profile_birth_date_on_insert()
 returns trigger language plpgsql security definer set search_path = '' as $$
 declare v_raw text;
 begin
+  -- Cliente (comprador) não passa pela idade mínima.
+  if new.account_type is distinct from 'artisan'::public.account_type then return new; end if;
   if new.birth_date is null then
     select u.raw_user_meta_data->>'birth_date' into v_raw from auth.users u where u.id = new.id;
     if v_raw ~ '^\d{4}-\d{2}-\d{2}$' then
@@ -61,7 +66,7 @@ begin
     raise exception 'Data de nascimento inválida';
   end if;
   if public.age_in_years(new.birth_date) < 18 then
-    raise exception 'É preciso ter 18 anos ou mais para criar uma conta na Artenós';
+    raise exception 'É preciso ter 18 anos ou mais para vender na Artenós';
   end if;
   return new;
 end $$;
@@ -71,38 +76,51 @@ drop trigger if exists profile_birth_date_on_insert on public.profiles;
 create trigger profile_birth_date_on_insert before insert on public.profiles
   for each row execute function public.profile_birth_date_on_insert();
 
--- 2) Situação da conta conectada ---------------------------------------------------
+-- 2) Situação da conta conectada (só lojas) ----------------------------------------
 create or replace function public.is_age_blocked(p_user_id uuid)
 returns boolean language sql stable security definer set search_path = '' as $$
   select exists (
     select 1 from public.profiles p
-    where p.id = p_user_id and p.birth_date is not null and public.age_in_years(p.birth_date) < 18);
+    where p.id = p_user_id and p.account_type = 'artisan'::public.account_type
+      and p.birth_date is not null and public.age_in_years(p.birth_date) < 18);
 $$;
 revoke all on function public.is_age_blocked(uuid) from public, anon, authenticated;
 
--- Sem linha = conta sem profile (cadastro ainda não concluído).
+-- Sem linha = conta sem profile (cadastro ainda não concluído). Cliente: nada a pedir.
 create or replace function public.get_my_age_gate()
 returns table (birth_date_missing boolean, age_blocked boolean, unblock_on date)
 language sql stable security definer set search_path = '' as $$
-  select p.birth_date is null,
-         p.birth_date is not null and public.age_in_years(p.birth_date) < 18,
-         case when p.birth_date is not null and public.age_in_years(p.birth_date) < 18
+  select v.seller and p.birth_date is null,
+         v.seller and p.birth_date is not null and public.age_in_years(p.birth_date) < 18,
+         case when v.seller and p.birth_date is not null and public.age_in_years(p.birth_date) < 18
               then (p.birth_date + interval '18 years')::date end
-  from public.profiles p where p.id = auth.uid();
+  from public.profiles p
+  cross join lateral (select p.account_type = 'artisan'::public.account_type as seller) v
+  where p.id = auth.uid();
 $$;
 revoke all on function public.get_my_age_gate() from public, anon;
 grant execute on function public.get_my_age_gate() to authenticated;
 
--- 3) Conta antiga informa a data (uma única vez) -----------------------------------
--- Retorna 'ok' ou 'blocked' (menor de 18: a data fica gravada e a conta bloqueada).
+-- Para o pedido de abrir loja (cliente): a data ainda precisa ser informada?
+create or replace function public.my_birth_date_missing()
+returns boolean language sql stable security definer set search_path = '' as $$
+  select p.birth_date is null from public.profiles p where p.id = auth.uid();
+$$;
+revoke all on function public.my_birth_date_missing() from public, anon;
+grant execute on function public.my_birth_date_missing() to authenticated;
+
+-- 3) Informar a data (uma única vez) -------------------------------------------------
+-- Loja antiga: retorna 'ok' ou 'blocked' (menor de 18: a data fica gravada e a
+-- loja bloqueada). Cliente (antes de pedir a loja): menor de 18 é recusado sem
+-- gravar nada, e a conta de cliente segue normal.
 create or replace function public.set_my_birth_date(p_birth_date date)
 returns text language plpgsql security definer set search_path = '' as $$
-declare v_current date;
+declare v_current date; v_type public.account_type;
 begin
   if auth.uid() is null then
     raise exception 'Faça login para informar a data de nascimento';
   end if;
-  select p.birth_date into v_current from public.profiles p where p.id = auth.uid() for update;
+  select p.birth_date, p.account_type into v_current, v_type from public.profiles p where p.id = auth.uid() for update;
   if not found then
     raise exception 'Conclua seu cadastro antes de informar a data de nascimento';
   end if;
@@ -113,6 +131,9 @@ begin
     raise exception 'Data de nascimento inválida';
   end if;
   if public.age_in_years(p_birth_date) < 18 then
+    if v_type is distinct from 'artisan'::public.account_type then
+      raise exception 'É preciso ter 18 anos ou mais para vender na Artenós';
+    end if;
     update public.profiles set birth_date = p_birth_date, age_blocked_at = now() where id = auth.uid();
     return 'blocked';
   end if;
@@ -122,7 +143,30 @@ end $$;
 revoke all on function public.set_my_birth_date(date) from public, anon;
 grant execute on function public.set_my_birth_date(date) to authenticated;
 
--- 4) Conta de menor não movimenta a plataforma ---------------------------------------
+-- 3b) Cliente pedindo para abrir loja: precisa ter a data e 18 anos ou mais --------
+create or replace function public.seller_upgrade_age_guard()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare v_birth date;
+begin
+  if new.submission_type is distinct from 'upgrade' or new.status is distinct from 'pending_review' then return new; end if;
+  if tg_op = 'UPDATE' and old.status is not distinct from new.status
+     and old.submission_type is not distinct from new.submission_type then return new; end if;
+  select p.birth_date into v_birth from public.profiles p where p.id = new.artisan_id;
+  if v_birth is null then
+    raise exception 'Informe sua data de nascimento para abrir a loja';
+  end if;
+  if public.age_in_years(v_birth) < 18 then
+    raise exception 'É preciso ter 18 anos ou mais para vender na Artenós';
+  end if;
+  return new;
+end $$;
+revoke all on function public.seller_upgrade_age_guard() from public, anon, authenticated;
+
+drop trigger if exists seller_upgrade_age_guard on public.artisan_applications;
+create trigger seller_upgrade_age_guard before insert or update on public.artisan_applications
+  for each row execute function public.seller_upgrade_age_guard();
+
+-- 4) Loja de menor não movimenta a plataforma ---------------------------------------
 create or replace function public.account_age_guard()
 returns trigger language plpgsql security definer set search_path = '' as $$
 begin
@@ -163,10 +207,10 @@ end $$;
 
 commit;
 
--- Conferência (só leitura): quantas contas ainda não informaram a data.
+-- Conferência (só leitura): quantas lojas ainda não informaram a data.
 -- select count(*) filter (where birth_date is null) as sem_data,
 --        count(*) filter (where birth_date is not null and public.age_in_years(birth_date) < 18) as bloqueadas
--- from public.profiles;
+-- from public.profiles where account_type = 'artisan';
 --
 -- Correção feita pela equipe (ex.: a pessoa digitou o ano errado e ficou bloqueada):
 -- o site volta a pedir a data no próximo acesso.

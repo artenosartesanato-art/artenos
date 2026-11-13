@@ -142,7 +142,7 @@ function RegisterForm({ type, returnTo, onGoToLogin }: { type: AccountType; retu
         <Field name="fullName" label="Nome completo" error={errors.fullName} wide>
           {(props) => <input {...props} name="fullName" autoComplete="name" placeholder="Seu nome e sobrenome" onInput={() => clear("fullName")} />}
         </Field>
-        <BirthDateField error={errors.birthDate} onClear={clear} />
+        {type === "artisan" && <BirthDateField error={errors.birthDate} onClear={clear} />}
         {type === "artisan" && (
           <>
             <Field name="storeName" label="Nome da loja" error={errors.storeName}>

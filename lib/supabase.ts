@@ -276,9 +276,10 @@ export async function registerWithSupabase(values: Record<string, unknown>) {
     throw new Error(
       `Informe um ${type === "client" ? "CPF" : "CPF ou CNPJ"} válido.`,
     );
-  // Só maiores de 18 (o gatilho do banco confere de novo ao criar o profile).
-  const birth = checkBirthDate(values.birthDate);
-  if (!birth.ok) throw new Error(birth.message);
+  // Loja: só maiores de 18 (o gatilho do banco confere de novo ao criar o profile).
+  // Cliente não informa a data.
+  const birth = type === "artisan" ? checkBirthDate(values.birthDate) : null;
+  if (birth && !birth.ok) throw new Error(birth.message);
   await ensureDocumentAvailable(document);
   if (!validBrazilianPhone(values.phone))
     throw new Error(
@@ -293,7 +294,7 @@ export async function registerWithSupabase(values: Record<string, unknown>) {
     account_type: type,
     registration_mode: values.assisted ? "assisted" : "standard",
     full_name: text(values.fullName),
-    birth_date: birth.iso,
+    ...(birth?.ok ? { birth_date: birth.iso } : {}),
     document,
     phone: digits(values.phone),
     cep,

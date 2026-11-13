@@ -9,6 +9,12 @@ insert into auth.users(id, email) values
 insert into public.profiles(id, account_type, approval_status, full_name, email, document, phone, cep, address, address_number, city, state, terms_accepted_at)
 values ('00000000-0000-0000-0000-000000000c01','client','active','Ana Lima','ana-cliente@teste.local','12312312387','17999990091','01001000','Rua C','3','São Paulo','SP',now());
 insert into public.admin_users(user_id, role) values ('00000000-0000-0000-0000-000000000c09', 'owner');
+-- Com 20261114_data_nascimento.sql: quem pede a loja precisa ter 18+ informado.
+do $$ begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'birth_date') then
+    update public.profiles set birth_date = date '1990-01-01' where id = '00000000-0000-0000-0000-000000000c01';
+  end if;
+end $$;
 insert into public.storefront_favorites(user_id, product_id)
   select '00000000-0000-0000-0000-000000000c01', id from public.products limit 1;
 
@@ -79,6 +85,9 @@ begin
   insert into auth.users(id, email) values (c, 'bia-cliente@teste.local');
   insert into public.profiles(id, account_type, approval_status, full_name, email, document, phone, cep, address, address_number, city, state, terms_accepted_at)
   values (c, 'client', 'active', 'Bia', 'bia-cliente@teste.local', '45645645649', '17999990098','01001000','Rua X','1','São Paulo','SP', now());
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'birth_date') then
+    execute 'update public.profiles set birth_date = date ''1991-02-02'' where id = $1' using c;
+  end if;
   perform set_config('request.jwt.claim.sub', c::text, true);
   perform public.request_seller_profile('Loja da Bia', 'Cerâmica', 'Modelo peças de cerâmica no torno e queimo em forno a lenha, uma a uma.');
   perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000c09', true);

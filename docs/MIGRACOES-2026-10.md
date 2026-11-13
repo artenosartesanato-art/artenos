@@ -58,7 +58,7 @@ Contas antigas continuam entrando com a senha atual; a regra vale ao criar ou tr
 
 | Arquivo | O que faz |
 |---|---|
-| `supabase/migrations/20261114_data_nascimento.sql` | Data de nascimento no cadastro (cliente e loja), bloqueio de menores de 18 e pedido da data, no próximo acesso, para quem já tinha conta |
+| `supabase/migrations/20261114_data_nascimento.sql` | Idade mínima de 18 anos **só para vendedores**: data de nascimento no cadastro de loja e no pedido de abrir loja, bloqueio de lojas de menores e pedido da data, no próximo acesso, para lojas que já existiam (clientes não informam a data) |
 | `supabase/migrations/20261115_custo_por_item.sql` | Custo fixo por item (R$ 4,00): caixa de seleção na calculadora e no cadastro da peça, com liga/desliga na tela Tarifa do painel |
 
 - Rode as duas **depois** de `20261113_fotos_variacoes_produto.sql`, nessa ordem. Podem ser repetidas.

@@ -96,17 +96,19 @@ function CompleteSignup() {
     setErrors({});
     setPending(assisted ? "assisted" : "standard");
     try {
-      // A data de nascimento vai nos metadados da conta, como no cadastro com
-      // e-mail: o banco copia para o profile e recusa menores de 18.
-      const birth = checkBirthDate(values.birthDate);
-      if (!birth.ok) {
-        setErrors({ birthDate: birth.message });
-        return;
-      }
-      const { error: birthError } = await getSupabase().auth.updateUser({ data: { birth_date: birth.iso } });
-      if (birthError) {
-        setErrors({ _form: "Não foi possível salvar sua data de nascimento agora. Tente novamente em instantes." });
-        return;
+      // Só loja: a data de nascimento vai nos metadados da conta, como no
+      // cadastro com e-mail; o banco copia para o profile e recusa menores de 18.
+      if (type === "artisan") {
+        const birth = checkBirthDate(values.birthDate);
+        if (!birth.ok) {
+          setErrors({ birthDate: birth.message });
+          return;
+        }
+        const { error: birthError } = await getSupabase().auth.updateUser({ data: { birth_date: birth.iso } });
+        if (birthError) {
+          setErrors({ _form: "Não foi possível salvar sua data de nascimento agora. Tente novamente em instantes." });
+          return;
+        }
       }
       // Validado de novo no banco (complete_oauth_signup); o e-mail vem da conta.
       const { data, error } = await getSupabase().rpc("complete_oauth_signup", {
@@ -215,7 +217,7 @@ function CompleteSignup() {
                 {(props) => <input {...props} name="fullName" autoComplete="name" defaultValue={account.name}
                   placeholder="Seu nome e sobrenome" onInput={() => clear("fullName")} />}
               </Field>
-              <BirthDateField error={errors.birthDate} onClear={clear} />
+              {type === "artisan" && <BirthDateField error={errors.birthDate} onClear={clear} />}
               {type === "artisan" && (
                 <>
                   <Field name="storeName" label="Nome da loja" error={errors.storeName}>

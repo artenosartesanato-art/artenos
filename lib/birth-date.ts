@@ -53,7 +53,7 @@ export function checkBirthDate(value: unknown, today = todayIso()): BirthDateChe
   const age = ageOn(iso, today);
   if (iso > today || age > MAXIMUM_AGE) return { ok: false, reason: "invalid", message: "Confira o ano da data de nascimento." };
   if (age < MINIMUM_AGE)
-    return { ok: false, reason: "underage", iso, age, message: `É preciso ter ${MINIMUM_AGE} anos ou mais para usar a Artenós.` };
+    return { ok: false, reason: "underage", iso, age, message: `É preciso ter ${MINIMUM_AGE} anos ou mais para vender na Artenós.` };
   return { ok: true, iso, age };
 }
 

@@ -51,11 +51,11 @@ export function Field({ name, label, error, hint, wide = false, children }: {
   );
 }
 
-/** Data de nascimento (dd/mm/aaaa) do cadastro: a Artenós é só para maiores de 18. */
+/** Data de nascimento (dd/mm/aaaa) do cadastro de loja: só maiores de 18 vendem. */
 export function BirthDateField({ error, onClear }: { error?: string; onClear: (name: string) => void }) {
   return (
     <Field name="birthDate" label="Data de nascimento" error={error}
-      hint={`A Artenós é só para maiores de ${MINIMUM_AGE} anos. A data não aparece para outras pessoas.`}>
+      hint={`Para vender na Artenós é preciso ter ${MINIMUM_AGE} anos ou mais. A data não aparece para outras pessoas.`}>
       {(props) => (
         <input {...props} name="birthDate" inputMode="numeric" autoComplete="bday" maxLength={10} placeholder="dd/mm/aaaa"
           onChange={(event) => { event.currentTarget.value = maskBirthDate(event.currentTarget.value); onClear("birthDate"); }} />
