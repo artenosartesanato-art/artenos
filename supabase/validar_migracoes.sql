@@ -236,9 +236,7 @@ checagens as (
   union all
   select '20261111 taxa_pagamento_calculadora', 'função', 'taxa do Mercado Pago na calculadora',
     case when to_regprocedure('public.get_payment_fee_settings()') is null
-           -- 20261115 troca a versão de 9 argumentos pela de 10 (custo por item).
-           or (to_regprocedure('public.save_pricing_calculation(text,numeric,numeric,numeric,numeric,numeric,numeric,uuid,text)') is null
-               and to_regprocedure('public.save_pricing_calculation(text,numeric,numeric,numeric,numeric,numeric,numeric,uuid,text,boolean)') is null)
+           or to_regprocedure('public.save_pricing_calculation(text,numeric,numeric,numeric,numeric,numeric,numeric,uuid,text)') is null
          then 'FALTA: rode migrations/20261111_taxa_pagamento_calculadora.sql' else 'OK' end
   union all
   select '20261112 notificacoes_lidas_por_conversa', 'função', 'contador de mensagens zera ao abrir a conversa',
@@ -260,11 +258,13 @@ checagens as (
            or not exists (select 1 from pg_trigger where tgname = 'profile_birth_date_on_insert' and tgrelid = 'public.profiles'::regclass)
          then 'FALTA: rode migrations/20261114_data_nascimento.sql' else 'OK' end
   union all
-  select '20261115 custo_por_item', 'função', 'custo fixo por item na calculadora e no cadastro da peça',
-    case when to_regprocedure('public.get_item_cost_settings()') is null
-           or to_regprocedure('public.set_my_product_item_cost(uuid,boolean)') is null
-           or to_regprocedure('public.save_pricing_calculation(text,numeric,numeric,numeric,numeric,numeric,numeric,uuid,text,boolean)') is null
-         then 'FALTA: rode migrations/20261115_custo_por_item.sql' else 'OK' end
+  select '20261115 tarifa_por_item', 'função', 'tarifa fixa por item retida no repasse (como a %)',
+    case when to_regprocedure('public.get_item_fee_settings()') is null
+           or to_regprocedure('public.admin_update_item_fee(numeric)') is null
+           or not exists (select 1 from pg_trigger where tgname = 'checkout_item_fee_snapshot' and tgrelid = 'public.checkouts'::regclass)
+           or not exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                          where n.nspname = 'public' and p.proname = 'finalize_checkout' and p.prosrc ilike '%item_fee%')
+         then 'FALTA: rode migrations/20261115_tarifa_por_item.sql' else 'OK' end
   union all
   -- Sobrecargas duplicadas deixam chamadas ambíguas (acontece ao rodar um script antigo depois de um novo).
   select 'ordem dos scripts', 'sobrecarga', p.proname,

@@ -11,8 +11,8 @@ test("preço sugerido cobre as duas taxas (mesma conta do banco)", () => {
 });
 
 test("detalhe das taxas e valor que fica com a loja", () => {
-  assert.deepEqual(feeBreakdown(96.53, 8, 4.98), { platform: 7.72, payment: 4.81, net: 84 });
-  assert.deepEqual(feeBreakdown(96.53, 8, 0.99), { platform: 7.72, payment: 0.96, net: 87.85 });
+  assert.deepEqual(feeBreakdown(96.53, 8, 4.98), { platform: 7.72, item: 0, payment: 4.81, net: 84 });
+  assert.deepEqual(feeBreakdown(96.53, 8, 0.99), { platform: 7.72, item: 0, payment: 0.96, net: 87.85 });
 });
 
 test("computePricing: mesma conta da página e do painel do produto", async () => {
@@ -29,25 +29,26 @@ test("computePricing: mesma conta da página e do painel do produto", async () =
   assert.equal(parsePricingNumber("-3"), 0);
 });
 
-test("custo por item: entra depois do lucro e antes das taxas", async () => {
-  const { computePricing, itemCostSettingsFrom, withItemCost, withoutItemCost } = await import("../../lib/pricing.ts");
+test("tarifa por item: sai do repasse como a %, e o preço sugerido já a cobre", async () => {
+  const { computePricing, feeBreakdown, itemFeeFrom } = await import("../../lib/pricing.ts");
   const inputs = { materialCost: 30, hoursSpent: 2, hourlyRate: 15, extraCost: 0, operationalCost: 0, marginPercent: 40 };
-  // Custo 60 + lucro 24 + item 4 = 88; cartão: 88 / (1 - 12,98%) = 101,13.
+  // Custo 60 + lucro 24 + tarifa por item 4 = 88; cartão: 88 / (1 - 12,98%) = 101,13.
   const result = computePricing(inputs, 8, { pix: 0.99, card: 4.98 }, "card", 4);
-  assert.equal(result.itemCost, 4);
-  assert.equal(result.desiredProfit, 24); // a margem não incide sobre o custo por item
+  assert.equal(result.itemFeeAmount, 4);
+  assert.equal(result.desiredProfit, 24); // a margem não incide sobre a tarifa
   assert.equal(result.suggestedPrice, 101.13);
+  // Nesse preço a loja recebe custo + lucro (84), com diferença de centavos do arredondamento.
+  const parts = feeBreakdown(101.13, 8, 4.98, 4);
+  assert.deepEqual(parts, { platform: 8.09, item: 4, payment: 5.04, net: 84 });
   assert.equal(computePricing(inputs, 8, { pix: 0.99, card: 4.98 }, "card").suggestedPrice, 96.53);
-  // Sem custo de produção, o custo por item não cria um preço sozinho.
+  // Sem custo de produção, a tarifa não cria um preço sozinha.
   const empty = computePricing({ ...inputs, materialCost: 0, hoursSpent: 0 }, 8, null, "card", 4);
-  assert.equal(empty.itemCost, 0);
+  assert.equal(empty.itemFeeAmount, 0);
   assert.equal(empty.suggestedPrice, 0);
+  // Peça mais barata que a tarifa: a tarifa para no que sobra do preço (trava do banco).
+  assert.deepEqual(feeBreakdown(3, 8, 0, 4), { platform: 0.24, item: 2.76, payment: 0, net: 0 });
 
-  assert.equal(withItemCost(50, 4), 54);
-  assert.equal(withItemCost(50, 0), 50);
-  assert.equal(withoutItemCost(54, 4), 50);
-  assert.equal(withoutItemCost(3, 4), 0.01);
-  assert.deepEqual(itemCostSettingsFrom({ data: [{ amount: "4.00", catalog_enabled: true }], error: null }), { amount: 4, catalogEnabled: true });
-  assert.deepEqual(itemCostSettingsFrom({ data: { amount: 4, catalog_enabled: null }, error: null }), { amount: 4, catalogEnabled: false });
-  assert.equal(itemCostSettingsFrom({ data: null, error: { code: "PGRST202" } }), null);
+  assert.equal(itemFeeFrom({ data: [{ amount: "4.00" }], error: null }), 4);
+  assert.equal(itemFeeFrom({ data: { amount: 0 }, error: null }), 0);
+  assert.equal(itemFeeFrom({ data: null, error: { code: "PGRST202" } }), null);
 });

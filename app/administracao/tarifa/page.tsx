@@ -7,7 +7,7 @@ import { useAdmin } from "@/components/admin-shell";
 import { AdminPageHead, LoadState, friendlyError } from "@/components/admin-ui";
 import { getSupabase } from "@/lib/supabase";
 import { brl, formatDate } from "@/lib/admin";
-import { feeBreakdown, itemCostSettingsFrom, type ItemCostSettings } from "@/lib/pricing";
+import { feeBreakdown, itemFeeFrom } from "@/lib/pricing";
 
 export default function PlatformFeePage() {
   const { account } = useAdmin();
@@ -23,20 +23,23 @@ export default function PlatformFeePage() {
   const [card, setCard] = useState("");
   const [savedFees, setSavedFees] = useState<{ pix: number; card: number } | null>(null);
   const [savingFees, setSavingFees] = useState(false);
-  // Custo fixo por item: liga/desliga a opção no cadastro de peças das lojas.
-  const [itemCost, setItemCost] = useState<ItemCostSettings | null>(null);
-  const [savingItemCost, setSavingItemCost] = useState(false);
+  // Tarifa fixa por item vendido: retida no repasse junto com a porcentagem.
+  const [itemFee, setItemFee] = useState("");
+  const [savedItemFee, setSavedItemFee] = useState<number | null>(null);
+  const [savingItemFee, setSavingItemFee] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     const supabase = getSupabase();
-    const [{ data, error: loadError }, fees, itemCostResponse] = await Promise.all([
+    const [{ data, error: loadError }, fees, itemFeeResponse] = await Promise.all([
       supabase.rpc("get_admin_platform_fee"),
       Promise.resolve(supabase.rpc("get_payment_fee_settings")).catch(() => ({ data: null, error: true })),
-      Promise.resolve(supabase.rpc("get_item_cost_settings")).catch(() => ({ data: null, error: true })),
+      Promise.resolve(supabase.rpc("get_item_fee_settings")).catch(() => ({ data: null, error: true })),
     ]);
-    setItemCost(itemCostSettingsFrom(itemCostResponse));
+    const currentItemFee = itemFeeFrom(itemFeeResponse);
+    setSavedItemFee(currentItemFee);
+    setItemFee(currentItemFee === null ? "" : String(currentItemFee));
     const feesRow = (Array.isArray(fees.data) ? fees.data[0] : fees.data) as { pix_percent?: number; card_percent?: number } | null;
     if (!fees.error && feesRow) {
       const next = { pix: Number(feesRow.pix_percent), card: Number(feesRow.card_percent) };
@@ -99,31 +102,35 @@ export default function PlatformFeePage() {
     toast.success("Taxas atualizadas. A calculadora das lojas já usa os novos valores.");
   }
 
-  async function toggleItemCost() {
-    if (!owner || savingItemCost || !itemCost) return;
-    const next = !itemCost.catalogEnabled;
-    if (!window.confirm(next
-      ? `Ativar o custo por item? ${brl(itemCost.amount)} passa a ser somado obrigatoriamente ao preço de toda peça cadastrada ou editada, sem a loja poder retirar.`
-      : "Desativar o custo por item? A loja passa a escolher no cadastro da peça se soma o valor. As peças que já têm o custo somado continuam com o preço atual.")) return;
-    setSavingItemCost(true);
-    const { error: saveError } = await getSupabase().rpc("admin_set_item_cost_catalog_enabled", { p_enabled: next });
-    setSavingItemCost(false);
-    if (saveError) {
-      toast.error(friendlyError(saveError, "Não foi possível alterar o custo por item."));
+  async function saveItemFee(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!owner || savingItemFee) return;
+    const value = Number(itemFee.replace(",", "."));
+    if (!Number.isFinite(value) || value < 0 || value > 1000) {
+      toast.error("Informe uma tarifa por item entre R$ 0,00 e R$ 1.000,00.");
       return;
     }
-    setItemCost({ ...itemCost, catalogEnabled: next });
-    toast.success(next
-      ? "Custo por item ativado: agora é obrigatório no cadastro de peças."
-      : "Custo por item desativado: a loja escolhe no cadastro de peças.");
+    if (!window.confirm(`Definir a tarifa por item em ${brl(value)} para as próximas vendas?`)) return;
+    setSavingItemFee(true);
+    const { data, error: saveError } = await getSupabase().rpc("admin_update_item_fee", { p_amount: value });
+    setSavingItemFee(false);
+    if (saveError) {
+      toast.error(friendlyError(saveError, "Não foi possível atualizar a tarifa por item."));
+      return;
+    }
+    setSavedItemFee(Number(data));
+    setItemFee(String(Number(data)));
+    toast.success("Tarifa por item atualizada. Vale só para as próximas vendas.");
   }
 
   const preview = Number(fee.replace(",", "."));
   const example = Number.isFinite(preview) && preview >= 0 && preview < 100 ? preview : saved ?? 0;
+  const itemPreview = Number(itemFee.replace(",", "."));
+  const exampleItem = Number.isFinite(itemPreview) && itemPreview >= 0 ? itemPreview : savedItemFee ?? 0;
   return (
     <div className="adm-page">
       <AdminPageHead eyebrow="Plataforma" title="Tarifa da plataforma"
-        description="Percentual que a Artenós retém sobre o valor das peças de cada venda. O frete fica fora e vendas anteriores não são recalculadas." />
+        description="O que a Artenós retém de cada venda: um percentual sobre o valor das peças e uma tarifa fixa por item vendido. Sai automaticamente do repasse da loja. O frete fica fora e vendas anteriores não são recalculadas." />
       <LoadState loading={loading} error={error} onRetry={() => void load()}>
         <div className="adm-grid-2">
           <form className="adm-card adm-form" onSubmit={save}>
@@ -144,17 +151,18 @@ export default function PlatformFeePage() {
             ) : <p className="adm-note">Somente a proprietária pode alterar a tarifa.</p>}
           </form>
           <section className="adm-card" aria-labelledby="simulacao-titulo">
-            <h2 id="simulacao-titulo">Como fica numa venda de {brl(100)} em peças</h2>
+            <h2 id="simulacao-titulo">Como fica numa venda de 1 peça de {brl(100)}</h2>
             <dl className="adm-dl">
-              <div><dt>Cliente paga pelas peças</dt><dd>{brl(100)} + frete</dd></div>
+              <div><dt>Cliente paga pela peça</dt><dd>{brl(100)} + frete</dd></div>
               <div><dt>Tarifa da Artenós ({example.toLocaleString("pt-BR")}%)</dt><dd>{brl(example)}</dd></div>
-              <div><dt>Repasse da loja</dt><dd>{brl(100 - example)} + frete</dd></div>
+              {exampleItem > 0 && <div><dt>Tarifa da Artenós por item</dt><dd>{brl(exampleItem)}</dd></div>}
+              <div><dt>Repasse da loja</dt><dd>{brl(feeBreakdown(100, example, 0, exampleItem).net)} + frete</dd></div>
             </dl>
             <p className="adm-note">Do repasse ainda sai a taxa do Mercado Pago, que varia com o meio de pagamento (Pix ou cartão).</p>
             {savedFees && (
               <dl className="adm-dl">
                 {(["pix", "card"] as const).map((method) => {
-                  const result = feeBreakdown(100, example, savedFees[method]);
+                  const result = feeBreakdown(100, example, savedFees[method], exampleItem);
                   return (
                     <div key={method}>
                       <dt>{method === "pix" ? "Pago com Pix" : "Pago com cartão"}: Mercado Pago {savedFees[method].toLocaleString("pt-BR")}%</dt>
@@ -166,6 +174,29 @@ export default function PlatformFeePage() {
             )}
           </section>
         </div>
+        {savedItemFee !== null ? (
+          <form className="adm-card adm-form" onSubmit={saveItemFee}>
+            <h2><Package size={18} /> Tarifa por item vendido</h2>
+            <p className="adm-note">
+              Valor fixo que a Artenós retém por peça vendida, junto com a porcentagem (ex.: 3 peças × {brl(savedItemFee)}).
+              Sai automaticamente do repasse da loja e aparece na calculadora de precificação, como a porcentagem.
+              Nunca passa do valor das peças. Use 0 para não cobrar.
+            </p>
+            <label className="adm-field adm-fee-field">
+              <span>Tarifa por item (em reais)</span>
+              <span className="adm-suffix">
+                <input type="number" min="0" max="1000" step="0.01" inputMode="decimal" value={itemFee}
+                  onChange={(event) => setItemFee(event.target.value)} disabled={!owner || savingItemFee} required />
+                <strong>R$</strong>
+              </span>
+            </label>
+            {owner ? (
+              <button type="submit" className="adm-btn" disabled={savingItemFee || Number(itemFee) === savedItemFee}>
+                {savingItemFee ? <Loader2 size={15} className="admin-spin" /> : <Save size={15} />} Salvar tarifa por item
+              </button>
+            ) : <p className="adm-note">Somente a proprietária pode alterar a tarifa.</p>}
+          </form>
+        ) : null}
         {savedFees ? (
           <form className="adm-card adm-form adm-payment-fees" onSubmit={saveFees}>
             <h2><Percent size={18} /> Taxas do Mercado Pago</h2>
@@ -199,32 +230,6 @@ export default function PlatformFeePage() {
               </button>
             ) : <p className="adm-note">Somente a proprietária pode alterar as taxas.</p>}
           </form>
-        ) : null}
-        {itemCost ? (
-          <section className="adm-card adm-form adm-item-cost" aria-labelledby="custo-item-titulo">
-            <h2 id="custo-item-titulo"><Package size={18} /> Custo por item</h2>
-            <p className="adm-note">
-              <span>
-                Valor fixo de <strong>{brl(itemCost.amount)}</strong> por peça. Com a opção ativada, o valor é somado
-                obrigatoriamente ao preço da vitrine de toda peça cadastrada ou editada no Catálogo (a loja não pode
-                desmarcar); desativada, a loja escolhe se marca a caixa para somar o valor.
-                Na calculadora de precificação a loja sempre pode escolher se inclui o custo na conta.
-              </span>
-            </p>
-            <div className="adm-item-cost-row">
-              <span className={`adm-item-cost-state${itemCost.catalogEnabled ? " is-on" : ""}`} role="status">
-                {itemCost.catalogEnabled ? "Obrigatório no cadastro de peças" : "Opcional no cadastro de peças (a loja escolhe)"}
-              </span>
-              {owner ? (
-                <button type="button" className="adm-btn" role="switch" aria-checked={itemCost.catalogEnabled}
-                  onClick={() => void toggleItemCost()} disabled={savingItemCost}>
-                  {savingItemCost ? <Loader2 size={15} className="admin-spin" /> : null}
-                  {itemCost.catalogEnabled ? "Desativar" : "Ativar"}
-                </button>
-              ) : null}
-            </div>
-            {!owner && <p className="adm-note">Somente a proprietária pode ativar ou desativar.</p>}
-          </section>
         ) : null}
       </LoadState>
     </div>

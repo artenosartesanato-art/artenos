@@ -63,6 +63,8 @@ type Order = {
   total_amount: number;
   platform_fee_percent?: number;
   platform_fee_amount?: number;
+  /** Parte da tarifa que é por item vendido (já incluída em platform_fee_amount). */
+  item_fee_amount?: number;
   artisan_net_amount?: number;
   recipient_name: string | null;
   shipping_cep: string | null;
@@ -171,6 +173,7 @@ export default function SellerSalesPage() {
           order_id: string;
           platform_fee_percent: number;
           platform_fee_amount: number;
+          item_fee_amount?: number;
           artisan_net_amount: number;
         }>).map((financial) => [financial.order_id, financial]),
       );
@@ -662,7 +665,11 @@ function SaleCard({
                         ({Number(order.platform_fee_percent).toLocaleString(
                           "pt-BR",
                         )}
-                        %)
+                        %
+                        {Number(order.item_fee_amount || 0) > 0
+                          ? ` + ${money.format(Number(order.item_fee_amount))} por item`
+                          : ""}
+                        )
                       </dd>
                     </div>
                     <div>

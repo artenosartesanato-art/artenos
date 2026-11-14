@@ -24,3 +24,14 @@ test("uma cobrança por loja: peças, frete e comissão separados", () => {
     { artisanId: "loja-b", products: 19.9, shipping: 15, total: 34.9, applicationFee: 1.59 },
   ]);
 });
+
+test("tarifa por item entra na comissão, limitada ao valor das peças", () => {
+  // 8% de 103 (8,24) + 3 itens × 4 = 20,24 — a mesma conta de finalize_checkout.
+  assert.equal(applicationFee(103, 8, 12), 20.24);
+  assert.equal(applicationFee(3, 8, 4), 3);
+  const [charge] = chargesByStore(
+    [{ artisan_id: "loja-a", unit_price: 50, quantity: 2 }, { artisan_id: "loja-a", unit_price: 3, quantity: 1 }],
+    [{ artisan_id: "loja-a", amount: 15 }], 8, 4);
+  assert.equal(charge.applicationFee, 20.24);
+  assert.equal(charge.total, 118);
+});

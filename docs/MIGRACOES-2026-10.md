@@ -54,20 +54,26 @@ fora do site, no Supabase marque **Authentication → Providers → Email → Pa
 "Lowercase, uppercase letters, digits and symbols"** e **Minimum password length: 8**.
 Contas antigas continuam entrando com a senha atual; a regra vale ao criar ou trocar a senha.
 
-## Novembro/2026 — idade mínima (18 anos) e custo por item
+## Novembro/2026 — idade mínima (18 anos) e tarifa por item
 
 | Arquivo | O que faz |
 |---|---|
 | `supabase/migrations/20261114_data_nascimento.sql` | Idade mínima de 18 anos **só para vendedores**: data de nascimento no cadastro de loja e no pedido de abrir loja, bloqueio de lojas de menores e pedido da data, no próximo acesso, para lojas que já existiam (clientes não informam a data) |
-| `supabase/migrations/20261115_custo_por_item.sql` | Custo fixo por item (R$ 4,00): caixa de seleção na calculadora e no cadastro da peça, com liga/desliga na tela Tarifa do painel |
+| `supabase/migrations/20261115_tarifa_por_item.sql` | Tarifa fixa por item vendido (R$ 4,00, ajustável na tela Tarifa): entra na calculadora de precificação e é retida automaticamente no repasse, junto com a % |
 
 - Rode as duas **depois** de `20261113_fotos_variacoes_produto.sql`, nessa ordem. Podem ser repetidas.
 - Pode rodar antes de publicar o site: a versão antiga do site continua funcionando (cadastros sem a
   data nascem normalmente e a pessoa informa a data no primeiro acesso depois da publicação).
-- Não rode `20261111_taxa_pagamento_calculadora.sql` de novo depois da `20261115`: ela recriaria as
-  versões antigas de `save_pricing_calculation`/`update_my_pricing_calculation` e as chamadas ficariam
-  ambíguas (`validar_migracoes.sql` avisa em "ordem dos scripts"; a correção é rodar a `20261115` de novo).
+- Não rode `20261111_taxa_pagamento_calculadora.sql` nem `20261113_fotos_variacoes_produto.sql` de novo depois da
+  `20261115`: elas recriariam a calculadora e o fechamento da compra sem a tarifa por item (a correção é rodar a
+  `20261115` de novo; `validar_migracoes.sql` confere).
 - Testes locais: `psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/data_nascimento.sql` e
-  `psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/custo_por_item.sql`.
+  `psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/tarifa_por_item.sql`.
 - Detalhes, limites e como corrigir uma data digitada errada: [`docs/IDADE-MINIMA.md`](IDADE-MINIMA.md).
-- O custo por item nasce **desativado** (a loja escolhe no cadastro da peça se soma o valor). Ao ativar em **Administração → Tarifa → Custo por item**, ele passa a ser **obrigatório** em toda peça cadastrada ou editada — a loja não consegue desmarcar.
+- A tarifa por item nasce em **R$ 4,00** e funciona como a %: a loja vê na calculadora de precificação e, a
+  cada venda paga, a Artenós retém % + R$ 4,00 × peças do repasse (`orders.platform_fee_amount` e
+  `payouts.platform_fee` passam a ser o total retido; a parte por item fica em `item_fee_amount`/`item_fee`).
+  Vale para compras criadas depois da migração (o valor fica congelado no checkout). A tarifa nunca passa do
+  valor das peças e o frete continua todo da loja. Para não cobrar, defina R$ 0,00 em **Administração → Tarifa**.
+- Se a versão anterior da `20261115` ("custo por item" somado ao preço da vitrine) chegou a rodar, a nova
+  remove a tabela `product_item_costs` e devolve o preço das peças ao valor sem o custo somado.

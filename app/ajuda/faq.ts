@@ -85,7 +85,7 @@ export const FAQ: FaqGroup[] = [
         "Crie uma conta de artesã ou artesão em “Venda na Artenós”. O cadastro passa por análise da equipe; você acompanha o andamento e recebe a resposta por e-mail.",
       ] },
       { q: "Quanto custa vender?", a: [
-        "A Artenós cobra uma tarifa sobre o valor dos produtos de cada venda, informada no painel da loja. O frete não entra na tarifa.",
+        "A Artenós cobra, a cada venda, uma porcentagem sobre o valor dos produtos e uma tarifa fixa por item vendido, as duas informadas na calculadora de precificação do painel da loja. O frete não entra na tarifa.",
       ] },
       { q: "Como recebo pelas vendas?", a: [
         "Cadastre sua chave Pix em Repasses. O valor de cada venda (já descontadas a tarifa e a taxa do meio de pagamento) aparece em Repasses com a data de liberação.",

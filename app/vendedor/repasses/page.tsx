@@ -10,6 +10,8 @@ type Payout = {
   id: string;
   gross_amount: number;
   platform_fee: number;
+  /** Parte por item vendido (já incluída em platform_fee). */
+  item_fee?: number;
   gateway_fee: number;
   net_amount: number;
   status: 'pending' | 'processing' | 'paid' | 'failed' | 'cancelled';
@@ -44,7 +46,8 @@ export default function RepassesPage() {
         supabase.from('payout_accounts').select('pix_key_type, pix_key').eq('artisan_id', currentUser.id).maybeSingle(),
         supabase
           .from('payouts')
-          .select('id, gross_amount, platform_fee, gateway_fee, net_amount, status, release_after, paid_at, last_error, created_at')
+          // '*': inclui item_fee quando a migração da tarifa por item já rodou.
+          .select('*')
           .order('created_at', { ascending: false })
           .limit(50),
       ]);
@@ -123,7 +126,7 @@ export default function RepassesPage() {
               {payouts.map((p) => (
                 <li key={p.id}>
                   {new Date(p.created_at).toLocaleString('pt-BR')} — vendas {brl(p.gross_amount)} − comissão Artenós{' '}
-                  {brl(p.platform_fee)} − taxa de pagamento {brl(p.gateway_fee)} = <strong>{brl(p.net_amount)}</strong> —{' '}
+                  {brl(p.platform_fee)}{Number(p.item_fee || 0) > 0 ? ` (inclui ${brl(Number(p.item_fee))} de tarifa por item)` : ''} − taxa de pagamento {brl(p.gateway_fee)} = <strong>{brl(p.net_amount)}</strong> —{' '}
                   {STATUS[p.status]}
                   {p.status === 'pending' && ` (liberado em ${new Date(p.release_after).toLocaleDateString('pt-BR')})`}
                   {p.last_error && ` — ${p.last_error}`}

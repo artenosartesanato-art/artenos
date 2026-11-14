@@ -6,7 +6,7 @@ import { Calculator, Check, ExternalLink, LoaderCircle, X } from "@/components/i
 import { Dialog } from "@/components/ui/dialog";
 import { getSupabase } from "@/lib/supabase";
 import {
-  DEFAULT_PAYMENT_FEES, PAYMENT_METHOD_LABEL, computePricing, feeBreakdown, parsePricingNumber,
+  DEFAULT_PAYMENT_FEES, PAYMENT_METHOD_LABEL, computePricing, feeBreakdown, itemFeeFrom, parsePricingNumber,
   type PaymentFees, type PaymentMethod, type PricingInputs,
 } from "@/lib/pricing";
 
@@ -22,14 +22,7 @@ export type PricingDraft = {
 };
 
 /** O que fica guardado para salvar no histórico junto com a peça. */
-export type AppliedPricing = {
-  inputs: PricingInputs;
-  paymentMethod: PaymentMethod;
-  /** Preço sugerido (o da vitrine: já inclui o custo por item, quando houver). */
-  price: number;
-  /** Custo por item que entrou neste cálculo (0 = sem ele). */
-  itemCost: number;
-};
+export type AppliedPricing = { inputs: PricingInputs; paymentMethod: PaymentMethod; price: number };
 
 const EMPTY_DRAFT: PricingDraft = {
   materialCost: "", hoursSpent: "", hourlyRate: "", extraCost: "", operationalCost: "", marginPercent: "", paymentMethod: "card",
@@ -86,16 +79,14 @@ export function draftToInputs(draft: PricingDraft): PricingInputs {
  * "Usar este preço" preenche o preço do produto (ou de todas as variações); o
  * cálculo vai para o histórico da Precificação quando a peça for salva.
  */
-export function ProductPricingPanel({ open, onClose, productId, productName, currentPrice, variationCount, itemCost = 0, applied, onApply }: {
+export function ProductPricingPanel({ open, onClose, productId, productName, currentPrice, variationCount, applied, onApply }: {
   open: boolean;
   onClose: () => void;
   /** Peça já salva: carrega o último cálculo ligado a ela. */
   productId: string | null;
   productName: string;
-  /** Preço da vitrine com o que está no formulário agora (menor preço, com variações). */
+  /** Preço que está no formulário agora (menor preço, com variações). */
   currentPrice: number;
-  /** Custo por item marcado no cadastro da peça (0 = sem ele): entra na conta e no preço sugerido. */
-  itemCost?: number;
   /** Quantas combinações de variação a peça tem (0 = sem variações). */
   variationCount: number;
   /** Cálculo já aplicado nesta edição (reabre com os mesmos valores). */
@@ -106,6 +97,8 @@ export function ProductPricingPanel({ open, onClose, productId, productName, cur
   const [draft, setDraft] = useState<PricingDraft>(EMPTY_DRAFT);
   const [feePercent, setFeePercent] = useState<number | null>(null);
   const [paymentFees, setPaymentFees] = useState<PaymentFees | null>(null);
+  // Tarifa fixa da Artenós por item vendido (null = banco sem a migração).
+  const [itemFee, setItemFee] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [source, setSource] = useState<"applied" | "history" | "defaults" | null>(null);
@@ -118,11 +111,13 @@ export function ProductPricingPanel({ open, onClose, productId, productName, cur
     void Promise.all([
       supabase.rpc("get_pricing_calculator_settings"),
       Promise.resolve(supabase.rpc("get_payment_fee_settings")).catch(() => ({ data: null, error: true })),
+      Promise.resolve(supabase.rpc("get_item_fee_settings")).catch(() => ({ data: null, error: true })),
       productId && !applied
         ? Promise.resolve(supabase.rpc("list_my_pricing_calculations", { p_limit: 50 })).catch(() => ({ data: null, error: true }))
         : Promise.resolve({ data: null, error: null }),
-    ]).then(([settings, fees, history]) => {
+    ]).then(([settings, fees, itemFeeResponse, history]) => {
       if (!active) return;
+      setItemFee(itemFeeFrom(itemFeeResponse));
       const setting = (Array.isArray(settings.data) ? settings.data[0] : settings.data) as { platform_fee_percent?: number } | null;
       const fee = Number(setting?.platform_fee_percent);
       if (settings.error || !Number.isFinite(fee)) {
@@ -167,12 +162,12 @@ export function ProductPricingPanel({ open, onClose, productId, productName, cur
   }, [open, productId, applied]);
 
   const inputs = useMemo(() => draftToInputs(draft), [draft]);
-  const result = useMemo(() => computePricing(inputs, feePercent, paymentFees, draft.paymentMethod, itemCost),
-    [inputs, feePercent, paymentFees, draft.paymentMethod, itemCost]);
+  const result = useMemo(() => computePricing(inputs, feePercent, paymentFees, draft.paymentMethod, itemFee ?? 0),
+    [inputs, feePercent, paymentFees, draft.paymentMethod, itemFee]);
   const current = currentPrice > 0 && feePercent !== null
-    ? feeBreakdown(currentPrice, feePercent, paymentFees ? paymentFees[draft.paymentMethod] : 0)
+    ? feeBreakdown(currentPrice, feePercent, paymentFees ? paymentFees[draft.paymentMethod] : 0, itemFee ?? 0)
     : null;
-  const costPlusProfit = result.productionCost + result.desiredProfit + result.itemCost;
+  const costPlusProfit = result.productionCost + result.desiredProfit;
   const canApply = result.suggestedPrice >= 0.01 && !loading && feePercent !== null;
 
   function setField<Key extends keyof PricingDraft>(key: Key, value: PricingDraft[Key]) {
@@ -182,7 +177,7 @@ export function ProductPricingPanel({ open, onClose, productId, productName, cur
   function apply() {
     if (!canApply) return;
     writeDefaults(draft);
-    onApply({ inputs, paymentMethod: draft.paymentMethod, price: result.suggestedPrice, itemCost: result.itemCost });
+    onApply({ inputs, paymentMethod: draft.paymentMethod, price: result.suggestedPrice });
   }
 
   const money2 = (label: string, key: keyof PricingDraft, helper?: string) => (
@@ -228,9 +223,6 @@ export function ProductPricingPanel({ open, onClose, productId, productName, cur
             {loadError && <p className="pp-alert" role="alert">{loadError}</p>}
             {source === "history" && <p className="pp-note"><Check size={14} /> Valores do último cálculo salvo para esta peça.</p>}
             {source === "applied" && <p className="pp-note"><Check size={14} /> Cálculo aplicado nesta edição.</p>}
-            {itemCost > 0 && (
-              <p className="pp-note"><Check size={14} /> O custo por item de {money.format(itemCost)} marcado no cadastro já entra nesta conta.</p>
-            )}
 
             <div className="pp-grid">
               {money2("Materiais", "materialCost", "Insumos de uma unidade")}
@@ -261,9 +253,8 @@ export function ProductPricingPanel({ open, onClose, productId, productName, cur
               <strong>{money.format(result.suggestedPrice)}</strong>
               {result.suggestedPrice > 0 && (
                 <small>
-                  Custo {money.format(result.productionCost)} + lucro {money.format(result.desiredProfit)}
-                  {result.itemCost > 0 ? ` + custo por item ${money.format(result.itemCost)}` : ""} = {money.format(costPlusProfit)},
-                  já com a tarifa da Artenós ({percent(feePercent ?? 0)}){paymentFees ? ` e a taxa do Mercado Pago (${percent(result.paymentPercent)})` : ""}.
+                  Custo {money.format(result.productionCost)} + lucro {money.format(result.desiredProfit)} = {money.format(costPlusProfit)},
+                  já com a tarifa da Artenós ({percent(feePercent ?? 0)}{itemFee ? ` + ${money.format(itemFee)} por item` : ""}){paymentFees ? ` e a taxa do Mercado Pago (${percent(result.paymentPercent)})` : ""}.
                 </small>
               )}
             </section>
@@ -273,8 +264,8 @@ export function ProductPricingPanel({ open, onClose, productId, productName, cur
                 <div><dt>Materiais</dt><dd>{money.format(result.materialCost)}</dd></div>
                 <div><dt>Mão de obra ({result.hoursSpent.toLocaleString("pt-BR")} h)</dt><dd>{money.format(result.laborCost)}</dd></div>
                 <div><dt>Extras + operacional</dt><dd>{money.format(result.extraCost + result.operationalCost)}</dd></div>
-                {result.itemCost > 0 && <div><dt>Custo por item</dt><dd>{money.format(result.itemCost)}</dd></div>}
-                <div><dt>Tarifa da Artenós</dt><dd>− {money.format(result.platformFeeAmount)}</dd></div>
+                <div><dt>Tarifa da Artenós ({percent(feePercent ?? 0)})</dt><dd>− {money.format(result.platformFeeAmount)}</dd></div>
+                {result.itemFeeAmount > 0 && <div><dt>Tarifa da Artenós por item</dt><dd>− {money.format(result.itemFeeAmount)}</dd></div>}
                 {paymentFees && <div><dt>Mercado Pago</dt><dd>− {money.format(result.paymentFeeAmount)}</dd></div>}
                 <div className="is-profit"><dt>Seu lucro</dt><dd>{money.format(result.desiredProfit)}</dd></div>
               </dl>
@@ -284,7 +275,7 @@ export function ProductPricingPanel({ open, onClose, productId, productName, cur
               <p className={`pp-compare${result.suggestedPrice > 0 && currentPrice + 0.009 < result.suggestedPrice ? " is-low" : ""}`}>
                 Com o preço atual ({money.format(currentPrice)}) você recebe <strong>{money.format(current.net)}</strong> por venda
                 {result.suggestedPrice > 0 && currentPrice + 0.009 < result.suggestedPrice
-                  ? <> — abaixo do ideal: faltam {money.format(costPlusProfit - current.net)} para cobrir custo{result.itemCost > 0 ? ", custo por item" : ""} e lucro.</>
+                  ? <> — abaixo do ideal: faltam {money.format(costPlusProfit - current.net)} para cobrir custo e lucro.</>
                   : result.suggestedPrice > 0 ? <> — cobre o custo e o lucro desejado.</> : "."}
               </p>
             )}

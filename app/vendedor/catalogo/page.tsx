@@ -34,7 +34,6 @@ import { extensionFor, imageUploadOptions } from "@/lib/image-optimizer";
 import { ProductPhotosField, photosFromUrls, releasePhotos, type PhotoSlot } from "@/components/product-photos-field";
 import { EMPTY_VARIATIONS, ProductVariationsField, type VariationsState } from "@/components/product-variations-field";
 import { ProductPricingPanel, type AppliedPricing } from "@/components/product-pricing-panel";
-import { itemCostSettingsFrom, withItemCost, withoutItemCost, type ItemCostSettings } from "@/lib/pricing";
 import {
   buildRows, cleanText, groupsFromSaved, variationTotals, variationsError, type SavedVariant,
 } from "@/lib/product-variations";
@@ -95,8 +94,6 @@ type ProductForm = {
   packageCount: string;
   productionTimeDays: string;
   active: boolean;
-  /** Somar o custo fixo por item ao preço da vitrine (liberado pela administração). */
-  itemCost: boolean;
 };
 
 const STORE_BUCKET = "artenos-store-assets";
@@ -114,7 +111,6 @@ const EMPTY_FORM: ProductForm = {
   productionTimeDays: "",
   // Peça nova já vem para publicar; desmarque para guardar como rascunho.
   active: true,
-  itemCost: false,
 };
 const money = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -159,7 +155,6 @@ function errorMessage(error: unknown) {
     "dimensões",
     "volumes",
     "prazo de produção",
-    "custo por item",
   ];
   const blocked = moderationError(error);
   if (blocked) return blocked;
@@ -194,12 +189,6 @@ export default function ProductCatalogPage() {
   const [pricingOpen, setPricingOpen] = useState(false);
   const [appliedPricing, setAppliedPricing] = useState<AppliedPricing | null>(null);
   const [changingStatusId, setChangingStatusId] = useState<string | null>(null);
-  // Custo fixo por item: configuração da administração (null = banco sem a
-  // migração: a opção não aparece), peças que já têm o custo somado ao preço
-  // e o valor da peça em edição (0 = sem custo).
-  const [itemCostSettings, setItemCostSettings] = useState<ItemCostSettings | null>(null);
-  const [productItemCosts, setProductItemCosts] = useState<Record<string, number>>({});
-  const [editingItemCost, setEditingItemCost] = useState(0);
 
   async function loadCatalog(
     nextQuery = query,
@@ -214,8 +203,6 @@ export default function ProductCatalogPage() {
         categoriesResponse,
         overviewResponse,
         shippingResponse,
-        itemCostResponse,
-        productItemCostsResponse,
       ] =
         await Promise.all([
           supabase.rpc("list_my_product_catalog", {
@@ -231,9 +218,6 @@ export default function ProductCatalogPage() {
             .order("name", { ascending: true }),
           supabase.rpc("get_my_store_overview"),
           supabase.rpc("list_my_product_shipping_data"),
-          // Opcionais: sem a migração do custo por item, o cadastro segue igual.
-          Promise.resolve(supabase.rpc("get_item_cost_settings")).catch(() => ({ data: null, error: true })),
-          Promise.resolve(supabase.rpc("list_my_product_item_costs")).catch(() => ({ data: null, error: true })),
         ]);
 
       if (
@@ -278,11 +262,6 @@ export default function ProductCatalogPage() {
         })),
       );
       setCategories((categoriesResponse.data ?? []) as Category[]);
-      setItemCostSettings(itemCostSettingsFrom(itemCostResponse));
-      setProductItemCosts(!productItemCostsResponse.error && Array.isArray(productItemCostsResponse.data)
-        ? Object.fromEntries((productItemCostsResponse.data as Array<{ product_id: string; amount: number }>)
-          .map((row) => [row.product_id, Number(row.amount) || 0]))
-        : {});
       // Resumo de fotos e variações dos cards (opcional: sem a migração, some só o selo).
       void supabase.rpc("list_my_product_options_summary").then(({ data, error }) => {
         if (error || !Array.isArray(data)) return;
@@ -330,12 +309,10 @@ export default function ProductCatalogPage() {
     setForm(EMPTY_FORM);
     setVariations(EMPTY_VARIATIONS);
     setAppliedPricing(null);
-    setEditingItemCost(0);
   }
 
   function createProduct() {
     setAppliedPricing(null);
-    setEditingItemCost(0);
     resetPhotos();
     setSavedPhotoUrls([]);
     setVariations(EMPTY_VARIATIONS);
@@ -346,9 +323,6 @@ export default function ProductCatalogPage() {
 
   function editProduct(product: Product) {
     setAppliedPricing(null);
-    // O preço salvo já inclui o custo por item: o formulário mostra o preço da loja.
-    const itemCost = productItemCosts[product.id] ?? 0;
-    setEditingItemCost(itemCost);
     const initialPhotos = photosFromUrls([product.image_url]);
     resetPhotos(initialPhotos);
     setSavedPhotoUrls(product.image_url ? [product.image_url] : []);
@@ -357,7 +331,7 @@ export default function ProductCatalogPage() {
     setForm({
       name: product.name,
       description: product.description || "",
-      price: String(withoutItemCost(Number(product.price), itemCost)),
+      price: String(product.price),
       categoryId: product.category_id || "",
       stock: String(product.stock ?? 0),
       weightGrams: String(product.shipping_weight_grams ?? ""),
@@ -367,7 +341,6 @@ export default function ProductCatalogPage() {
       packageCount: String(product.shipping_package_count ?? 1),
       productionTimeDays: String(product.production_time_days ?? ""),
       active: product.active,
-      itemCost: itemCost > 0,
     });
     setFormOpen(true);
     void loadProductOptions(product);
@@ -385,9 +358,7 @@ export default function ProductCatalogPage() {
       resetPhotos(loaded);
       setSavedPhotoUrls(loaded.map((photo) => photo.url!).filter(Boolean));
       if (saved.variation_names?.length && saved.variants?.length) {
-        const itemCost = productItemCosts[product.id] ?? 0;
-        const { groups, values } = groupsFromSaved(saved.variation_names,
-          saved.variants.map((variant) => ({ ...variant, price: withoutItemCost(Number(variant.price), itemCost) })));
+        const { groups, values } = groupsFromSaved(saved.variation_names, saved.variants);
         const images: Record<string, string> = {};
         for (const variant of saved.variants) {
           const photo = loaded.find((item) => item.url === variant.image_url);
@@ -416,13 +387,6 @@ export default function ProductCatalogPage() {
   const variantRows = variations.enabled ? buildRows(variations.groups, variations.values) : [];
   const variantTotals = variationTotals(variantRows);
   const hasVariations = variations.enabled && variations.groups.length > 0;
-  // Com a opção ativada pela administração, o custo por item é obrigatório em
-  // toda peça (caixa marcada e travada); desativada, a loja escolhe.
-  const itemCostRequired = Boolean(itemCostSettings?.catalogEnabled);
-  const itemCostChecked = itemCostRequired || form.itemCost;
-  // Custo por item desta peça: o valor já gravado nela ou o configurado hoje.
-  const activeItemCost = itemCostChecked ? editingItemCost || itemCostSettings?.amount || 0 : 0;
-  const basePrice = hasVariations ? variantTotals.minPrice : Number(form.price) || 0;
 
   async function saveProduct(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -488,18 +452,6 @@ export default function ProductCatalogPage() {
       return toast.error("Adicione pelo menos a foto de capa antes de publicar.");
 
     const supabase = getSupabase();
-    // Confere se a administração não mudou a regra do custo por item nesse meio-tempo.
-    if (itemCostSettings) {
-      const current = itemCostSettingsFrom(
-        await Promise.resolve(supabase.rpc("get_item_cost_settings")).catch(() => ({ data: null, error: true })));
-      if (current && current.catalogEnabled !== itemCostSettings.catalogEnabled) {
-        setItemCostSettings(current);
-        if (!current.catalogEnabled) setField("itemCost", editingItemCost > 0);
-        return toast.error(current.catalogEnabled
-          ? "A administração da Artenós tornou o custo por item obrigatório. Confira o preço e salve de novo."
-          : "A administração da Artenós liberou a escolha do custo por item. Confira o preço e salve de novo.");
-      }
-    }
     const productId = editingId || crypto.randomUUID();
     const uploadedPaths: string[] = [];
     let productPersisted = false;
@@ -529,8 +481,7 @@ export default function ProductCatalogPage() {
         p_product_id: productId,
         p_name: form.name.trim(),
         p_description: form.description.trim(),
-        // Com o custo por item marcado, a vitrine mostra o preço da loja + o custo.
-        p_price: withItemCost(price, activeItemCost),
+        p_price: price,
         p_category_id: form.categoryId || null,
         p_stock: stock,
         // Calculado no banco pelo estoque; enviado só por compatibilidade.
@@ -545,15 +496,6 @@ export default function ProductCatalogPage() {
         : await supabase.rpc("create_my_product", values);
       if (error) throw error;
       productPersisted = true;
-
-      // Guarda (ou retira) o custo por item somado ao preço desta peça.
-      if (itemCostSettings && (activeItemCost > 0 || editingItemCost > 0)) {
-        const { error: itemCostError } = await supabase.rpc("set_my_product_item_cost", {
-          p_product_id: productId,
-          p_enabled: activeItemCost > 0,
-        });
-        if (itemCostError) throw itemCostError;
-      }
 
       const { data: shippingSaved, error: shippingError } = await supabase.rpc(
         "save_my_product_shipping_data",
@@ -581,7 +523,7 @@ export default function ProductCatalogPage() {
             return {
               option1: row.option1,
               option2: row.option2,
-              price: withItemCost(Number(row.price), activeItemCost),
+              price: Number(row.price),
               stock: Number(row.stock),
               image_url: (photoId && urlById.get(photoId)) || null,
             };
@@ -647,24 +589,14 @@ export default function ProductCatalogPage() {
       p_margin_percent: pricing.inputs.marginPercent,
       p_product_id: productId,
     };
-    // Do mais novo para o mais antigo: banco sem o custo por item (antes de
-    // 20261115) e sem a taxa do Mercado Pago (antes de 20261111).
-    const attempts: Array<Record<string, unknown>> = [
-      ...(itemCostSettings ? [{ ...payload, p_payment_method: pricing.paymentMethod, p_include_item_cost: activeItemCost > 0 }] : []),
-      { ...payload, p_payment_method: pricing.paymentMethod },
-      payload,
-    ];
-    let error: { code?: string } | null = null;
-    for (const args of attempts) {
-      ({ error } = await supabase.rpc("save_pricing_calculation", args));
-      if (error?.code !== "PGRST202") break;
-    }
+    let { error } = await supabase.rpc("save_pricing_calculation", { ...payload, p_payment_method: pricing.paymentMethod });
+    // Banco sem a taxa do Mercado Pago na calculadora (antes de 20261111): versão sem o meio de pagamento.
+    if (error?.code === "PGRST202") ({ error } = await supabase.rpc("save_pricing_calculation", payload));
     if (error) toast.warning("A peça foi salva, mas o cálculo de preço não entrou no histórico da Precificação.");
   }
 
   function applyPricing(result: AppliedPricing) {
-    // O sugerido é o preço da vitrine; o campo guarda o preço da loja (sem o custo por item).
-    const price = withoutItemCost(result.price, result.itemCost).toFixed(2);
+    const price = result.price.toFixed(2);
     if (hasVariations) {
       // Mesmo preço em todas as combinações; a loja ajusta cada uma depois, se quiser.
       const values = { ...variations.values };
@@ -680,7 +612,6 @@ export default function ProductCatalogPage() {
 
   function closeFormAfterSave() {
     setAppliedPricing(null);
-    setEditingItemCost(0);
     resetPhotos();
     setSavedPhotoUrls([]);
     setVariations(EMPTY_VARIATIONS);
@@ -1040,33 +971,6 @@ export default function ProductCatalogPage() {
                       </label>
                     </div>
                   )}
-                  {itemCostSettings && (
-                    <div className={`catalog-item-cost${itemCostChecked ? " is-on" : ""}${itemCostRequired ? " is-locked" : ""}`}>
-                      <label>
-                        <input
-                          type="checkbox"
-                          checked={itemCostChecked}
-                          disabled={itemCostRequired || saving || optionsLoading}
-                          onChange={(event) => setField("itemCost", event.target.checked)}
-                        />
-                        <span>
-                          <strong>
-                            Somar o custo por item de {money.format(editingItemCost || itemCostSettings.amount)} ao preço
-                          </strong>
-                          <small>
-                            {itemCostRequired ? "Obrigatório pela administração da Artenós. " : ""}
-                            {!itemCostChecked
-                                ? "Marque para a vitrine mostrar o seu preço mais esse valor fixo por item."
-                                : hasVariations
-                                  ? `Na vitrine, cada variação aparece com ${money.format(activeItemCost)} a mais que o preço da tabela.`
-                                  : basePrice > 0
-                                    ? `Preço na vitrine: ${money.format(withItemCost(basePrice, activeItemCost))} (${money.format(basePrice)} + ${money.format(activeItemCost)} de custo por item).`
-                                    : "Informe o preço para ver quanto aparece na vitrine."}
-                          </small>
-                        </span>
-                      </label>
-                    </div>
-                  )}
                   <div className={`catalog-pricing-cta${appliedPricing ? " is-applied" : ""}`}>
                     <Calculator size={18} />
                     <span>
@@ -1311,8 +1215,7 @@ export default function ProductCatalogPage() {
               onClose={() => setPricingOpen(false)}
               productId={editingId}
               productName={form.name}
-              currentPrice={withItemCost(basePrice, activeItemCost)}
-              itemCost={activeItemCost}
+              currentPrice={hasVariations ? variantTotals.minPrice : Number(form.price) || 0}
               variationCount={hasVariations ? variantRows.length : 0}
               applied={appliedPricing}
               onApply={applyPricing}
