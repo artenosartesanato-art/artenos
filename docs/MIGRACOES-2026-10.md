@@ -60,13 +60,14 @@ Contas antigas continuam entrando com a senha atual; a regra vale ao criar ou tr
 |---|---|
 | `supabase/migrations/20261114_data_nascimento.sql` | Idade mínima de 18 anos **só para vendedores**: data de nascimento no cadastro de loja e no pedido de abrir loja, bloqueio de lojas de menores e pedido da data, no próximo acesso, para lojas que já existiam (clientes não informam a data) |
 | `supabase/migrations/20261115_tarifa_por_item.sql` | Tarifa fixa por item vendido (R$ 4,00, ajustável na tela Tarifa): entra na calculadora de precificação e é retida automaticamente no repasse, junto com a % |
+| `supabase/migrations/20261116_variacoes_padronizadas.sql` | Variações só com tipos da lista (Cor, Tamanho, Comprimento, Quantidade, Material, Estampa, Modelo, Aroma); opções da paleta/lista ou montadas com números; Estampa, Modelo e Aroma com texto curto revisado em **Administração → Variações** |
 
-- Rode as duas **depois** de `20261113_fotos_variacoes_produto.sql`, nessa ordem. Podem ser repetidas.
+- Rode as três **depois** de `20261113_fotos_variacoes_produto.sql`, nessa ordem (14, 15, 16). Podem ser repetidas.
 - Pode rodar antes de publicar o site: a versão antiga do site continua funcionando (cadastros sem a
   data nascem normalmente e a pessoa informa a data no primeiro acesso depois da publicação).
 - Não rode `20261111_taxa_pagamento_calculadora.sql` nem `20261113_fotos_variacoes_produto.sql` de novo depois da
-  `20261115`: elas recriariam a calculadora e o fechamento da compra sem a tarifa por item (a correção é rodar a
-  `20261115` de novo; `validar_migracoes.sql` confere).
+  `20261115`/`20261116`: elas recriariam a calculadora, o fechamento da compra e o salvar das variações sem as regras
+  novas (a correção é rodar a `20261115` e a `20261116` de novo; `validar_migracoes.sql` confere).
 - Testes locais: `psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/data_nascimento.sql` e
   `psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/tarifa_por_item.sql`.
 - Detalhes, limites e como corrigir uma data digitada errada: [`docs/IDADE-MINIMA.md`](IDADE-MINIMA.md).
@@ -77,3 +78,7 @@ Contas antigas continuam entrando com a senha atual; a regra vale ao criar ou tr
   valor das peças e o frete continua todo da loja. Para não cobrar, defina R$ 0,00 em **Administração → Tarifa**.
 - Se a versão anterior da `20261115` ("custo por item" somado ao preço da vitrine) chegou a rodar, a nova
   remove a tabela `product_item_costs` e devolve o preço das peças ao valor sem o custo somado.
+- **Variações padronizadas (20261116):** peças antigas continuam na vitrine como estão. Ao editar, o formulário
+  converte tipos conhecidos ("Kit" → Quantidade, "Estilo" → Modelo, "Natural" → Cru) e pede para trocar o que não
+  estiver na lista. Opções de Estampa, Modelo e Aroma entram na fila de **Administração → Variações**: recusar tira a
+  peça da vitrine, avisa a loja e impede publicar de novo enquanto a opção continuar na peça.

@@ -1790,3 +1790,80 @@
   margin: 0;
   -webkit-appearance: none;
 }
+
+/* Variações com lista fechada (20261116): paleta, dicas, medida e opções fora da regra. */
+.catalog-modal .catalog-variation-hint {
+  color: var(--an-text-muted);
+  font-size: 11px;
+}
+.catalog-modal .catalog-swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 6px;
+}
+.catalog-modal .catalog-swatches button {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 9px;
+  border: 1px solid var(--artenos-pessego);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--artenos-marrom);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.catalog-modal .catalog-swatches button:hover {
+  border-color: var(--artenos-argila);
+}
+.catalog-modal .catalog-swatches button.is-selected {
+  border-color: var(--artenos-marrom);
+  box-shadow: inset 0 0 0 1px var(--artenos-marrom);
+  background: var(--artenos-perola);
+}
+.catalog-modal .catalog-swatches button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.catalog-modal .catalog-swatches i {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border-radius: 50%;
+  border: 1px solid rgb(0 0 0 / 0.18);
+}
+.catalog-modal .catalog-chip-row button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.catalog-modal .catalog-option-chips li > span {
+  padding: 0 4px 0 11px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 30px;
+}
+.catalog-modal .catalog-option-chips li.is-invalid {
+  border-color: var(--an-erro);
+  background: var(--an-erro-fundo);
+  color: var(--an-erro);
+}
+.catalog-modal .catalog-option-add {
+  align-items: center;
+}
+.catalog-modal .catalog-option-add > span {
+  color: var(--an-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.catalog-modal .catalog-option-add.is-measure input {
+  flex: 1 1 70px;
+  max-width: 110px;
+}
+@media (max-width: 520px) {
+  .catalog-modal .catalog-option-add {
+    flex-wrap: wrap;
+  }
+}

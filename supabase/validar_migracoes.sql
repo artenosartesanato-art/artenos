@@ -266,6 +266,14 @@ checagens as (
                           where n.nspname = 'public' and p.proname = 'finalize_checkout' and p.prosrc ilike '%item_fee%')
          then 'FALTA: rode migrations/20261115_tarifa_por_item.sql' else 'OK' end
   union all
+  select '20261116 variacoes_padronizadas', 'função', 'variações só com tipos e opções da lista (texto livre revisado)',
+    case when to_regprocedure('public.variation_option_check(text,text)') is null
+           or to_regclass('public.variation_text_reviews') is null
+           or to_regprocedure('public.admin_review_variation_text(uuid,text)') is null
+           or not exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                          where n.nspname = 'public' and p.proname = 'save_my_product_options' and p.prosrc ilike '%variation_option_check%')
+         then 'FALTA: rode migrations/20261116_variacoes_padronizadas.sql' else 'OK' end
+  union all
   -- Sobrecargas duplicadas deixam chamadas ambíguas (acontece ao rodar um script antigo depois de um novo).
   select 'ordem dos scripts', 'sobrecarga', p.proname,
     case when count(*) > 1 then 'ATENÇÃO: ' || count(*) || ' versões; rode de novo os scripts a partir do 06' else 'OK' end

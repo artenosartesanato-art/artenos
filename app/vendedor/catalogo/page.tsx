@@ -35,7 +35,7 @@ import { ProductPhotosField, photosFromUrls, releasePhotos, type PhotoSlot } fro
 import { EMPTY_VARIATIONS, ProductVariationsField, type VariationsState } from "@/components/product-variations-field";
 import { ProductPricingPanel, type AppliedPricing } from "@/components/product-pricing-panel";
 import {
-  buildRows, cleanText, groupsFromSaved, variationTotals, variationsError, type SavedVariant,
+  buildRows, cleanText, groupsFromSaved, normalizeOption, variationTotals, variationsError, type SavedVariant,
 } from "@/lib/product-variations";
 
 type CatalogStatus = "all" | "published" | "draft" | "out_of_stock" | "ready";
@@ -362,7 +362,8 @@ export default function ProductCatalogPage() {
         const images: Record<string, string> = {};
         for (const variant of saved.variants) {
           const photo = loaded.find((item) => item.url === variant.image_url);
-          if (photo && variant.image_url !== product.image_url) images[variant.option1.toLowerCase()] = photo.id;
+          if (photo && variant.image_url !== product.image_url)
+            images[normalizeOption(groups[0]?.name ?? "", variant.option1).toLowerCase()] = photo.id;
         }
         setVariations({ enabled: true, groups, values, images });
       }

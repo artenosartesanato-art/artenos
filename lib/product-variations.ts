@@ -1,6 +1,8 @@
 // Variações de uma peça (cor, tamanho...): lógica pura usada pelo formulário do
 // catálogo e pela vitrine. As MESMAS regras são conferidas no banco
-// (save_my_product_options, 20261113_fotos_variacoes_produto.sql).
+// (save_my_product_options, 20261113 e 20261116_variacoes_padronizadas.sql).
+
+import { canonicalType, checkOption, isVariationType } from "./variation-catalog.ts";
 
 export const MAX_PRODUCT_PHOTOS = 3;
 export const MAX_VARIATION_GROUPS = 2;
@@ -8,17 +10,6 @@ export const MAX_OPTIONS_PER_GROUP = 20;
 export const MAX_VARIANTS = 50;
 export const VARIATION_NAME_MAX = 20;
 export const VARIATION_OPTION_MAX = 40;
-
-/** Tipos sugeridos (mesma lista dos grandes marketplaces); o artesão pode criar outro. */
-export const VARIATION_PRESETS = ["Cor", "Tamanho", "Estilo", "Comprimento", "Material", "Estampa"] as const;
-
-/** Sugestões rápidas de opções por tipo. */
-export const OPTION_SUGGESTIONS: Record<string, string[]> = {
-  Cor: ["Branco", "Preto", "Azul", "Verde", "Vermelho", "Amarelo", "Rosa", "Natural"],
-  Tamanho: ["P", "M", "G", "GG", "30×40 cm", "40×50 cm", "50×60 cm"],
-  Comprimento: ["40 cm", "45 cm", "50 cm", "60 cm"],
-  Material: ["Algodão", "Linho", "Madeira", "Cerâmica", "Couro"],
-};
 
 export type VariationGroup = { name: string; options: string[] };
 
@@ -48,25 +39,37 @@ export function buildRows(groups: readonly VariationGroup[], values: Readonly<Re
   return buildCombinations(groups).map((combo) => ({ ...combo, ...(values[combo.key] ?? { price: "", stock: "0" }) }));
 }
 
-/** Adiciona uma opção ao grupo; devolve a mensagem de erro, se houver. */
-export function optionError(group: VariationGroup, raw: string): string | null {
-  const option = cleanText(raw);
-  if (!option) return "Digite a opção.";
-  if (option.length > VARIATION_OPTION_MAX) return `Use até ${VARIATION_OPTION_MAX} caracteres.`;
-  if (group.options.some((existing) => existing.toLowerCase() === option.toLowerCase())) return "Essa opção já existe.";
-  if (group.options.length >= MAX_OPTIONS_PER_GROUP) return `Use até ${MAX_OPTIONS_PER_GROUP} opções por variação.`;
-  return null;
+/**
+ * Confere uma opção nova para o grupo (tipo da lista + regra do tipo). Devolve
+ * a opção no formato oficial ou a mensagem de erro.
+ */
+export function optionError(group: VariationGroup, raw: string): { option: string; error: null } | { option: null; error: string } {
+  const checked = checkOption(cleanText(group.name), raw);
+  if (!checked.ok) return { option: null, error: checked.message };
+  const option = checked.value;
+  if (option.length > VARIATION_OPTION_MAX) return { option: null, error: `Use até ${VARIATION_OPTION_MAX} caracteres.` };
+  if (group.options.some((existing) => existing.toLowerCase() === option.toLowerCase())) return { option: null, error: "Essa opção já existe." };
+  if (group.options.length >= MAX_OPTIONS_PER_GROUP) return { option: null, error: `Use até ${MAX_OPTIONS_PER_GROUP} opções por variação.` };
+  return { option, error: null };
 }
 
 /** Valida os grupos e a tabela; devolve a primeira mensagem de erro ou null. */
 export function variationsError(groups: readonly VariationGroup[], rows: readonly VariantRow[]): string | null {
   if (!groups.length) return null;
   const names = groups.map((group) => cleanText(group.name));
-  if (names.some((name) => !name)) return "Dê um nome para cada variação (ex.: Cor, Tamanho).";
+  if (names.some((name) => !name)) return "Escolha o tipo de cada variação (ex.: Cor, Tamanho).";
+  const unknown = names.find((name) => !isVariationType(name));
+  if (unknown) return `O tipo “${unknown}” não é mais aceito. Escolha um tipo da lista.`;
   if (names.some((name) => name.length > VARIATION_NAME_MAX)) return `O nome da variação deve ter até ${VARIATION_NAME_MAX} caracteres.`;
-  if (new Set(names.map((name) => name.toLowerCase())).size !== names.length) return "As variações precisam ter nomes diferentes.";
+  if (new Set(names.map((name) => name.toLowerCase())).size !== names.length) return "As variações precisam ter tipos diferentes.";
   const empty = groups.find((group) => !group.options.length);
   if (empty) return `Adicione pelo menos uma opção em “${cleanText(empty.name) || "variação"}”.`;
+  for (const group of groups) {
+    for (const option of group.options) {
+      const checked = checkOption(cleanText(group.name), option);
+      if (!checked.ok) return `${cleanText(group.name)}: ${checked.message} Remova a opção e escolha de novo.`;
+    }
+  }
   if (rows.length > MAX_VARIANTS) return `Use no máximo ${MAX_VARIANTS} combinações (hoje são ${rows.length}).`;
   for (const row of rows) {
     const label = [row.option1, row.option2].filter(Boolean).join(" / ");
@@ -88,14 +91,25 @@ export function variationTotals(rows: readonly VariantRow[]) {
   };
 }
 
+/** Opção válida, mas escrita de outro jeito ("azul", "30×40 cm"), vira o formato oficial. */
+export function normalizeOption(type: string, option: string) {
+  const checked = checkOption(cleanText(type), option);
+  return checked.ok ? checked.value : option;
+}
+
 /** Reconstrói o formulário a partir do que está salvo no banco. */
 export function groupsFromSaved(names: readonly string[], variants: readonly SavedVariant[]) {
-  const groups: VariationGroup[] = names.slice(0, MAX_VARIATION_GROUPS).map((name) => ({ name, options: [] }));
+  // Tipo antigo (digitado antes da lista fechada) vira o equivalente da lista, quando há um.
+  const groups: VariationGroup[] = names.slice(0, MAX_VARIATION_GROUPS)
+    .map((name) => ({ name: isVariationType(name) ? name : canonicalType(name) ?? name, options: [] }));
   const values: Record<string, VariantValues> = {};
+  const normalize = (group: VariationGroup | undefined, option: string) => (group ? normalizeOption(group.name, option) : option);
   for (const variant of variants) {
-    if (groups[0] && !groups[0].options.includes(variant.option1)) groups[0].options.push(variant.option1);
-    if (groups[1] && variant.option2 && !groups[1].options.includes(variant.option2)) groups[1].options.push(variant.option2);
-    values[variantKey(variant.option1, groups[1] ? variant.option2 : null)] = { price: String(variant.price), stock: String(variant.stock) };
+    const option1 = normalize(groups[0], variant.option1);
+    const option2 = variant.option2 ? normalize(groups[1], variant.option2) : null;
+    if (groups[0] && !groups[0].options.includes(option1)) groups[0].options.push(option1);
+    if (groups[1] && option2 && !groups[1].options.includes(option2)) groups[1].options.push(option2);
+    values[variantKey(option1, groups[1] ? option2 : null)] = { price: String(variant.price), stock: String(variant.stock) };
   }
   return { groups, values };
 }

@@ -3359,3 +3359,10 @@ div.product-details-description :is(ul, ol) {
   .pd-variants,
   .pd-variant-option { transition: none; }
 }
+.pd-variant-swatch {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border-radius: 50%;
+  border: 1px solid rgb(0 0 0 / 0.18);
+}

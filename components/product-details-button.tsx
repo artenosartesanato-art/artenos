@@ -36,6 +36,7 @@ import { AVAILABILITY_LABEL, availabilityFor, maxQuantityFor, productionLabel, t
 import { StoreAvatar } from "@/components/store-avatar";
 import { fetchProductOptions } from "@/lib/product-options";
 import { findVariant, optionSoldOut, uniqueOptions, variantLabel, type ProductOptions } from "@/lib/product-variations";
+import { colorHex } from "@/lib/variation-catalog";
 
 type ProductDetails = {
   id: string;
@@ -444,12 +445,15 @@ export function ProductDetailsButton({ product, children, cartDisabled = false }
                     {values.map((value) => {
                       const soldOut = optionSoldOut(variants, level, value, other);
                       const image = level === 1 ? variants.find((variant) => variant.option1 === value && variant.image_url)?.image_url : null;
+                      // Cor da paleta: amostra no botão quando a opção não tem foto própria.
+                      const swatch = !image && name === "Cor" ? colorHex(value) : null;
                       return (
                         <button type="button" key={value} onClick={() => choose(level, value)}
                           className={`pd-variant-option${current === value ? " is-selected" : ""}${soldOut ? " is-sold-out" : ""}${image ? " has-image" : ""}`}
                           aria-pressed={current === value} disabled={soldOut && current !== value}
                           title={soldOut ? `${value}: esgotado` : value}>
                           {image && <OptimizedImage src={image} alt="" width={40} height={50} sizes="32px" />}
+                          {swatch && <i className="pd-variant-swatch" style={{ background: swatch }} aria-hidden="true" />}
                           <span>{value}</span>
                           {soldOut && <span className="an-visually-hidden"> (esgotado)</span>}
                         </button>

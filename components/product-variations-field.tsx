@@ -4,10 +4,13 @@ import { useId, useState, type KeyboardEvent } from "react";
 import { Layers, Plus, Trash2, X } from "@/components/icons";
 import { photoSrc, type PhotoSlot } from "@/components/product-photos-field";
 import {
-  MAX_OPTIONS_PER_GROUP, MAX_VARIANTS, MAX_VARIATION_GROUPS, OPTION_SUGGESTIONS, VARIATION_NAME_MAX,
-  VARIATION_OPTION_MAX, VARIATION_PRESETS, buildRows, cleanText, optionError, variantKey, variationTotals,
-  type VariantValues, type VariationGroup,
+  MAX_OPTIONS_PER_GROUP, MAX_VARIANTS, MAX_VARIATION_GROUPS, VARIATION_OPTION_MAX, buildRows, cleanText, optionError,
+  variantKey, variationTotals, type VariantValues, type VariationGroup,
 } from "@/lib/product-variations";
+import {
+  COLORS, FREE_TEXT_MAX, MATERIALS, SIZE_LETTERS, TYPE_HINT, TYPE_KIND, VARIATION_TYPES, checkOption, isVariationType,
+  lengthOption, measureFrom, measureOption, quantityFrom, quantityOption, type VariationType,
+} from "@/lib/variation-catalog";
 
 export type VariationsState = {
   enabled: boolean;
@@ -36,6 +39,8 @@ export function ProductVariationsField({ value, onChange, photos, disabled = fal
   const id = useId();
   const [drafts, setDrafts] = useState<string[]>(["", ""]);
   const [draftErrors, setDraftErrors] = useState<string[]>(["", ""]);
+  // Medida (largura × altura) do tipo Tamanho, por variação.
+  const [measures, setMeasures] = useState([{ width: "", height: "" }, { width: "", height: "" }]);
   const [bulk, setBulk] = useState({ price: "", stock: "" });
   const rows = buildRows(value.groups, value.values);
   const totals = variationTotals(rows);
@@ -59,14 +64,68 @@ export function ProductVariationsField({ value, onChange, photos, disabled = fal
     onChange({ ...EMPTY_VARIATIONS });
   }
 
+  function setDraftError(index: number, message: string) {
+    setDraftErrors((current) => current.map((item, position) => (position === index ? message : item)));
+  }
+
   function addOption(index: number, raw = drafts[index]) {
     const group = value.groups[index];
-    if (!group) return;
-    const problem = optionError(group, raw);
-    setDraftErrors((current) => current.map((message, position) => (position === index ? problem ?? "" : message)));
-    if (problem) return;
-    setGroup(index, { ...group, options: [...group.options, cleanText(raw)] });
+    if (!group) return false;
+    const result = optionError(group, raw);
+    setDraftError(index, result.error ?? "");
+    if (result.error !== null) return false;
+    setGroup(index, { ...group, options: [...group.options, result.option] });
     setDrafts((current) => current.map((draft, position) => (position === index ? "" : draft)));
+    return true;
+  }
+
+  /** Lista fechada (cor, material, letras de tamanho): marca ou desmarca. */
+  function toggleOption(index: number, option: string) {
+    const group = value.groups[index];
+    if (!group) return;
+    const existing = group.options.find((item) => item.toLowerCase() === option.toLowerCase());
+    if (existing) {
+      setDraftError(index, "");
+      removeOption(index, existing);
+    } else addOption(index, option);
+  }
+
+  /** Número digitado (comprimento, quantidade, numeração) vira a opção no formato oficial. */
+  function addNumber(index: number, kind: "length" | "quantity" | "number") {
+    const raw = drafts[index];
+    if (kind === "quantity") {
+      const units = quantityFrom(raw);
+      if (units === null) return setDraftError(index, "Digite um número inteiro de 1 a 9999.");
+      return void addOption(index, quantityOption(units));
+    }
+    if (kind === "number") {
+      const size = Number(raw);
+      if (!Number.isInteger(size) || size < 1 || size > 99) return setDraftError(index, "Digite uma numeração de 1 a 99.");
+      return void addOption(index, String(size));
+    }
+    const cm = measureFrom(raw);
+    if (cm === null) return setDraftError(index, "Digite um comprimento em cm (ex.: 45 ou 45,5).");
+    addOption(index, lengthOption(cm));
+  }
+
+  function addMeasure(index: number) {
+    const width = measureFrom(measures[index].width);
+    const height = measureFrom(measures[index].height);
+    if (width === null || height === null) return setDraftError(index, "Digite a largura e a altura em cm (ex.: 30 e 40).");
+    if (addOption(index, measureOption(width, height)))
+      setMeasures((current) => current.map((item, position) => (position === index ? { width: "", height: "" } : item)));
+  }
+
+  /** Troca o tipo: mantém só as opções que valem para o novo tipo. */
+  function chooseType(index: number, type: VariationType) {
+    const group = value.groups[index];
+    const options = group.options
+      .map((option) => checkOption(type, option))
+      .flatMap((result) => (result.ok ? [result.value] : []))
+      .filter((option, position, list) => list.findIndex((item) => item.toLowerCase() === option.toLowerCase()) === position);
+    setDraftError(index, "");
+    setDrafts((current) => current.map((draft, position) => (position === index ? "" : draft)));
+    setGroup(index, { name: type, options });
   }
 
   function removeOption(index: number, option: string) {
@@ -79,7 +138,8 @@ export function ProductVariationsField({ value, onChange, photos, disabled = fal
 
   function renameOption(index: number, option: string, raw: string) {
     const group = value.groups[index];
-    const next = cleanText(raw);
+    const checked = checkOption(cleanText(group.name), raw);
+    const next = checked.ok ? checked.value : "";
     if (!next || next === option) return;
     if (next.length > VARIATION_OPTION_MAX || group.options.some((item) => item !== option && item.toLowerCase() === next.toLowerCase())) return;
     // Leva preço/estoque/foto para o novo nome.
@@ -104,7 +164,11 @@ export function ProductVariationsField({ value, onChange, photos, disabled = fal
   function onDraftKey(index: number, event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Enter") {
       event.preventDefault();
-      addOption(index);
+      const type = cleanText(value.groups[index]?.name);
+      const kind = isVariationType(type) ? TYPE_KIND[type] : "free";
+      if (kind === "length" || kind === "quantity") addNumber(index, kind);
+      else if (kind === "size") addNumber(index, "number");
+      else addOption(index);
     }
   }
 
@@ -157,9 +221,12 @@ export function ProductVariationsField({ value, onChange, photos, disabled = fal
       </div>
 
       {value.groups.map((group, index) => {
-        const suggestions = (OPTION_SUGGESTIONS[cleanText(group.name)] ?? [])
-          .filter((option) => !group.options.some((item) => item.toLowerCase() === option.toLowerCase()));
-        const usedNames = value.groups.filter((_, position) => position !== index).map((item) => cleanText(item.name).toLowerCase());
+        const type = cleanText(group.name);
+        const known = isVariationType(type) ? type : null;
+        const kind = known ? TYPE_KIND[known] : null;
+        const usedNames = value.groups.filter((_, position) => position !== index).map((item) => cleanText(item.name));
+        const has = (option: string) => group.options.some((item) => item.toLowerCase() === option.toLowerCase());
+        const full = group.options.length >= MAX_OPTIONS_PER_GROUP;
         return (
           <div className="catalog-variation-group" key={index}>
             <div className="catalog-variation-group-head">
@@ -171,63 +238,123 @@ export function ProductVariationsField({ value, onChange, photos, disabled = fal
                 </button>
               )}
             </div>
-            <label className="catalog-variation-name">
-              <span>Tipo da variação</span>
-              <input value={group.name} maxLength={VARIATION_NAME_MAX} disabled={disabled} list={`${id}-tipos`}
-                placeholder="Ex.: Cor, Tamanho, Estampa" onChange={(event) => setGroup(index, { ...group, name: event.target.value })} />
-            </label>
-            <div className="catalog-chip-row" role="group" aria-label="Tipos sugeridos">
-              {VARIATION_PRESETS.filter((preset) => !usedNames.includes(preset.toLowerCase())).map((preset) => (
-                <button type="button" key={preset} className={cleanText(group.name) === preset ? "is-selected" : undefined}
-                  aria-pressed={cleanText(group.name) === preset} disabled={disabled}
-                  onClick={() => setGroup(index, { ...group, name: preset })}>
-                  {preset}
-                </button>
-              ))}
+            <div className="catalog-variation-name">
+              <span id={`${id}-tipo-${index}`}>Tipo da variação</span>
+              <div className="catalog-chip-row" role="radiogroup" aria-labelledby={`${id}-tipo-${index}`}>
+                {VARIATION_TYPES.filter((item) => !usedNames.includes(item)).map((item) => (
+                  <button type="button" key={item} role="radio" className={type === item ? "is-selected" : undefined}
+                    aria-checked={type === item} disabled={disabled} onClick={() => chooseType(index, item)}>
+                    {item}
+                  </button>
+                ))}
+              </div>
+              {type && !known && (
+                <p className="catalog-variation-error" role="alert">
+                  O tipo “{type}” não é mais aceito. Escolha um tipo da lista; as opções que servirem para ele são mantidas.
+                </p>
+              )}
             </div>
 
-            <div className="catalog-variation-options">
-              <span className="catalog-variation-label">Opções{group.options.length ? ` (${group.options.length}/${MAX_OPTIONS_PER_GROUP})` : ""}</span>
-              {group.options.length > 0 && (
-                <ul className="catalog-option-chips">
-                  {group.options.map((option) => (
-                    <li key={option}>
-                      <input aria-label={`Opção ${option}`} defaultValue={option} maxLength={VARIATION_OPTION_MAX} disabled={disabled}
-                        size={Math.max(4, option.length)}
-                        onBlur={(event) => { renameOption(index, option, event.target.value); event.target.value = cleanText(event.target.value) || option; }}
-                        onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); event.currentTarget.blur(); } }} />
-                      <button type="button" onClick={() => removeOption(index, option)} disabled={disabled}
-                        aria-label={`Remover a opção ${option}`} title="Remover opção"><X size={12} /></button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <div className="catalog-option-add">
-                <input value={drafts[index]} maxLength={VARIATION_OPTION_MAX} disabled={disabled}
-                  aria-label={`Nova opção de ${cleanText(group.name) || `variação ${index + 1}`}`}
-                  aria-invalid={draftErrors[index] ? true : undefined}
-                  placeholder={cleanText(group.name) === "Tamanho" ? "Ex.: 40×50 cm" : cleanText(group.name) === "Cor" ? "Ex.: Azul" : "Digite uma opção"}
-                  onChange={(event) => {
-                    const next = event.target.value;
-                    setDrafts((current) => current.map((draft, position) => (position === index ? next : draft)));
-                    if (draftErrors[index]) setDraftErrors((current) => current.map((message, position) => (position === index ? "" : message)));
-                  }}
-                  onKeyDown={(event) => onDraftKey(index, event)} />
-                <button type="button" onClick={() => addOption(index)} disabled={disabled}>
-                  <Plus size={14} /> Adicionar
-                </button>
-              </div>
-              {draftErrors[index] && <small className="catalog-variation-error" role="alert">{draftErrors[index]}</small>}
-              {suggestions.length > 0 && (
-                <div className="catalog-chip-row is-suggestions" role="group" aria-label="Sugestões de opções">
-                  {suggestions.slice(0, 8).map((option) => (
-                    <button type="button" key={option} disabled={disabled} onClick={() => addOption(index, option)}>
-                      <Plus size={11} /> {option}
+            {known && (
+              <div className="catalog-variation-options">
+                <span className="catalog-variation-label">
+                  Opções{group.options.length ? ` (${group.options.length}/${MAX_OPTIONS_PER_GROUP})` : ""}
+                </span>
+                <small className="catalog-variation-hint">{TYPE_HINT[known]}</small>
+
+                {kind === "color" && (
+                  <div className="catalog-swatches" role="group" aria-label="Paleta de cores">
+                    {COLORS.map((color) => (
+                      <button type="button" key={color.name} aria-pressed={has(color.name)} disabled={disabled || (full && !has(color.name))}
+                        className={has(color.name) ? "is-selected" : undefined} onClick={() => toggleOption(index, color.name)}>
+                        <i style={{ background: color.hex }} aria-hidden="true" /> {color.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {(kind === "material" || kind === "size") && (
+                  <div className="catalog-chip-row" role="group" aria-label={kind === "material" ? "Materiais" : "Tamanhos"}>
+                    {(kind === "material" ? MATERIALS : SIZE_LETTERS).map((option) => (
+                      <button type="button" key={option} aria-pressed={has(option)} disabled={disabled || (full && !has(option))}
+                        className={has(option) ? "is-selected" : undefined} onClick={() => toggleOption(index, option)}>
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {group.options.length > 0 && kind !== "color" && kind !== "material" && (
+                  <ul className="catalog-option-chips">
+                    {group.options.map((option) => {
+                      const valid = checkOption(known, option).ok;
+                      return (
+                        <li key={option} className={valid ? undefined : "is-invalid"} title={valid ? undefined : "Opção fora da regra: remova e escolha de novo"}>
+                          {kind === "free" ? (
+                            <input aria-label={`Opção ${option}`} defaultValue={option} maxLength={FREE_TEXT_MAX} disabled={disabled}
+                              size={Math.max(4, option.length)}
+                              onBlur={(event) => { renameOption(index, option, event.target.value); event.target.value = cleanText(event.target.value) || option; }}
+                              onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); event.currentTarget.blur(); } }} />
+                          ) : <span>{option}</span>}
+                          <button type="button" onClick={() => removeOption(index, option)} disabled={disabled}
+                            aria-label={`Remover a opção ${option}`} title="Remover opção"><X size={12} /></button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                {(kind === "color" || kind === "material") && group.options.some((option) => !checkOption(known, option).ok) && (
+                  <ul className="catalog-option-chips">
+                    {group.options.filter((option) => !checkOption(known, option).ok).map((option) => (
+                      <li key={option} className="is-invalid" title="Opção fora da lista: remova">
+                        <span>{option}</span>
+                        <button type="button" onClick={() => removeOption(index, option)} disabled={disabled}
+                          aria-label={`Remover a opção ${option}`}><X size={12} /></button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {kind === "size" && (
+                  <div className="catalog-option-add is-measure">
+                    <input type="text" inputMode="decimal" placeholder="Largura" value={measures[index].width} disabled={disabled || full}
+                      aria-label="Largura em cm"
+                      onChange={(event) => { const width = event.target.value; setMeasures((current) => current.map((item, position) => (position === index ? { ...item, width } : item))); setDraftError(index, ""); }} />
+                    <span aria-hidden="true">×</span>
+                    <input type="text" inputMode="decimal" placeholder="Altura" value={measures[index].height} disabled={disabled || full}
+                      aria-label="Altura em cm"
+                      onChange={(event) => { const height = event.target.value; setMeasures((current) => current.map((item, position) => (position === index ? { ...item, height } : item))); setDraftError(index, ""); }}
+                      onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addMeasure(index); } }} />
+                    <span>cm</span>
+                    <button type="button" onClick={() => addMeasure(index)} disabled={disabled || full}><Plus size={14} /> Medida</button>
+                  </div>
+                )}
+                {(kind === "size" || kind === "length" || kind === "quantity" || kind === "free") && (
+                  <div className="catalog-option-add">
+                    <input value={drafts[index]} disabled={disabled || full}
+                      type="text"
+                      inputMode={kind === "free" ? "text" : kind === "length" ? "decimal" : "numeric"}
+                      maxLength={kind === "free" ? FREE_TEXT_MAX : 7}
+                      aria-label={kind === "size" ? "Numeração" : `Nova opção de ${known}`}
+                      aria-invalid={draftErrors[index] ? true : undefined}
+                      placeholder={kind === "size" ? "Numeração (ex.: 38)" : kind === "length" ? "Comprimento em cm (ex.: 45)"
+                        : kind === "quantity" ? "Unidades (ex.: 4)" : `Ex.: ${known === "Aroma" ? "Lavanda" : known === "Estampa" ? "Floral" : "Clássico"}`}
+                      onChange={(event) => {
+                        const next = kind === "free" ? event.target.value : event.target.value.replace(kind === "length" ? /[^\d,.]/g : /\D/g, "");
+                        setDrafts((current) => current.map((draft, position) => (position === index ? next : draft)));
+                        if (draftErrors[index]) setDraftError(index, "");
+                      }}
+                      onKeyDown={(event) => onDraftKey(index, event)} />
+                    {kind === "length" && <span>cm</span>}
+                    {kind === "quantity" && <span>unidades</span>}
+                    <button type="button" disabled={disabled || full}
+                      onClick={() => (kind === "free" ? addOption(index) : addNumber(index, kind === "size" ? "number" : kind))}>
+                      <Plus size={14} /> {kind === "size" ? "Numeração" : "Adicionar"}
                     </button>
-                  ))}
-                </div>
-              )}
-            </div>
+                  </div>
+                )}
+                {draftErrors[index] && <small className="catalog-variation-error" role="alert">{draftErrors[index]}</small>}
+              </div>
+            )}
 
             {index === 0 && group.options.length > 0 && photos.length > 0 && (
               <div className="catalog-option-photos">
@@ -261,7 +388,6 @@ export function ProductVariationsField({ value, onChange, photos, disabled = fal
           </div>
         );
       })}
-      <datalist id={`${id}-tipos`}>{VARIATION_PRESETS.map((preset) => <option key={preset} value={preset} />)}</datalist>
 
       {value.groups.length < MAX_VARIATION_GROUPS && (
         <button type="button" className="catalog-variation-add-group" disabled={disabled}
