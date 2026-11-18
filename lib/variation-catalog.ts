@@ -157,3 +157,28 @@ export function checkOption(type: string, raw: string): { ok: true; value: strin
 export function colorHex(name: string) {
   return COLORS.find((item) => listKey(item.name) === listKey(name))?.hex ?? null;
 }
+
+const rgb = (hex: string) => {
+  const value = hex.replace("#", "");
+  return [0, 2, 4].map((offset) => parseInt(value.slice(offset, offset + 2), 16));
+};
+
+/**
+ * Cor escolhida no seletor (#rrggbb) → nome da paleta mais parecido. Assim o
+ * vendedor escolhe a cor "no olho" e a opção continua com um nome da lista.
+ */
+export function nearestColor(hex: string) {
+  if (!/^#[0-9a-f]{6}$/i.test(hex)) return null;
+  const [r, g, b] = rgb(hex);
+  let best: { name: string; hex: string } | null = null;
+  let bestDistance = Infinity;
+  for (const color of COLORS) {
+    if (!color.hex.startsWith("#")) continue; // "Colorido" não é uma cor só
+    const [cr, cg, cb] = rgb(color.hex);
+    // Distância ponderada (mais perto do que o olho percebe que a euclidiana simples).
+    const mean = (r + cr) / 2;
+    const distance = (2 + mean / 256) * (r - cr) ** 2 + 4 * (g - cg) ** 2 + (2 + (255 - mean) / 256) * (b - cb) ** 2;
+    if (distance < bestDistance) { bestDistance = distance; best = color; }
+  }
+  return best;
+}

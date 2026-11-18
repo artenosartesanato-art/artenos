@@ -17,6 +17,7 @@ import {
   Save,
   Search,
   Tags,
+  Trash2,
   X,
   SpriteIcon,
 } from "@/components/icons";
@@ -621,6 +622,30 @@ export default function ProductCatalogPage() {
     setForm(EMPTY_FORM);
   }
 
+  async function deleteProduct(product: Product) {
+    if (changingStatusId) return;
+    if (!window.confirm(
+      `Excluir “${product.name}”?\n\nA peça sai do catálogo e da vitrine, com as variações, e não dá para desfazer. ` +
+      "Pedidos já feitos continuam com nome, foto e preço da época. Se for só uma pausa, use “Pausar”.")) return;
+    setChangingStatusId(product.id);
+    try {
+      const { error } = await getSupabase().rpc("delete_my_product", { p_product_id: product.id });
+      if (error) {
+        if (/delete_my_product/.test(error.message))
+          throw new Error("A exclusão de peças ainda não foi ativada. Avise o suporte da Artenós.");
+        throw error;
+      }
+      playUiSound("removed");
+      toast.success("Peça excluída.", { description: "Os pedidos antigos com esta peça continuam no histórico." });
+      if (editingId === product.id) closeForm();
+      await loadCatalog(query, status);
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setChangingStatusId(null);
+    }
+  }
+
   async function toggleProduct(product: Product) {
     if (changingStatusId) return;
     if (!product.active && !product.shipping_data_complete) {
@@ -861,6 +886,16 @@ export default function ProductCatalogPage() {
                         <CheckCircle2 size={15} />
                       )}
                       {product.active ? "Pausar" : "Publicar"}
+                    </button>
+                    <button
+                      type="button"
+                      className="is-delete"
+                      onClick={() => deleteProduct(product)}
+                      disabled={changingStatusId === product.id}
+                      aria-label={`Excluir ${product.name}`}
+                      title="Excluir peça"
+                    >
+                      <Trash2 size={15} />
                     </button>
                   </div>
                 </div>

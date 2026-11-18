@@ -61,8 +61,9 @@ Contas antigas continuam entrando com a senha atual; a regra vale ao criar ou tr
 | `supabase/migrations/20261114_data_nascimento.sql` | Idade mínima de 18 anos **só para vendedores**: data de nascimento no cadastro de loja e no pedido de abrir loja, bloqueio de lojas de menores e pedido da data, no próximo acesso, para lojas que já existiam (clientes não informam a data) |
 | `supabase/migrations/20261115_tarifa_por_item.sql` | Tarifa fixa por item vendido (R$ 4,00, ajustável na tela Tarifa): entra na calculadora de precificação e é retida automaticamente no repasse, junto com a % |
 | `supabase/migrations/20261116_variacoes_padronizadas.sql` | Variações só com tipos da lista (Cor, Tamanho, Comprimento, Quantidade, Material, Estampa, Modelo, Aroma); opções da paleta/lista ou montadas com números; Estampa, Modelo e Aroma com texto curto revisado em **Administração → Variações** |
+| `supabase/migrations/20261117_excluir_peca.sql` | Botão **Excluir** no catálogo: a peça sai do catálogo e da vitrine; pedidos antigos mantêm nome, foto e preço; cada exclusão fica registrada em `product_deletion_log` |
 
-- Rode as três **depois** de `20261113_fotos_variacoes_produto.sql`, nessa ordem (14, 15, 16). Podem ser repetidas.
+- Rode as quatro **depois** de `20261113_fotos_variacoes_produto.sql`, nessa ordem (14, 15, 16, 17). Podem ser repetidas.
 - Pode rodar antes de publicar o site: a versão antiga do site continua funcionando (cadastros sem a
   data nascem normalmente e a pessoa informa a data no primeiro acesso depois da publicação).
 - Não rode `20261111_taxa_pagamento_calculadora.sql` nem `20261113_fotos_variacoes_produto.sql` de novo depois da

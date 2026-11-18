@@ -274,6 +274,10 @@ checagens as (
                           where n.nspname = 'public' and p.proname = 'save_my_product_options' and p.prosrc ilike '%variation_option_check%')
          then 'FALTA: rode migrations/20261116_variacoes_padronizadas.sql' else 'OK' end
   union all
+  select '20261117 excluir_peca', 'função', 'loja exclui peça (histórico de pedidos mantido)',
+    case when to_regprocedure('public.delete_my_product(uuid)') is null or to_regclass('public.product_deletion_log') is null
+         then 'FALTA: rode migrations/20261117_excluir_peca.sql' else 'OK' end
+  union all
   -- Sobrecargas duplicadas deixam chamadas ambíguas (acontece ao rodar um script antigo depois de um novo).
   select 'ordem dos scripts', 'sobrecarga', p.proname,
     case when count(*) > 1 then 'ATENÇÃO: ' || count(*) || ' versões; rode de novo os scripts a partir do 06' else 'OK' end

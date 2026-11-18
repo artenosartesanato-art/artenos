@@ -261,7 +261,7 @@
 }
 .catalog-product-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 40px;
   gap: 8px;
   margin-top: 15px;
 }
@@ -286,6 +286,13 @@
 }
 .catalog-product-actions button.is-pause {
   color: var(--artenos-marrom);
+}
+.catalog-product-actions button.is-delete {
+  color: var(--an-erro);
+}
+.catalog-product-actions button.is-delete:hover:not(:disabled) {
+  border-color: var(--an-erro);
+  background: var(--an-erro-fundo);
 }
 .catalog-product-actions button:disabled {
   opacity: 0.55;
@@ -1866,4 +1873,48 @@
   .catalog-modal .catalog-option-add {
     flex-wrap: wrap;
   }
+}
+.catalog-modal .catalog-color-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.catalog-modal .catalog-color-picker label {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 4px 4px;
+  border: 1px solid var(--artenos-marrom);
+  border-radius: var(--an-r-pill);
+  background: #fff;
+  color: var(--artenos-marrom);
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.catalog-modal .catalog-form-main .catalog-color-picker input[type="color"] {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+.catalog-modal .catalog-color-picker input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.catalog-modal .catalog-color-picker input[type="color"]::-webkit-color-swatch {
+  border: 1px solid rgb(0 0 0 / 0.2);
+  border-radius: 50%;
+}
+.catalog-modal .catalog-color-picker input[type="color"]::-moz-color-swatch {
+  border: 1px solid rgb(0 0 0 / 0.2);
+  border-radius: 50%;
+}
+.catalog-modal .catalog-color-picker small {
+  color: var(--an-text-muted);
+  font-size: 11px;
 }

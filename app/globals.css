@@ -2444,3 +2444,16 @@ html {
   border-radius: var(--an-r-md);
   background: var(--an-surface);
 }
+
+/* Campos de número sem as setinhas do navegador: elas ficavam por cima dos
+   sufixos (%, cm, g) e não funcionam bem no celular. O valor continua sendo
+   digitado normalmente (e o teclado numérico abre no celular). */
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

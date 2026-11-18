@@ -95,3 +95,13 @@ test("lista fechada: cada tipo só aceita o seu formato", async () => {
   assert.equal(measureFrom("12,55"), null);
   assert.equal(quantityFrom("2.5"), null);
 });
+
+test("seletor de cor associa a cor escolhida ao nome da paleta", async () => {
+  const { nearestColor } = await import("../../lib/variation-catalog.ts");
+  assert.equal(nearestColor("#1e2d57")?.name, "Azul-marinho");
+  assert.equal(nearestColor("#fefefe")?.name, "Branco");
+  assert.equal(nearestColor("#c0392b")?.name, "Vermelho");
+  assert.equal(nearestColor("#5a6a3a")?.name, "Verde-musgo");
+  assert.equal(nearestColor("#e48fa5")?.name, "Rosa");
+  assert.equal(nearestColor("azul"), null);
+});

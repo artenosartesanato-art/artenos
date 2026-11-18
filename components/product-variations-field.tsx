@@ -9,7 +9,7 @@ import {
 } from "@/lib/product-variations";
 import {
   COLORS, FREE_TEXT_MAX, MATERIALS, SIZE_LETTERS, TYPE_HINT, TYPE_KIND, VARIATION_TYPES, checkOption, isVariationType,
-  lengthOption, measureFrom, measureOption, quantityFrom, quantityOption, type VariationType,
+  lengthOption, measureFrom, measureOption, nearestColor, quantityFrom, quantityOption, type VariationType,
 } from "@/lib/variation-catalog";
 
 export type VariationsState = {
@@ -41,6 +41,8 @@ export function ProductVariationsField({ value, onChange, photos, disabled = fal
   const [draftErrors, setDraftErrors] = useState<string[]>(["", ""]);
   // Medida (largura × altura) do tipo Tamanho, por variação.
   const [measures, setMeasures] = useState([{ width: "", height: "" }, { width: "", height: "" }]);
+  // Seletor de cor: o que foi escolhido e o nome da paleta associado.
+  const [picked, setPicked] = useState<Array<{ hex: string; name: string } | null>>([null, null]);
   const [bulk, setBulk] = useState({ price: "", stock: "" });
   const rows = buildRows(value.groups, value.values);
   const totals = variationTotals(rows);
@@ -88,6 +90,16 @@ export function ProductVariationsField({ value, onChange, photos, disabled = fal
       setDraftError(index, "");
       removeOption(index, existing);
     } else addOption(index, option);
+  }
+
+  /** Cor escolhida no seletor: associa ao nome mais parecido da paleta e marca essa cor. */
+  function pickColor(index: number, hex: string) {
+    const color = nearestColor(hex);
+    if (!color) return;
+    setPicked((current) => current.map((item, position) => (position === index ? { hex, name: color.name } : item)));
+    const group = value.groups[index];
+    if (group && !group.options.some((item) => item.toLowerCase() === color.name.toLowerCase())) addOption(index, color.name);
+    else setDraftError(index, "");
   }
 
   /** Número digitado (comprimento, quantidade, numeração) vira a opção no formato oficial. */
@@ -262,6 +274,21 @@ export function ProductVariationsField({ value, onChange, photos, disabled = fal
                 </span>
                 <small className="catalog-variation-hint">{TYPE_HINT[known]}</small>
 
+                {kind === "color" && (
+                  <div className="catalog-color-picker">
+                    <label>
+                      <input type="color" value={picked[index]?.hex ?? "#b26b4f"} disabled={disabled || full}
+                        aria-label="Escolher a cor no seletor"
+                        onChange={(event) => pickColor(index, event.target.value)} />
+                      <span>Escolher a cor no seletor</span>
+                    </label>
+                    <small aria-live="polite">
+                      {picked[index]
+                        ? <>Cor escolhida associada a <strong>{picked[index]!.name}</strong>{has(picked[index]!.name) ? " (marcada abaixo)" : ""}.</>
+                        : "Escolha uma cor e o sistema associa ao nome mais parecido da paleta."}
+                    </small>
+                  </div>
+                )}
                 {kind === "color" && (
                   <div className="catalog-swatches" role="group" aria-label="Paleta de cores">
                     {COLORS.map((color) => (
