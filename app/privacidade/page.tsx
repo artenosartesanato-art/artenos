@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PENDING, siteConfig } from "@/lib/site-config";
+import { PENDING, formatPhone, siteConfig } from "@/lib/site-config";
 import "../storefront.css";
 import "./privacy.css";
 
@@ -17,13 +17,15 @@ export default function PrivacyPage() {
   const legalName = c.companyLegalName || PENDING;
   const cnpj = c.companyCnpj || PENDING;
   const contactEmail = c.dpoEmail || c.supportEmail;
+  const phone = c.supportPhone ? formatPhone(c.supportPhone) : "";
+  const phoneHref = `tel:+55${c.supportPhone.replace(/\D/g, "").replace(/^55/, "")}`;
   return (
     <main id="conteudo" tabIndex={-1} className="store-container legal privacy">
       <p className="store-eyebrow">Seus dados na Artenós</p>
       <h1>Política de Privacidade</h1>
       <p className="privacy-updated">Última atualização: {c.privacyUpdatedAt}</p>
-      {!c.companyCnpj && (
-        <p className="privacy-notice" role="note">Os dados de registro da empresa (razão social e CNPJ) estão sendo atualizados.</p>
+      {!c.companyLegalName && (
+        <p className="privacy-notice" role="note">A razão social da empresa está sendo atualizada.</p>
       )}
 
       <nav className="privacy-toc" aria-label="Seções">
@@ -53,6 +55,12 @@ export default function PrivacyPage() {
           {c.companyAddress ? `, com sede em ${c.companyAddress}` : ""}.
         </p>
         <p>
+          Contato: {phone ? <>telefone <a href={phoneHref}>{phone}</a></> : null}
+          {phone && contactEmail ? ", " : null}
+          {contactEmail ? <>e-mail <a href={`mailto:${contactEmail}`}>{contactEmail}</a></> : null}
+          {phone || contactEmail ? " e " : null}<Link href="/ajuda">Central de Ajuda</Link> ({c.supportHours}).
+        </p>
+        <p>
           Tratamos dados pessoais de acordo com a Lei Geral de Proteção de Dados (Lei 13.709/2018, “LGPD”) e o Marco
           Civil da Internet (Lei 12.965/2014).
         </p>
@@ -75,8 +83,14 @@ export default function PrivacyPage() {
         <h2>3. Dados que coletamos</h2>
         <h3>Ao criar uma conta de comprador</h3>
         <p>Nome completo, e-mail, CPF ou CNPJ, telefone, CEP e endereço (rua, número, cidade e estado), foto de perfil (opcional) e a data de aceite dos Termos.</p>
+        <h3>Ao entrar com o Google</h3>
+        <p>
+          Recebemos do Google o nome, o e-mail (já confirmado) e a foto da sua conta Google. Não recebemos sua senha do
+          Google. Para concluir o cadastro, pedimos os mesmos dados obrigatórios do cadastro por e-mail e senha.
+        </p>
         <h3>Ao cadastrar uma loja</h3>
-        <p>Os dados acima e também data de nascimento (para confirmar que quem vende tem 18 anos ou mais), nome da loja, especialidade, história da loja, capa e foto, CEP de origem dos envios, prazos de produção e a chave Pix para receber os repasses.</p>
+        <p>Os dados acima e também data de nascimento (declarada, para confirmar que quem vende tem 18 anos ou mais), nome da loja, especialidade, história da loja, capa e foto, CEP de origem dos envios, prazos de produção e a chave Pix (tipo e chave) para receber os repasses. Quem já é comprador pode pedir para abrir uma loja na mesma conta: os dados pessoais são reaproveitados e só os da loja são pedidos.</p>
+        <p>Quando a emissão de nota fiscal estiver ativada, a loja informa também os dados fiscais: pessoa física ou jurídica, CPF ou CNPJ, razão social, regime tributário, inscrições estadual e municipal (se houver) e endereço fiscal.</p>
         <h3>Ao comprar</h3>
         <p>
           Itens, quantidades e valores; endereço de entrega e frete escolhido; observações que você deixar para a loja
@@ -89,7 +103,8 @@ export default function PrivacyPage() {
           <li><strong>Avaliações</strong> de peças e lojas (nota, comentário e data; o primeiro nome aparece publicamente);</li>
           <li><strong>Favoritos, carrinho</strong> e pedidos de orçamento sob encomenda;</li>
           <li><strong>Chamados</strong> da Central de Ajuda (nome, e-mail, assunto, mensagem e número do pedido, se informado);</li>
-          <li><strong>Avisos</strong> da plataforma (sininho e e-mails de pedido e avaliação).</li>
+          <li><strong>Avisos</strong> da plataforma (sininho e e-mails de pedido e avaliação);</li>
+          <li><strong>Moderação:</strong> denúncias recebidas e feitas, motivo e prazo de suspensões de conta e o histórico de análise do cadastro da loja.</li>
         </ul>
         <h3>Dados técnicos</h3>
         <p>
@@ -133,13 +148,14 @@ export default function PrivacyPage() {
         <h2>6. Com quem compartilhamos</h2>
         <p><strong>Não vendemos dados pessoais.</strong> Compartilhamos somente o necessário com:</p>
         <ul>
-          <li><strong>A loja vendedora:</strong> nome, endereço de entrega, itens, observações e mensagens do pedido, para produzir, enviar e atender;</li>
+          <li><strong>A loja vendedora:</strong> nome, endereço de entrega, itens, observações e mensagens do pedido, para produzir, enviar e atender; quando houver emissão de nota fiscal, também o CPF ou CNPJ e o e-mail de quem comprou, exigidos na nota;</li>
           <li><strong>Mercado Pago:</strong> dados da compra e do comprador para processar o pagamento (Pix ou cartão) e os repasses;</li>
           <li><strong>Melhor Envio e transportadoras:</strong> CEPs de origem e destino, peso e medidas para calcular o frete e, no envio, os dados de entrega;</li>
           <li><strong>ViaCEP:</strong> o CEP digitado, para preencher o endereço automaticamente;</li>
           <li><strong>Supabase:</strong> banco de dados, autenticação e armazenamento de imagens da plataforma;</li>
           <li><strong>Provedor de hospedagem</strong> da aplicação, que processa as páginas e os registros técnicos;</li>
           <li><strong>Serviço de e-mail</strong> (Gmail/Google Workspace ou Resend, conforme a configuração), para enviar confirmações, comprovantes, avisos e respostas da Central de Ajuda;</li>
+          <li><strong>Google,</strong> quando você escolhe entrar com a conta Google (o Google sabe que você usou o login na Artenós);</li>
           <li><strong>Cloudflare Turnstile,</strong> quando a verificação anti-robô estiver ativada nos formulários;</li>
           <li><strong>Autoridades públicas,</strong> quando houver obrigação legal ou ordem judicial.</li>
         </ul>
@@ -184,6 +200,7 @@ export default function PrivacyPage() {
           <li><strong>Registros de acesso</strong> (IP, data e hora): no mínimo 6 meses, como exige o art. 15 do Marco Civil; guardamos por 12 meses e depois apagamos automaticamente.</li>
           <li><strong>Pedidos, pagamentos, repasses e dados fiscais:</strong> pelos prazos legais (em regra, 5 anos), mesmo após a exclusão da conta.</li>
           <li><strong>Tentativas bloqueadas pelo filtro de termos:</strong> 6 meses.</li>
+          <li><strong>Denúncias e suspensões:</strong> enquanto forem necessárias para a segurança da plataforma e a defesa de direitos.</li>
           <li><strong>Dados da conta:</strong> enquanto a conta estiver ativa. Ao pedir a exclusão, a conta é desativada na hora (o acesso é bloqueado, as sessões são encerradas e as peças de lojas saem da vitrine) e fica guardada por <strong>30 dias</strong>; nesse prazo, ela pode ser reativada a pedido, por e-mail{contactEmail ? <> para <a href={`mailto:${contactEmail}`}>{contactEmail}</a></> : null}. Depois dos 30 dias, a exclusão é definitiva: apagamos ou anonimizamos nome, documento, contatos, endereço, favoritos, carrinho, avisos e chave Pix; o que precisa ser mantido por lei fica sem identificação de contato.</li>
         </ul>
       </section>
@@ -215,6 +232,7 @@ export default function PrivacyPage() {
       <section id="menores">
         <h2>12. Menores de 18 anos</h2>
         <p>A Artenós é destinada a maiores de 18 anos. Menores só podem comprar com a participação de pai, mãe ou responsável legal, que responde pela conta. Se identificarmos uma conta de menor sem essa participação, ela poderá ser suspensa.</p>
+        <p>Para vender é obrigatório ter 18 anos ou mais: a data de nascimento é pedida no cadastro da loja e, se indicar menos de 18 anos, a loja não é aberta (ou, se já existia, fica bloqueada até a maioridade). A data é declarada pela pessoa e não é conferida em base oficial.</p>
       </section>
 
       <section id="alteracoes">

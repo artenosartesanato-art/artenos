@@ -1,6 +1,7 @@
 // Dados institucionais e de contato da Artenós, num lugar só. Vêm de variáveis
 // de ambiente públicas (NEXT_PUBLIC_*) porque aparecem nas páginas; enquanto
 // não forem preenchidas, as páginas mostram um aviso no lugar do dado.
+// CNPJ e telefone já definidos têm valor padrão aqui (a variável, se preenchida, prevalece).
 
 const env = (value: string | undefined) => (value ?? "").trim();
 const digits = (value: string) => value.replace(/\D/g, "");
@@ -10,15 +11,16 @@ export const PENDING = "a definir";
 export const siteConfig = {
   companyName: env(process.env.NEXT_PUBLIC_COMPANY_NAME) || "Artenós",
   companyLegalName: env(process.env.NEXT_PUBLIC_COMPANY_LEGAL_NAME),
-  companyCnpj: env(process.env.NEXT_PUBLIC_COMPANY_CNPJ),
+  companyCnpj: env(process.env.NEXT_PUBLIC_COMPANY_CNPJ) || "70.263.461/0001-32",
   companyAddress: env(process.env.NEXT_PUBLIC_COMPANY_ADDRESS),
   supportEmail: env(process.env.NEXT_PUBLIC_SUPPORT_EMAIL),
-  supportPhone: env(process.env.NEXT_PUBLIC_SUPPORT_PHONE),
+  supportPhone: env(process.env.NEXT_PUBLIC_SUPPORT_PHONE) || "11925150088",
   supportWhatsapp: digits(env(process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP)),
   supportHours: env(process.env.NEXT_PUBLIC_SUPPORT_HOURS) || "segunda a sexta, das 9h às 18h (horário de Brasília)",
   dpoName: env(process.env.NEXT_PUBLIC_DPO_NAME),
   dpoEmail: env(process.env.NEXT_PUBLIC_DPO_EMAIL),
-  privacyUpdatedAt: env(process.env.NEXT_PUBLIC_PRIVACY_UPDATED_AT) || "29 de outubro de 2026",
+  privacyUpdatedAt: env(process.env.NEXT_PUBLIC_PRIVACY_UPDATED_AT) || "24 de novembro de 2026",
+  termsUpdatedAt: env(process.env.NEXT_PUBLIC_TERMS_UPDATED_AT) || "24 de novembro de 2026",
 };
 
 /** Link do WhatsApp com mensagem inicial; null se o número não foi configurado. */
