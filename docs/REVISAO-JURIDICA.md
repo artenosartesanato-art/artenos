@@ -8,7 +8,7 @@ Atualizado em 24/11/2026. Este documento acompanha as páginas `/termos` e `/pri
 | Item | Valor | Situação |
 |---|---|---|
 | Nome fantasia | Artenós | definido |
-| Razão social | — | **pendente** (`NEXT_PUBLIC_COMPANY_LEGAL_NAME`) |
+| Razão social (operadora do site) | Grazielly Araújo Mendes Oliveira | definido; conferir com o cartão CNPJ |
 | CNPJ | 70.263.461/0001-32 | definido |
 | Endereço da sede | — | **pendente** (`NEXT_PUBLIC_COMPANY_ADDRESS`) |
 | Telefone e WhatsApp de atendimento | (11) 92515-0088 | definido |
@@ -61,7 +61,7 @@ e-mail do comprador quando houver nota fiscal). Não há venda de dados nem cook
 
 ## 5. Pontos que pedem decisão ou validação do advogado
 
-1. **Razão social, endereço e DPO**: preencher; a LGPD (art. 41) exige divulgar identidade e contato do encarregado.
+1. **Endereço e DPO**: preencher; conferir se a razão social bate exatamente com o cartão CNPJ; a LGPD (art. 41) exige divulgar identidade e contato do encarregado.
 2. **Papel de controlador da loja** (Política, seção 2): confirmar a divisão Artenós controladora / loja controladora.
 3. **Peças sob medida e direito de arrependimento** (Termos, seção 7): o texto preserva o art. 49 do CDC e só remete a "condições próprias"; validar redação.
 4. **Responsabilidade do marketplace** (Termos, seções 2 e 13): avaliar a responsabilidade solidária na cadeia de consumo (CDC arts. 7º e 25) frente ao texto.

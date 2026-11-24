@@ -10,7 +10,7 @@ export const PENDING = "a definir";
 
 export const siteConfig = {
   companyName: env(process.env.NEXT_PUBLIC_COMPANY_NAME) || "Artenós",
-  companyLegalName: env(process.env.NEXT_PUBLIC_COMPANY_LEGAL_NAME),
+  companyLegalName: env(process.env.NEXT_PUBLIC_COMPANY_LEGAL_NAME) || "Grazielly Araújo Mendes Oliveira",
   companyCnpj: env(process.env.NEXT_PUBLIC_COMPANY_CNPJ) || "70.263.461/0001-32",
   companyAddress: env(process.env.NEXT_PUBLIC_COMPANY_ADDRESS),
   supportEmail: env(process.env.NEXT_PUBLIC_SUPPORT_EMAIL),
