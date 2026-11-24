@@ -15,7 +15,7 @@ export const siteConfig = {
   companyAddress: env(process.env.NEXT_PUBLIC_COMPANY_ADDRESS),
   supportEmail: env(process.env.NEXT_PUBLIC_SUPPORT_EMAIL),
   supportPhone: env(process.env.NEXT_PUBLIC_SUPPORT_PHONE) || "11925150088",
-  supportWhatsapp: digits(env(process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP)),
+  supportWhatsapp: digits(env(process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP) || "11925150088"),
   supportHours: env(process.env.NEXT_PUBLIC_SUPPORT_HOURS) || "segunda a sexta, das 9h às 18h (horário de Brasília)",
   dpoName: env(process.env.NEXT_PUBLIC_DPO_NAME),
   dpoEmail: env(process.env.NEXT_PUBLIC_DPO_EMAIL),

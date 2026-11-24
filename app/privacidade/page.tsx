@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PENDING, formatPhone, siteConfig } from "@/lib/site-config";
+import { PENDING, formatPhone, siteConfig, whatsappLink } from "@/lib/site-config";
 import "../storefront.css";
 import "./privacy.css";
 
@@ -19,6 +19,7 @@ export default function PrivacyPage() {
   const contactEmail = c.dpoEmail || c.supportEmail;
   const phone = c.supportPhone ? formatPhone(c.supportPhone) : "";
   const phoneHref = `tel:+55${c.supportPhone.replace(/\D/g, "").replace(/^55/, "")}`;
+  const wa = whatsappLink("Olá! Tenho uma dúvida sobre a Artenós:");
   return (
     <main id="conteudo" tabIndex={-1} className="store-container legal privacy">
       <p className="store-eyebrow">Seus dados na Artenós</p>
@@ -55,7 +56,7 @@ export default function PrivacyPage() {
           {c.companyAddress ? `, com sede em ${c.companyAddress}` : ""}.
         </p>
         <p>
-          Contato: {phone ? <>telefone <a href={phoneHref}>{phone}</a></> : null}
+          Contato: {phone ? <>telefone <a href={phoneHref}>{phone}</a>{wa ? <> (também <a href={wa} target="_blank" rel="noopener noreferrer">WhatsApp</a>)</> : null}</> : null}
           {phone && contactEmail ? ", " : null}
           {contactEmail ? <>e-mail <a href={`mailto:${contactEmail}`}>{contactEmail}</a></> : null}
           {phone || contactEmail ? " e " : null}<Link href="/ajuda">Central de Ajuda</Link> ({c.supportHours}).

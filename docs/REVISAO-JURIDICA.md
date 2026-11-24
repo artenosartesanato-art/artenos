@@ -11,7 +11,7 @@ Atualizado em 24/11/2026. Este documento acompanha as páginas `/termos` e `/pri
 | Razão social | — | **pendente** (`NEXT_PUBLIC_COMPANY_LEGAL_NAME`) |
 | CNPJ | 70.263.461/0001-32 | definido |
 | Endereço da sede | — | **pendente** (`NEXT_PUBLIC_COMPANY_ADDRESS`) |
-| Telefone de atendimento | (11) 92515-0088 | definido |
+| Telefone e WhatsApp de atendimento | (11) 92515-0088 | definido |
 | E-mail de atendimento | — | **pendente** (`NEXT_PUBLIC_SUPPORT_EMAIL`) |
 | Encarregado (DPO): nome e e-mail | — | **pendente** (`NEXT_PUBLIC_DPO_NAME`, `NEXT_PUBLIC_DPO_EMAIL`) |
 

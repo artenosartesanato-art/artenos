@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PENDING, formatPhone, siteConfig } from "@/lib/site-config";
+import { PENDING, formatPhone, siteConfig, whatsappLink } from "@/lib/site-config";
 import "../storefront.css";
 import "../privacidade/privacy.css";
 
@@ -18,6 +18,7 @@ export default function TermsPage() {
   const legalName = c.companyLegalName || PENDING;
   const phone = c.supportPhone ? formatPhone(c.supportPhone) : "";
   const phoneHref = `tel:+55${c.supportPhone.replace(/\D/g, "").replace(/^55/, "")}`;
+  const wa = whatsappLink("Olá! Tenho uma dúvida sobre a Artenós:");
   return (
     <main id="conteudo" tabIndex={-1} className="store-container legal privacy">
       <p className="store-eyebrow">Regras da Artenós</p>
@@ -194,7 +195,7 @@ export default function TermsPage() {
           consumidores, vale o foro do seu domicílio.
         </p>
         <p>
-          Dúvidas: {phone ? <>telefone <a href={phoneHref}>{phone}</a>, </> : null}
+          Dúvidas: {phone ? <>telefone <a href={phoneHref}>{phone}</a>{wa ? <> (também <a href={wa} target="_blank" rel="noopener noreferrer">WhatsApp</a>)</> : null}, </> : null}
           {c.supportEmail ? <>e-mail <a href={`mailto:${c.supportEmail}`}>{c.supportEmail}</a> ou </> : null}
           <Link href="/ajuda">Central de Ajuda</Link> ({c.supportHours}).
         </p>
